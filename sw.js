@@ -1,4 +1,4 @@
-const CACHE='poin-mandiri-v2';
+const CACHE='poin-mandiri-v3';
 const FILES=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./icon-maskable-512.png','./apple-touch-icon.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE&&k!=='pm-data').map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
@@ -12,7 +12,7 @@ async function checkReminders(){
   const d=await r.json(),now=Date.now(),N=d.notified||{};let changed=false;
   for(const x of d.list||[]){
     if(x.at<=now&&now-x.at<12*36e5&&!N[x.id]){
-      await self.registration.showNotification(x.title,{body:x.body,tag:x.id,icon:'icon-192.png',badge:'icon-192.png'});
+      await self.registration.showNotification('⏰ '+x.title,{body:x.body,tag:x.id,icon:'icon-192.png',badge:'icon-192.png',renotify:true,requireInteraction:true,vibrate:[800,300,800,300,800,300,800]});
       N[x.id]=now;changed=true;
     }
   }

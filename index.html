@@ -65,6 +65,14 @@ h3{font-size:16px;margin:0 0 12px}
 .seg button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--txt);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:600;z-index:20;max-width:90vw}
 .hide{display:none!important}
+#alarm{position:fixed;inset:0;z-index:50;background:#b00020;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center;animation:flash 1s steps(2) infinite}
+@keyframes flash{50%{background:#7a0016}}
+#alarm h1{font-size:clamp(28px,6vw,52px);margin:0;line-height:1.1}
+#alarm p{font-size:20px;margin:0;opacity:.95;max-width:640px}
+#alarm .ic{font-size:72px;line-height:1}
+#alarm .btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+#alarm button{min-height:60px;font-size:18px;padding:14px 26px;background:#fff;color:#b00020}
+#alarm button.ghost{background:transparent;color:#fff;border:2px solid #fff}
 #alerts{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
 #alerts:empty{display:none}
 .alert{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 16px;border-radius:14px;border:1px solid var(--bd);background:var(--card)}
@@ -123,6 +131,10 @@ td button{min-height:40px;padding:6px 12px}
   </main>
 </div>
 <div class="toast hide" id="toast"></div>
+<div id="alarm" class="hide" role="alertdialog" aria-live="assertive">
+  <div class="ic">⏰</div><h1 id="alT"></h1><p id="alB"></p>
+  <div class="btns"><button id="alGo">Buka</button><button class="ghost" id="alSn">Tunda 10 menit</button><button class="ghost" id="alOff">Matikan</button></div>
+</div>
 
 <script>
 /* ---------- State ---------- */
@@ -134,7 +146,7 @@ const DEF={
   levels:[{n:'Pemula',min:0},{n:'Rajin',min:500},{n:'Tekun',min:1500},{n:'Disiplin',min:4000},{n:'Mandiri',min:10000}],
   rewards:[{id:'r1',n:'Main game 1 jam',p:60},{id:'r2',n:'Nonton 1 film',p:120},{id:'r3',n:'Jajan favorit',p:80}],
   tasks:[],exams:[],log:[],earned:0,balance:0,
-  remind:{exam:'19:00',taskH:24,latePct:0,examBonus:20}
+  remind:{exam:'19:00',taskH:24,latePct:0,examBonus:20,siren:true}
 };
 let S=structuredClone(DEF);
 const LS='poin-mandiri-v1';
@@ -235,7 +247,7 @@ const getN=()=>{try{return JSON.parse(localStorage.getItem(NKEY)||'{}')}catch(e)
 const setN=n=>{try{localStorage.setItem(NKEY,JSON.stringify(n))}catch(e){}};
 async function notify(r){
   if(!('Notification' in window)||Notification.permission!=='granted')return false;
-  try{const reg=await navigator.serviceWorker.ready;await reg.showNotification(r.title,{body:r.body,tag:r.id,icon:'icon-192.png',badge:'icon-192.png',renotify:true});return true}
+  try{const reg=await navigator.serviceWorker.ready;await reg.showNotification('⏰ '+r.title,{body:r.body,tag:r.id,icon:'icon-192.png',badge:'icon-192.png',renotify:true,requireInteraction:true,silent:false,vibrate:[800,300,800,300,800,300,800]});return true}
   catch(e){try{new Notification(r.title,{body:r.body,tag:r.id});return true}catch(x){return false}}
 }
 let RT=[];
@@ -243,24 +255,50 @@ async function syncReminders(){
   const L=reminderList(),now=Date.now(),N=getN();
   try{const c=await caches.open('pm-data'),r=await c.match('./reminders.json');if(r){const d=await r.json();Object.assign(N,d.notified||{})}}catch(e){}
   // tampilkan yang sudah waktunya tapi belum diberitahukan (maks 12 jam lewat)
-  for(const r of L){if(r.at<=now&&now-r.at<12*36e5&&!N[r.id]){if(await notify(r))N[r.id]=now}}
+  for(const r of L){if(r.at<=now&&now-r.at<12*36e5&&!N[r.id]){await notify(r);N[r.id]=now;alarm(r)}}
   for(const k in N)if(now-N[k]>30*DAY)delete N[k];
   setN(N);
   // jadwalkan yang dalam 24 jam ke depan selama aplikasi terbuka
   RT.forEach(clearTimeout);RT=[];
-  L.filter(r=>r.at>now&&r.at-now<DAY).forEach(r=>RT.push(setTimeout(async()=>{const n=getN();if(n[r.id])return;if(await notify(r)){n[r.id]=Date.now();setN(n)}alerts()},r.at-now)));
+  L.filter(r=>r.at>now&&r.at-now<DAY).forEach(r=>RT.push(setTimeout(async()=>{const n=getN();if(n[r.id])return;await notify(r);n[r.id]=Date.now();setN(n);alarm(r);alerts()},r.at-now)));
   // salin ke service worker untuk pemeriksaan latar belakang
   try{const c=await caches.open('pm-data');await c.put('./reminders.json',new Response(JSON.stringify({list:L,notified:getN()}),{headers:{'Content-Type':'application/json'}}))}catch(e){}
 }
 setInterval(()=>{alerts();if(V==='tugas'||V==='ujian')render()},60000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)render()});
 
+/* ---------- Alarm darurat (saat aplikasi terbuka) ---------- */
+let AL=null;
+function alarm(r){
+  if(!S.remind.siren)return;
+  $('#alT').textContent=r.title;$('#alB').textContent=r.body;$('#alarm').classList.remove('hide');
+  stopSiren();
+  try{const AC=new (window.AudioContext||window.webkitAudioContext)();const g=AC.createGain();g.gain.value=.9;g.connect(AC.destination);
+    const o=AC.createOscillator();o.type='square';o.connect(g);o.start();
+    const t0=AC.currentTime;for(let i=0;i<600;i++){o.frequency.setValueAtTime(i%2?650:1050,t0+i*.45)}
+    AL={AC,o,v:setInterval(()=>{try{navigator.vibrate&&navigator.vibrate([700,250,700])}catch(e){}},1200),r};
+  }catch(e){AL={v:null,r}}
+  try{navigator.vibrate&&navigator.vibrate([700,250,700])}catch(e){}
+  if(document.hidden)return;
+}
+function stopSiren(){if(!AL)return;try{AL.o.stop();AL.AC.close()}catch(e){}clearInterval(AL.v);try{navigator.vibrate&&navigator.vibrate(0)}catch(e){}}
+function closeAlarm(){stopSiren();AL=null;$('#alarm').classList.add('hide')}
+$('#alOff').onclick=closeAlarm;
+$('#alGo').onclick=()=>{const r=AL&&AL.r;closeAlarm();if(r&&r.id.startsWith('ex-'))startExamStudy(r.id.split('-')[1]);else go('tugas')};
+$('#alSn').onclick=()=>{const r=AL&&AL.r;closeAlarm();if(!r)return;toast('Ditunda 10 menit');RT.push(setTimeout(()=>{notify(r);alarm(r)},6e5))};
+/* Alarm Jam Android: berbunyi walau DND aktif dan aplikasi tertutup */
+function alarmIntent(ms,msg){
+  const d=new Date(ms);
+  return 'intent:#Intent;action=android.intent.action.SET_ALARM;i.android.intent.extra.alarm.HOUR='+d.getHours()+';i.android.intent.extra.alarm.MINUTES='+d.getMinutes()+';S.android.intent.extra.alarm.MESSAGE='+encodeURIComponent(msg.slice(0,60))+';B.android.intent.extra.alarm.SKIP_UI=false;end';
+}
+const canAlarm=ms=>ms>Date.now()&&ms-Date.now()<DAY;
+const alarmBtn=(ms,msg)=>canAlarm(ms)?`<a href="${alarmIntent(ms,msg)}"><button class="sm" tabindex="-1" style="background:#b00020">⏰ Alarm HP</button></a>`:'';
 function alerts(){
   const box=$('#alerts'),out=[],now=Date.now();
   S.exams.filter(e=>!e.done).forEach(e=>{
     const dd=dayDiff(examAt(e));
     if(dd===1&&!e.studied)out.push(`<div class="alert warn"><div class="grow"><b>Ujian ${esc(e.mapel)} besok, ${new Date(examAt(e)).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</b><span class="small">${now>=examNight(e)?'Waktunya belajar malam ini.':'Jadwal belajar malam ini jam '+esc(S.remind.exam)+'.'}</span></div>
-      <button class="sm" data-ast="${e.id}">Mulai belajar</button><button class="ok sm" data-asd="${e.id}">Sudah belajar (+${S.remind.examBonus})</button></div>`);
+      ${alarmBtn(examNight(e),'Belajar ujian '+e.mapel)}<button class="sm" data-ast="${e.id}">Mulai belajar</button><button class="ok sm" data-asd="${e.id}">Sudah belajar (+${S.remind.examBonus})</button></div>`);
     else if(dd===0&&examAt(e)>now-3*36e5)out.push(`<div class="alert info"><div class="grow"><b>Ujian ${esc(e.mapel)} hari ini</b><span class="small">${fdt(examAt(e))}. Semangat!</span></div></div>`);
   });
   const late=S.tasks.filter(t=>!t.done&&t.dl&&dlMs(t)<now);
@@ -301,6 +339,7 @@ function tugas(){
       <span class="pts plus">+${p}</span>
       <div class="acts">
         ${d&&!late?`<a class="small" target="_blank" rel="noopener" href="${gcal('⏰ Deadline: '+t.n,Math.max(nw+6e4,d-S.remind.taskH*36e5),Math.max(nw+6e4,d-S.remind.taskH*36e5)+18e5,'Tugas "'+t.n+'" jatuh tempo '+fdt(d)+'.')}"><button class="ghost sm" tabindex="-1">+ Kalender</button></a>`:''}
+        ${d&&!late?alarmBtn(Math.max(nw+6e4,d-S.remind.taskH*36e5),'Deadline: '+t.n):''}
         <button class="ghost sm" data-edl="${t.id}">${d?'Ubah deadline':'Atur deadline'}</button>
         <button class="ok sm" data-done="${t.id}">Selesai</button>
         <button class="bad sm" data-del="${t.id}" aria-label="Hapus">✕</button>
@@ -355,6 +394,7 @@ function ujian(){
         ${passed?'<span class="chip">Sudah lewat</span>':dlChip(at)} ${e.studied?'<span class="chip ok">Sudah belajar ✓</span>':`<span class="mut small">Belajar: ${fdt(nt)}</span>`}</div>
       <div class="acts">
         ${!passed&&nt>now?`<a target="_blank" rel="noopener" href="${gcal('📚 Belajar untuk ujian '+e.mapel,nt,nt+2*36e5,'Ujian '+e.mapel+' '+fdt(at)+(e.catatan?'. '+e.catatan:''))}"><button class="ghost sm" tabindex="-1">+ Kalender</button></a>`:''}
+        ${!passed?alarmBtn(nt,'Belajar ujian '+e.mapel):''}
         ${!passed?`<button class="soft sm" data-est="${e.id}">Belajar</button>`:''}
         ${!e.studied&&!passed?`<button class="ok sm" data-esd="${e.id}">Sudah belajar</button>`:''}
         ${passed?`<button class="ok sm" data-edn="${e.id}">Tandai selesai</button>`:''}
@@ -532,9 +572,11 @@ function atur(){
       <div class="row"><div><label>Bonus belajar sebelum ujian</label><input type="number" inputmode="numeric" id="rb" value="${S.remind.examBonus}"></div>
       <div><label>Potongan poin jika telat (%)</label><input type="number" inputmode="numeric" id="rl" min="0" max="100" value="${S.remind.latePct}"></div></div>
       <div class="sp"></div>
+      <label><input type="checkbox" id="rs2" style="width:auto;min-height:0;margin-right:8px;vertical-align:middle" ${S.remind.siren?'checked':''}>Alarm darurat layar penuh + sirene saat aplikasi terbuka</label>
+      <div class="row" style="margin-bottom:14px"><button class="fit" id="atest" style="background:#b00020">Tes alarm darurat</button></div>
       <label>Notifikasi di tablet</label>
       <div class="row"><span class="mut small" id="nst" style="align-self:center"></span><button class="fit soft" id="nb">Izinkan notifikasi</button><button class="fit ghost" id="nt">Tes</button></div>
-      <p class="mut small" style="margin-bottom:0">Notifikasi paling andal saat aplikasi terbuka atau baru dibuka. Agar pasti berbunyi walau aplikasi ditutup, gunakan tombol <b>+ Kalender</b> pada ujian atau tugas.</p>
+      <p class="mut small" style="margin-bottom:0">Notifikasi paling andal saat aplikasi terbuka atau baru dibuka. Untuk alarm yang <b>pasti berbunyi walau DND aktif dan aplikasi tertutup</b>, ketuk <b>⏰ Alarm HP</b> (muncul saat pengingat tinggal kurang dari 24 jam). Alarm akan dibuat di aplikasi Jam Android. Tombol <b>+ Kalender</b> menyimpan pengingat di Google Kalender.</p>
     </div>
     <div class="card">
       <h2>Koreksi poin</h2>
@@ -567,6 +609,8 @@ function atur(){
   $('#la').onclick=()=>{const mx=Math.max(...S.levels.map(l=>l.min));S.levels.push({n:'Level baru',min:mx+5000});persist();atur()};
   $('#ra').onclick=()=>{S.rewards.push({id:uid(),n:'Reward baru',p:100});persist();atur()};
   on('#rx',el=>S.remind.exam=el.value||'19:00');on('#rh',el=>S.remind.taskH=num(el.value,1));on('#rb',el=>S.remind.examBonus=num(el.value,0));on('#rl',el=>S.remind.latePct=Math.min(100,num(el.value,0)));
+  $('#rs2').onchange=e=>{S.remind.siren=e.target.checked;persist()};
+  $('#atest').onclick=()=>{const v=S.remind.siren;S.remind.siren=true;alarm({id:'test',title:'Tes alarm',body:'Beginilah bunyi pengingat ujian dan deadline.'});S.remind.siren=v};
   const nst=()=>{const t=!('Notification' in window)?'Tidak didukung di browser ini':Notification.permission==='granted'?'Aktif ✓':Notification.permission==='denied'?'Diblokir — izinkan dari pengaturan Chrome':'Belum diizinkan';$('#nst').textContent=t;$('#nb').classList.toggle('hide',!('Notification' in window)||Notification.permission!=='default')};nst();
   $('#nb').onclick=async()=>{try{await Notification.requestPermission()}catch(e){}nst();if(Notification.permission==='granted'){regPeriodic();toast('Notifikasi aktif')}};
   $('#nt').onclick=async()=>{if(!(await notify({id:'test',title:'Poin Mandiri',body:'Notifikasi berfungsi. Semangat belajar!'})))toast('Izinkan notifikasi dulu')};
