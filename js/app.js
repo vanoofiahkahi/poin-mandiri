@@ -14,10 +14,11 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '2.0.0';
+const VERSION = '2.1.0';
 
 /* ================= Ikon ================= */
 const P = {
+  wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
   home: '<path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z"/>',
   checks: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
   cap: '<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 2.7 9 2.7 12 0v-5"/><path d="M22 10v6"/>',
@@ -128,7 +129,7 @@ const DEF = {
   rate: 100,
   levels: [{ n: 'Pemula', min: 0 }, { n: 'Rajin', min: 500 }, { n: 'Tekun', min: 1500 }, { n: 'Disiplin', min: 4000 }, { n: 'Mandiri', min: 10000 }],
   rewards: [{ id: 'r1', n: 'Main game 1 jam', p: 60 }, { id: 'r2', n: 'Nonton 1 film', p: 120 }, { id: 'r3', n: 'Jajan favorit', p: 80 }],
-  tasks: [], exams: [], log: [], earned: 0, balance: 0,
+  tasks: [], exams: [], kas: [], kasPay: [], log: [], earned: 0, balance: 0,
   remind: { exam: '19:00', taskH: 24, latePct: 0, examBonus: 20, siren: true },
   profile: { name: '' },
   meta: { modifiedAt: 0, syncedAt: null, dirty: false }
@@ -145,7 +146,7 @@ function merge(d) {
   S.remind = Object.assign({}, DEF.remind, d.remind || {});
   S.profile = Object.assign({}, DEF.profile, d.profile || {});
   S.meta = Object.assign({}, DEF.meta, d.meta || {});
-  ['tasks', 'exams', 'log', 'rewards', 'diff', 'levels'].forEach(k => { if (!Array.isArray(S[k])) S[k] = clone(DEF[k]); });
+  ['tasks', 'exams', 'kas', 'kasPay', 'log', 'rewards', 'diff', 'levels'].forEach(k => { if (!Array.isArray(S[k])) S[k] = clone(DEF[k]); });
 }
 function saveLocal() { if (USER) lsSet(stateKey(USER.id), S); }
 const isFresh = s => !(s.log && s.log.length) && !(s.tasks && s.tasks.length) && !(s.exams && s.exams.length);
@@ -343,14 +344,14 @@ function greeting() {
   return h < 11 ? 'Selamat pagi' : h < 15 ? 'Selamat siang' : h < 18 ? 'Selamat sore' : 'Selamat malam';
 }
 const gutc = ms => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-const gcal = (title, start, end, details) => 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(title) + '&dates=' + gutc(start) + '/' + gutc(end) + '&details=' + encodeURIComponent(details || 'Dari remind+');
+const gcal = (title, start, end, details, recur) => 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(title) + '&dates=' + gutc(start) + '/' + gutc(end) + '&details=' + encodeURIComponent(details || 'Dari remind+') + (recur ? '&recur=' + encodeURIComponent(recur) : '');
 function alarmIntent(ms, msg) {
   const d = new Date(ms);
   return 'intent:#Intent;action=android.intent.action.SET_ALARM;i.android.intent.extra.alarm.HOUR=' + d.getHours() + ';i.android.intent.extra.alarm.MINUTES=' + d.getMinutes() + ';S.android.intent.extra.alarm.MESSAGE=' + encodeURIComponent(('remind+ · ' + msg).slice(0, 60)) + ';B.android.intent.extra.alarm.SKIP_UI=false;end';
 }
 const canAlarm = ms => ms > Date.now() && ms - Date.now() < DAY;
 const alarmBtn = (ms, msg) => canAlarm(ms) ? `<a class="btn alarm-btn sm" href="${alarmIntent(ms, msg)}" title="Pasang alarm di aplikasi Jam">${I('alarm')}Alarm HP</a>` : '';
-const calBtn = (title, start, end, details) => `<a class="btn ghost sm" target="_blank" rel="noopener" href="${gcal(title, start, end, details)}" title="Simpan ke Google Kalender">${I('calplus')}Kalender</a>`;
+const calBtn = (title, start, end, details, recur) => `<a class="btn ghost sm" target="_blank" rel="noopener" href="${gcal(title, start, end, details, recur)}" title="Simpan ke Google Kalender">${I('calplus')}Kalender</a>`;
 
 /* ================= Statistik ================= */
 function weekStats() {
@@ -541,10 +542,10 @@ function startLocal() {
 
 /* ================= Aplikasi ================= */
 const NAV = [
-  ['home', 'Beranda', 'home'], ['tugas', 'Tugas', 'checks'], ['ujian', 'Ujian', 'cap'], ['belajar', 'Belajar', 'timer'],
+  ['home', 'Beranda', 'home'], ['tugas', 'Tugas', 'checks'], ['ujian', 'Ujian', 'cap'], ['kas', 'Kas', 'wallet'], ['belajar', 'Belajar', 'timer'],
   ['reward', 'Reward', 'gift'], ['riwayat', 'Riwayat', 'history'], ['atur', 'Pengaturan', 'sliders']
 ];
-const TITLES = { tugas: 'Tugas', ujian: 'Ujian', belajar: 'Belajar', reward: 'Reward', riwayat: 'Riwayat', atur: 'Pengaturan' };
+const TITLES = { tugas: 'Tugas', ujian: 'Ujian', kas: 'Uang Kas', belajar: 'Belajar', reward: 'Reward', riwayat: 'Riwayat', atur: 'Pengaturan' };
 const displayName = () => (USER && (USER.local ? S.profile.name : USER.name)) || (USER && USER.email ? USER.email.split('@')[0] : '') || 'Kamu';
 const initial = () => (displayName().trim()[0] || 'R').toUpperCase();
 
@@ -610,7 +611,7 @@ function go(v) {
 }
 function render() {
   if (!USER || !$('#view')) return;
-  const pages = { home, tugas, ujian, belajar, reward, riwayat, atur };
+  const pages = { home, tugas, ujian, kas, belajar, reward, riwayat, atur };
   if (V === 'home') { $('#hello').textContent = greeting() + ' 👋'; $('#title').textContent = displayName(); }
   else { $('#hello').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' }); $('#title').textContent = TITLES[V]; }
   pages[V]();
@@ -623,8 +624,10 @@ function badges() {
   const now = Date.now();
   const t = S.tasks.filter(x => !x.done && x.dl && dlMs(x) - now <= S.remind.taskH * 36e5).length;
   const u = S.exams.filter(e => !e.done && !e.studied && dayDiff(examAt(e)) === 1).length;
-  $$('[data-go="tugas"], [data-go="ujian"]').forEach(b => {
-    const n = b.dataset.go === 'tugas' ? t : u;
+  const today = ymd(new Date());
+  const k = S.kas.filter(x => kasUnpaid(x).length).length;
+  $$('[data-go="tugas"], [data-go="ujian"], [data-go="kas"]').forEach(b => {
+    const n = b.dataset.go === 'tugas' ? t : b.dataset.go === 'ujian' ? u : k;
     let d = $('.dot', b);
     if (!n) { if (d) d.remove(); return; }
     if (!d) { d = document.createElement('span'); d.className = 'dot'; b.appendChild(d); }
@@ -642,7 +645,8 @@ function home() {
   const w = weekStats(), st = streak(), now = Date.now();
   const agenda = [
     ...S.tasks.filter(t => !t.done && t.dl).map(t => ({ at: dlMs(t), kind: 'tugas', t: t.n, sub: esc(t.d), ic: 'checks', tone: 't-brand' })),
-    ...S.exams.filter(e => !e.done && examAt(e) > now - 3 * 36e5).map(e => ({ at: examAt(e), kind: 'ujian', t: 'Ujian ' + e.mapel, sub: esc(e.jam), ic: 'cap', tone: 't-warn' }))
+    ...S.exams.filter(e => !e.done && examAt(e) > now - 3 * 36e5).map(e => ({ at: examAt(e), kind: 'ujian', t: 'Ujian ' + e.mapel, sub: esc(e.jam), ic: 'cap', tone: 't-warn' })),
+    ...S.kas.map(k => { const d = kasUnpaid(k)[0] || kasNext(k); return d && ymdMs(d) - now < 8 * DAY ? { at: kasAt(k, d), kind: 'kas', t: k.n + ' · ' + rp(k.amt), ic: 'wallet', tone: 't-mint' } : null; }).filter(Boolean)
   ].sort((a, b) => a.at - b.at).slice(0, 6);
   const recent = S.log.slice(0, 6);
   view().innerHTML = `
@@ -689,7 +693,7 @@ function home() {
   $$('[data-go2]', view()).forEach(b => b.onclick = () => go(b.dataset.go2));
 }
 function logItem(l) {
-  const ic = { tugas: 'checks', belajar: 'book', reward: 'gift', ujian: 'cap', koreksi: 'pencil' }[l.kind] || 'spark';
+  const ic = { tugas: 'checks', belajar: 'book', reward: 'gift', ujian: 'cap', kas: 'wallet', koreksi: 'pencil' }[l.kind] || 'spark';
   const tone = l.p > 0 ? 't-mint' : 't-danger';
   return `<div class="item"><div class="lead ${tone}">${I(ic)}</div><div class="body"><div class="ttl">${esc(l.what)}</div><div class="faint small">${new Date(l.t).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</div></div><span class="pts num ${l.p > 0 ? 'plus' : 'minus'}">${l.p > 0 ? '+' : ''}${fmt(l.p)}</span></div>`;
 }
@@ -830,6 +834,156 @@ function examStudied(id) {
   toast('+' + S.remind.examBonus + ' poin. Semoga lancar ujiannya!');
 }
 
+/* ---------- Uang kas ---------- */
+const HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+const BYDAY = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+const p2 = n => String(n).padStart(2, '0');
+const ymd = d => d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
+const ymdMs = s => new Date(s + 'T00:00').getTime();
+/* Tanggal-tanggal jatuh tempo kas antara dua waktu (inklusif per hari) */
+function kasDue(k, fromMs, toMs) {
+  const out = [], d = new Date(sod(Math.max(fromMs, ymdMs(k.start)))), end = sod(toMs);
+  let g = 0;
+  while (d.getTime() <= end && g++ < 900) {
+    const dow = d.getDay(), dt = d.getDate(), dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    if ((k.f === 'w' && dow === k.dow) || (k.f === 's' && dow >= 1 && dow <= 5) || (k.f === 'm' && dt === Math.min(k.dom, dim))) out.push(ymd(d));
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
+const kasAt = (k, date) => new Date(date + 'T' + (k.jam || '06:30')).getTime();
+const kasUnpaid = k => kasDue(k, Date.now() - 180 * DAY, Date.now()).filter(x => !k.paid.includes(x));
+const kasNext = k => kasDue(k, Date.now() + DAY, Date.now() + 40 * DAY).find(x => !k.paid.includes(x));
+const kasSched = k => k.f === 'w' ? 'Setiap ' + HARI[k.dow] : k.f === 's' ? 'Setiap hari sekolah (Sen–Jum)' : 'Setiap tanggal ' + k.dom;
+const kasRule = k => k.f === 'w' ? 'RRULE:FREQ=WEEKLY;BYDAY=' + BYDAY[k.dow] : k.f === 's' ? 'RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR' : 'RRULE:FREQ=MONTHLY;BYMONTHDAY=' + k.dom;
+const kasPer = k => k.f === 'w' ? 'minggu' : k.f === 's' ? 'hari' : 'bulan';
+
+function kasForm(k) {
+  k = k || { n: 'Uang kas kelas', amt: 5000, f: 'w', dow: 1, dom: 1, jam: '06:30', bonus: 5, h1: true };
+  return `
+    <div class="stack">
+      <div class="form-row">
+        <label class="field grow2"><span>Nama</span><input class="input" id="kn" value="${esc(k.n)}" placeholder="Uang kas kelas"></label>
+        <label class="field"><span>Nominal (Rp)</span><input class="input" id="ka2" type="number" inputmode="numeric" min="0" value="${k.amt}"></label>
+      </div>
+      <div class="form-row">
+        <label class="field"><span>Jadwal</span><select class="input" id="kf">
+          <option value="w" ${k.f === 'w' ? 'selected' : ''}>Mingguan</option>
+          <option value="s" ${k.f === 's' ? 'selected' : ''}>Harian (hari sekolah)</option>
+          <option value="m" ${k.f === 'm' ? 'selected' : ''}>Bulanan</option></select></label>
+        <label class="field" id="kdowW"><span>Hari bayar</span><select class="input" id="kdow">${HARI.map((h, i) => `<option value="${i}" ${k.dow === i ? 'selected' : ''}>${h}</option>`).join('')}</select></label>
+        <label class="field" id="kdomW"><span>Tanggal bayar</span><select class="input" id="kdom">${Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}" ${k.dom === i + 1 ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></label>
+        <label class="field"><span>Jam pengingat</span><input class="input" id="kj" type="time" value="${esc(k.jam)}"></label>
+      </div>
+      <div class="form-row">
+        <label class="field"><span>Bonus poin bayar tepat waktu</span><input class="input" id="kb" type="number" inputmode="numeric" min="0" value="${k.bonus}"></label>
+        <label class="switch" style="flex:1 1 220px;min-height:48px"><input type="checkbox" id="kh1" ${k.h1 ? 'checked' : ''}>Ingatkan juga malam sebelumnya</label>
+      </div>
+    </div>`;
+}
+function kasFormBind(root) {
+  const f = $('#kf', root), sync = () => { $('#kdowW', root).hidden = f.value !== 'w'; $('#kdomW', root).hidden = f.value !== 'm'; };
+  f.onchange = sync; sync();
+}
+function kasRead(root) {
+  const n = $('#kn', root).value.trim(), amt = Math.max(0, Math.round(Number($('#ka2', root).value) || 0));
+  if (!n) { $('#kn', root).focus(); toast('Isi nama kas'); return null; }
+  if (!amt) { $('#ka2', root).focus(); toast('Isi nominal'); return null; }
+  return { n, amt, f: $('#kf', root).value, dow: Number($('#kdow', root).value), dom: Number($('#kdom', root).value), jam: $('#kj', root).value || '06:30', bonus: Math.max(0, Math.round(Number($('#kb', root).value) || 0)), h1: $('#kh1', root).checked };
+}
+
+function kas() {
+  const now = Date.now();
+  const mStart = new Date(); mStart.setDate(1); mStart.setHours(0, 0, 0, 0);
+  const paidMonth = S.kasPay.filter(p => Date.parse(p.t) >= mStart.getTime()).reduce((a, b) => a + b.amt, 0);
+  const owed = S.kas.reduce((a, k) => a + kasUnpaid(k).length * k.amt, 0);
+  view().innerHTML = `
+  <div class="grid g3" style="margin-bottom:16px">
+    <div class="card stat"><div class="ico t-mint">${I('check')}</div><div class="v num">${rp(paidMonth)}</div><div class="l">Dibayar bulan ini</div></div>
+    <div class="card stat"><div class="ico ${owed ? 't-danger' : 't-brand'}">${I('wallet')}</div><div class="v num ${owed ? 'minus' : ''}">${rp(owed)}</div><div class="l">Tunggakan</div></div>
+    <div class="card stat"><div class="ico t-warn">${I('flame')}</div><div class="v num">${S.kasPay.filter(p => p.ontime).length}×</div><div class="l">Bayar tepat waktu</div></div>
+  </div>
+  <section class="card">
+    <h2>Tambah pengingat kas</h2><p class="sub">remind+ mengingatkan di hari bayar, dan bisa juga malam sebelumnya jam ${esc(S.remind.exam)}.</p>
+    <div id="kform">${kasForm()}</div>
+    <div style="margin-top:14px"><button class="btn grad" id="kadd">${I('plus')}Tambah</button></div>
+  </section>
+  <div class="sec-title"><h3>Daftar kas <span class="count">${S.kas.length}</span></h3></div>
+  <div class="list">${S.kas.length ? S.kas.map(k => {
+    const un = kasUnpaid(k), today = ymd(new Date()), nx = kasNext(k);
+    const dueToday = un.includes(today);
+    const late = un.filter(x => x !== today);
+    const nextDate = dueToday ? today : nx;
+    const rAt = nextDate ? kasAt(k, nextDate) : 0;
+    const hist = S.kasPay.filter(p => p.kasId === k.id).slice(0, 4);
+    let st;
+    if (late.length) st = `<span class="chip danger">${I('warn')}Nunggak ${late.length}× · ${rp(late.length * k.amt)}</span>`;
+    else if (dueToday) st = `<span class="chip warn">${I('clock')}Bayar hari ini</span>`;
+    else st = `<span class="chip mint">${I('check')}Lunas</span>`;
+    return `<div class="item" style="flex-wrap:wrap">
+      <div class="lead ${late.length ? 't-danger' : dueToday ? 't-warn' : 't-mint'}">${I('wallet')}</div>
+      <div class="body"><div class="ttl">${esc(k.n)} · ${rp(k.amt)}</div>
+        <div class="faint small" style="margin-top:2px">${kasSched(k)} · pengingat ${esc(k.jam)}${k.bonus ? ' · bonus +' + k.bonus + ' poin tepat waktu' : ''}</div>
+        <div class="meta">${st}${!dueToday && !late.length && nx ? `<span class="faint small">Berikutnya ${fd(ymdMs(nx))}</span>` : ''}</div>
+        ${hist.length ? `<div class="faint small" style="margin-top:6px">Terakhir bayar: ${hist.map(h => new Date(ymdMs(h.date)).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })).join(', ')}</div>` : ''}</div>
+      <div class="acts">
+        ${un.length > 1 ? `<button class="btn mint sm" data-kpall="${k.id}">${I('check')}Bayar semua ${rp(un.length * k.amt)}</button>` : ''}
+        ${un.length ? `<button class="btn ${un.length > 1 ? 'ghost' : 'mint'} sm" data-kp="${k.id}">${I('check')}${un.length > 1 ? 'Bayar 1' : 'Sudah bayar'}</button>` : `<button class="btn ghost sm" data-kp="${k.id}">Bayar duluan</button>`}
+        ${rAt ? alarmBtn(rAt, 'Bayar ' + k.n) : ''}
+        ${calBtn('💰 Bayar ' + k.n + ' ' + rp(k.amt), kasAt(k, nextDate || nx || today), kasAt(k, nextDate || nx || today) + 9e5, k.n + ' ' + rp(k.amt) + ' — ' + kasSched(k), kasRule(k))}
+        <button class="icon-btn sm" data-ke="${k.id}" aria-label="Ubah">${I('pencil')}</button>
+        <button class="icon-btn sm danger" data-kd="${k.id}" aria-label="Hapus">${I('trash')}</button>
+      </div></div>`;
+  }).join('') : emptyBox('wallet', 'Belum ada pengingat kas', 'Tambahkan uang kas kelas atau iuran rutin lainnya.')}</div>`;
+  kasFormBind($('#kform'));
+  $('#kadd').onclick = () => {
+    const d = kasRead($('#kform')); if (!d) return;
+    S.kas.push(Object.assign({ id: uid(), paid: [], start: ymd(new Date()), c: Date.now() }, d));
+    persist(); render(); toast('Pengingat kas ditambah · ' + kasSched(d));
+  };
+  $$('[data-kp]', view()).forEach(b => b.onclick = () => payKas(b.dataset.kp, false));
+  $$('[data-kpall]', view()).forEach(b => b.onclick = () => payKas(b.dataset.kpall, true));
+  $$('[data-kd]', view()).forEach(b => b.onclick = async () => {
+    if (!await ask('Hapus pengingat kas?', 'Riwayat pembayarannya tetap tersimpan di Riwayat.', 'Hapus', 'danger solid')) return;
+    S.kas = S.kas.filter(x => x.id !== b.dataset.kd); persist(); render();
+  });
+  $$('[data-ke]', view()).forEach(b => b.onclick = async () => {
+    const k = S.kas.find(x => x.id === b.dataset.ke); if (!k) return;
+    const p = modal({ title: 'Ubah pengingat kas', html: '<div id="kedit">' + kasForm(k) + '</div>', actions: [{ label: 'Batal', cls: 'ghost', value: null }, { label: 'Simpan', cls: 'grad', validate: m => !!kasRead($('#kedit', m)), get: m => kasRead($('#kedit', m)) }] });
+    kasFormBind($('#kedit'));
+    const d = await p; if (!d) return;
+    Object.assign(k, d, { c: Date.now() }); persist(); render(); toast('Pengingat kas diperbarui');
+  });
+}
+function payKas(id, all) {
+  const k = S.kas.find(x => x.id === id); if (!k) return;
+  const un = kasUnpaid(k);
+  const dates = un.length ? (all ? un : [un[0]]) : [kasNext(k)].filter(Boolean);
+  if (!dates.length) return;
+  const today = sod(Date.now()), logIds = [], payIds = [];
+  let bonus = 0;
+  dates.forEach(date => {
+    const ontime = ymdMs(date) >= today;
+    k.paid.push(date);
+    const pid = uid(); payIds.push(pid);
+    S.kasPay.unshift({ id: pid, kasId: k.id, n: k.n, date, amt: k.amt, t: nowIso(), ontime });
+    if (ontime && k.bonus) bonus += k.bonus;
+  });
+  if (k.paid.length > 400) k.paid = k.paid.slice(-400);
+  if (S.kasPay.length > 500) S.kasPay.length = 500;
+  const total = dates.length * k.amt;
+  if (bonus) logIds.push(add(bonus, 'Bayar ' + k.n + ' tepat waktu (' + rp(total) + ')', 'kas'));
+  else persist();
+  render();
+  toast('Tercatat lunas ' + rp(total) + (bonus ? ' · +' + bonus + ' poin' : ''), {
+    label: 'Batalkan', fn: () => {
+      k.paid = k.paid.filter(x => !dates.includes(x));
+      S.kasPay = S.kasPay.filter(p => !payIds.includes(p.id));
+      logIds.forEach(undoLog); persist(); render(); toast('Dibatalkan');
+    }
+  });
+}
+
 /* ---------- Belajar ---------- */
 const TM_KEY = 'remindplus:timer';
 let TM = lsGet(TM_KEY) || { run: false, start: 0, acc: 0, topic: '' };
@@ -966,7 +1120,7 @@ function riwayat() {
     <div class="card stat"><div class="ico t-danger">${I('down')}</div><div class="v num minus">−${fmt(outT)}</div><div class="l">Dipakai hari ini</div></div>
     <div class="card stat"><div class="ico t-brand">${I('trophy')}</div><div class="v num">${fmt(S.earned)}</div><div class="l">Total sepanjang waktu</div></div>
   </div>
-  <div class="sec-title"><div class="seg" id="rf">${[['semua', 'Semua'], ['tugas', 'Tugas'], ['belajar', 'Belajar'], ['ujian', 'Ujian'], ['reward', 'Reward'], ['koreksi', 'Koreksi']].map(([k, n]) => `<button class="${k === RF ? 'on' : ''}" data-f="${k}">${n}</button>`).join('')}</div></div>
+  <div class="sec-title"><div class="seg" id="rf">${[['semua', 'Semua'], ['tugas', 'Tugas'], ['belajar', 'Belajar'], ['ujian', 'Ujian'], ['kas', 'Kas'], ['reward', 'Reward'], ['koreksi', 'Koreksi']].map(([k, n]) => `<button class="${k === RF ? 'on' : ''}" data-f="${k}">${n}</button>`).join('')}</div></div>
   <div class="list">${L.length ? L.slice(0, 250).map(logItem).join('') : emptyBox('history', 'Belum ada catatan', 'Riwayat poin akan muncul di sini.')}</div>`;
   $$('#rf button').forEach(b => b.onclick = () => { RF = b.dataset.f; render(); });
 }
@@ -1169,6 +1323,13 @@ function alerts() {
       <div class="acts">${alarmBtn(examNight(e), 'Belajar ujian ' + e.mapel)}<button class="btn sm" data-ast="${e.id}">${I('play')}Mulai belajar</button><button class="btn mint sm" data-asd="${e.id}">${I('check')}Sudah (+${S.remind.examBonus})</button></div></div>`);
     else if (dd === 0 && examAt(e) > now - 3 * 36e5) out.push(`<div class="alert info"><div class="ico">${I('cap')}</div><div class="body"><b>Ujian ${esc(e.mapel)} hari ini, ${timeShort(examAt(e))}</b><span class="small muted">Semangat! Kamu pasti bisa.</span></div></div>`);
   });
+  const today = ymd(new Date());
+  S.kas.forEach(k => {
+    const un = kasUnpaid(k), late = un.filter(x => x !== today);
+    if (late.length) out.push(`<div class="alert danger"><div class="ico">${I('wallet')}</div><div class="body"><b>Nunggak ${esc(k.n)} ${late.length}× · ${rp(late.length * k.amt)}</b><span class="small muted">Segera lunasi ya.</span></div><div class="acts"><button class="btn mint sm" data-akall="${k.id}">${I('check')}Bayar semua</button>${V !== 'kas' ? '<button class="btn ghost sm" data-ago="kas">Lihat</button>' : ''}</div></div>`);
+    else if (un.includes(today)) out.push(`<div class="alert warn"><div class="ico">${I('wallet')}</div><div class="body"><b>Bayar ${esc(k.n)} hari ini · ${rp(k.amt)}</b><span class="small muted">${k.bonus ? 'Bayar hari ini dapat bonus +' + k.bonus + ' poin.' : 'Jangan lupa siapkan uangnya.'}</span></div><div class="acts"><button class="btn mint sm" data-ak="${k.id}">${I('check')}Sudah bayar</button></div></div>`);
+    else { const nx = kasNext(k); if (nx && dayDiff(ymdMs(nx)) === 1 && k.h1) out.push(`<div class="alert info"><div class="ico">${I('wallet')}</div><div class="body"><b>Besok bayar ${esc(k.n)} · ${rp(k.amt)}</b><span class="small muted">Siapkan uangnya malam ini.</span></div></div>`); }
+  });
   const late = S.tasks.filter(t => !t.done && t.dl && dlMs(t) < now);
   const soon = S.tasks.filter(t => !t.done && t.dl && dlMs(t) >= now && dlMs(t) - now <= S.remind.taskH * 36e5);
   if (late.length) out.push(`<div class="alert danger"><div class="ico">${I('warn')}</div><div class="body"><b>${late.length} tugas lewat deadline</b><span class="small muted">${late.slice(0, 3).map(t => esc(t.n)).join(', ')}${late.length > 3 ? '…' : ''}</span></div>${V !== 'tugas' ? `<div class="acts"><button class="btn ghost sm" data-ago="tugas">Lihat</button></div>` : ''}</div>`);
@@ -1177,6 +1338,8 @@ function alerts() {
   $$('[data-ago]', box).forEach(b => b.onclick = () => go(b.dataset.ago));
   $$('[data-ast]', box).forEach(b => b.onclick = () => startExamStudy(b.dataset.ast));
   $$('[data-asd]', box).forEach(b => b.onclick = () => examStudied(b.dataset.asd));
+  $$('[data-ak]', box).forEach(b => b.onclick = () => payKas(b.dataset.ak, false));
+  $$('[data-akall]', box).forEach(b => b.onclick = () => payKas(b.dataset.akall, true));
 }
 
 function reminderList() {
@@ -1188,6 +1351,13 @@ function reminderList() {
     const d = dlMs(t);
     push(t.c, { id: 'dl-' + t.id + '-' + t.dl, at: d - S.remind.taskH * 36e5, title: 'Deadline mendekat: ' + t.n, body: 'Jatuh tempo ' + fdt(d) + '.' });
     push(t.c, { id: 'due-' + t.id + '-' + t.dl, at: d, title: 'Deadline sekarang: ' + t.n, body: 'Waktunya habis. Selesaikan secepatnya.' });
+  });
+  const today = ymd(new Date());
+  S.kas.forEach(k => {
+    kasDue(k, Date.now(), Date.now() + 2 * DAY).filter(d => !k.paid.includes(d)).forEach(d => {
+      push(k.c, { id: 'kas-' + k.id + '-' + d, at: kasAt(k, d), title: 'Bayar ' + k.n + (d === today ? ' hari ini' : ''), body: rp(k.amt) + ' · ' + kasSched(k) + '.' });
+      if (k.h1) { const ev = new Date(d + 'T00:00'); ev.setDate(ev.getDate() - 1); const [h, m] = (S.remind.exam || '19:00').split(':'); ev.setHours(+h || 19, +m || 0, 0, 0); push(k.c, { id: 'kas1-' + k.id + '-' + d, at: ev.getTime(), title: 'Besok bayar ' + k.n, body: 'Siapkan ' + rp(k.amt) + ' malam ini.' }); }
+    });
   });
   return L;
 }
@@ -1236,7 +1406,7 @@ function alarm(r) {
 function stopSiren() { if (!AL) return; try { AL.o && AL.o.stop(); AL.AC && AL.AC.close(); } catch (e) {} clearInterval(AL.v); try { navigator.vibrate && navigator.vibrate(0); } catch (e) {} }
 function closeAlarm() { stopSiren(); AL = null; $('#alarm').hidden = true; }
 $('#alOff').onclick = closeAlarm;
-$('#alGo').onclick = () => { const r = AL && AL.r; closeAlarm(); if (!USER || !r) return; if (r.id.startsWith('ex-')) startExamStudy(r.id.split('-')[1]); else go('tugas'); };
+$('#alGo').onclick = () => { const r = AL && AL.r; closeAlarm(); if (!USER || !r) return; if (r.id.startsWith('ex-')) startExamStudy(r.id.split('-')[1]); else if (r.id.startsWith('kas')) go('kas'); else go('tugas'); };
 $('#alSn').onclick = () => { const r = AL && AL.r; closeAlarm(); if (!r) return; toast('Ditunda 10 menit'); RT.push(setTimeout(() => { notify(r); alarm(r); }, 6e5)); };
 
 /* ================= Loop & siklus hidup ================= */
