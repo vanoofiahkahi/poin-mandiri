@@ -65,6 +65,18 @@ h3{font-size:16px;margin:0 0 12px}
 .seg button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--txt);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:600;z-index:20;max-width:90vw}
 .hide{display:none!important}
+#alerts{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+#alerts:empty{display:none}
+.alert{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 16px;border-radius:14px;border:1px solid var(--bd);background:var(--card)}
+.alert .grow{flex:1;min-width:200px}
+.alert.warn{background:var(--gold-s);border-color:transparent}
+.alert.bad{background:var(--bad-s);border-color:transparent}
+.alert.info{background:var(--pri-s);border-color:transparent}
+.alert b{display:block}
+.small{font-size:13px}
+.item .acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.item button.sm{min-height:40px;padding:8px 12px;font-size:14px}
+@media (max-width:820px){.item{flex-wrap:wrap}.item .acts{width:100%}}
 .sp{height:16px}
 table{width:100%;border-collapse:collapse}
 td{padding:8px 4px;border-bottom:1px solid var(--bd);vertical-align:middle}
@@ -86,6 +98,7 @@ td button{min-height:40px;padding:6px 12px}
   <nav>
     <div class="brand">Poin <span>Mandiri</span></div>
     <button class="tab on" data-v="tugas">Tugas</button>
+    <button class="tab" data-v="ujian">Ujian</button>
     <button class="tab" data-v="belajar">Belajar</button>
     <button class="tab" data-v="reward">Reward</button>
     <button class="tab" data-v="riwayat">Riwayat</button>
@@ -105,6 +118,7 @@ td button{min-height:40px;padding:6px 12px}
         <div class="mut">Level naik dari total poin yang pernah didapat, bukan saldo.</div>
       </div>
     </section>
+    <div id="alerts"></div>
     <div id="view"></div>
   </main>
 </div>
@@ -119,7 +133,8 @@ const DEF={
   rate:100,                        // 1 poin = Rp100
   levels:[{n:'Pemula',min:0},{n:'Rajin',min:500},{n:'Tekun',min:1500},{n:'Disiplin',min:4000},{n:'Mandiri',min:10000}],
   rewards:[{id:'r1',n:'Main game 1 jam',p:60},{id:'r2',n:'Nonton 1 film',p:120},{id:'r3',n:'Jajan favorit',p:80}],
-  tasks:[],log:[],earned:0,balance:0
+  tasks:[],exams:[],log:[],earned:0,balance:0,
+  remind:{exam:'19:00',taskH:24,latePct:0,examBonus:20}
 };
 let S=structuredClone(DEF);
 const LS='poin-mandiri-v1';
@@ -135,7 +150,7 @@ function setSync(m){$('#sync').textContent=m}
 
 function lsGet(){try{return JSON.parse(localStorage.getItem(LS)||'null')}catch(e){return null}}
 function lsSet(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}}
-function merge(d){S=Object.assign(structuredClone(DEF),d||{})}
+function merge(d){S=Object.assign(structuredClone(DEF),d||{});S.remind=Object.assign({},DEF.remind,(d&&d.remind)||{});if(!Array.isArray(S.exams))S.exams=[]}
 
 function persist(){
   lsSet();
@@ -177,39 +192,187 @@ function renderHero(){
 /* ---------- Navigasi ---------- */
 let V='tugas';
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{V=b.dataset.v;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));render();scrollTo(0,0)});
-function render(){({tugas,belajar,reward,riwayat,atur})[V]();renderHero()}
+function render(){({tugas,ujian,belajar,reward,riwayat,atur})[V]();renderHero();alerts();syncReminders()}
+function go(v){V=v;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.dataset.v===v));render();scrollTo(0,0)}
+
+/* ---------- Waktu & tanggal ---------- */
+const DAY=864e5;
+const sod=ms=>{const d=new Date(ms);d.setHours(0,0,0,0);return d.getTime()};
+const dayDiff=ms=>Math.round((sod(ms)-sod(Date.now()))/DAY);
+const fdt=ms=>new Date(ms).toLocaleString('id-ID',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+const fd=ms=>new Date(ms).toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long'});
+const dlMs=t=>t.dl?new Date(t.dl).getTime():null;
+const examAt=e=>new Date(e.tgl+'T'+(e.jam||'07:00')).getTime();
+function examNight(e){const d=new Date(e.tgl+'T00:00');d.setDate(d.getDate()-1);const [h,m]=(S.remind.exam||'19:00').split(':');d.setHours(+h||0,+m||0,0,0);return d.getTime()}
+function dlChip(ms){
+  const diff=ms-Date.now(),dd=dayDiff(ms);
+  if(diff<0){const h=Math.floor(-diff/36e5);return `<span class="chip bad">Terlambat ${h<24?h+' jam':Math.floor(h/24)+' hari'}</span>`}
+  if(dd===0){const h=Math.floor(diff/36e5),m=Math.floor(diff%36e5/6e4);return `<span class="chip bad">Hari ini · ${h?h+' jam ':''}${m} mnt lagi</span>`}
+  if(dd===1)return `<span class="chip gold">Besok</span>`;
+  return `<span class="chip">${dd} hari lagi</span>`;
+}
+/* Tautan Google Kalender: notifikasi muncul walau aplikasi ditutup */
+const gutc=ms=>new Date(ms).toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+function gcal(title,start,end,details){
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(title)+'&dates='+gutc(start)+'/'+gutc(end)+'&details='+encodeURIComponent(details||'Dari Poin Mandiri');
+}
+
+/* ---------- Pengingat ---------- */
+function reminderList(){
+  const L=[];
+  S.exams.filter(e=>!e.done).forEach(e=>{
+    L.push({id:'ex-'+e.id+'-'+e.tgl,at:examNight(e),title:'Belajar malam ini: '+e.mapel,body:'Ujian '+e.mapel+' besok, '+fdt(examAt(e))+'. Ayo belajar sekarang!'});
+  });
+  S.tasks.filter(t=>!t.done&&t.dl).forEach(t=>{
+    const d=dlMs(t);
+    L.push({id:'dl-'+t.id+'-'+t.dl,at:d-S.remind.taskH*36e5,title:'Deadline mendekat: '+t.n,body:'Jatuh tempo '+fdt(d)+'.'});
+    L.push({id:'due-'+t.id+'-'+t.dl,at:d,title:'Deadline sekarang: '+t.n,body:'Waktunya habis. Selesaikan secepatnya.'});
+  });
+  return L;
+}
+const NKEY='pm-notified';
+const getN=()=>{try{return JSON.parse(localStorage.getItem(NKEY)||'{}')}catch(e){return{}}};
+const setN=n=>{try{localStorage.setItem(NKEY,JSON.stringify(n))}catch(e){}};
+async function notify(r){
+  if(!('Notification' in window)||Notification.permission!=='granted')return false;
+  try{const reg=await navigator.serviceWorker.ready;await reg.showNotification(r.title,{body:r.body,tag:r.id,icon:'icon-192.png',badge:'icon-192.png',renotify:true});return true}
+  catch(e){try{new Notification(r.title,{body:r.body,tag:r.id});return true}catch(x){return false}}
+}
+let RT=[];
+async function syncReminders(){
+  const L=reminderList(),now=Date.now(),N=getN();
+  try{const c=await caches.open('pm-data'),r=await c.match('./reminders.json');if(r){const d=await r.json();Object.assign(N,d.notified||{})}}catch(e){}
+  // tampilkan yang sudah waktunya tapi belum diberitahukan (maks 12 jam lewat)
+  for(const r of L){if(r.at<=now&&now-r.at<12*36e5&&!N[r.id]){if(await notify(r))N[r.id]=now}}
+  for(const k in N)if(now-N[k]>30*DAY)delete N[k];
+  setN(N);
+  // jadwalkan yang dalam 24 jam ke depan selama aplikasi terbuka
+  RT.forEach(clearTimeout);RT=[];
+  L.filter(r=>r.at>now&&r.at-now<DAY).forEach(r=>RT.push(setTimeout(async()=>{const n=getN();if(n[r.id])return;if(await notify(r)){n[r.id]=Date.now();setN(n)}alerts()},r.at-now)));
+  // salin ke service worker untuk pemeriksaan latar belakang
+  try{const c=await caches.open('pm-data');await c.put('./reminders.json',new Response(JSON.stringify({list:L,notified:getN()}),{headers:{'Content-Type':'application/json'}}))}catch(e){}
+}
+setInterval(()=>{alerts();if(V==='tugas'||V==='ujian')render()},60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)render()});
+
+function alerts(){
+  const box=$('#alerts'),out=[],now=Date.now();
+  S.exams.filter(e=>!e.done).forEach(e=>{
+    const dd=dayDiff(examAt(e));
+    if(dd===1&&!e.studied)out.push(`<div class="alert warn"><div class="grow"><b>Ujian ${esc(e.mapel)} besok, ${new Date(examAt(e)).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</b><span class="small">${now>=examNight(e)?'Waktunya belajar malam ini.':'Jadwal belajar malam ini jam '+esc(S.remind.exam)+'.'}</span></div>
+      <button class="sm" data-ast="${e.id}">Mulai belajar</button><button class="ok sm" data-asd="${e.id}">Sudah belajar (+${S.remind.examBonus})</button></div>`);
+    else if(dd===0&&examAt(e)>now-3*36e5)out.push(`<div class="alert info"><div class="grow"><b>Ujian ${esc(e.mapel)} hari ini</b><span class="small">${fdt(examAt(e))}. Semangat!</span></div></div>`);
+  });
+  const late=S.tasks.filter(t=>!t.done&&t.dl&&dlMs(t)<now);
+  const soon=S.tasks.filter(t=>!t.done&&t.dl&&dlMs(t)>=now&&dlMs(t)-now<=S.remind.taskH*36e5);
+  if(late.length)out.push(`<div class="alert bad"><div class="grow"><b>${late.length} tugas lewat deadline</b><span class="small">${late.slice(0,3).map(t=>esc(t.n)).join(', ')}${late.length>3?'…':''}</span></div>${V!=='tugas'?'<button class="sm ghost" data-ago="tugas">Lihat</button>':''}</div>`);
+  if(soon.length)out.push(`<div class="alert warn"><div class="grow"><b>${soon.length} tugas deadline dalam ${S.remind.taskH} jam</b><span class="small">${soon.slice(0,3).map(t=>esc(t.n)+' ('+fdt(dlMs(t))+')').join(', ')}</span></div>${V!=='tugas'?'<button class="sm ghost" data-ago="tugas">Lihat</button>':''}</div>`);
+  box.innerHTML=out.join('');
+  box.querySelectorAll('[data-ago]').forEach(b=>b.onclick=()=>go(b.dataset.ago));
+  box.querySelectorAll('[data-ast]').forEach(b=>b.onclick=()=>startExamStudy(b.dataset.ast));
+  box.querySelectorAll('[data-asd]').forEach(b=>b.onclick=()=>examStudied(b.dataset.asd));
+}
+function startExamStudy(id){const e=S.exams.find(x=>x.id===id);if(!e)return;TM.topic='Persiapan ujian '+e.mapel;saveTM();go('belajar');toast('Timer siap. Ketuk Mulai.')}
+function examStudied(id){const e=S.exams.find(x=>x.id===id);if(!e||e.studied)return;e.studied=true;add(S.remind.examBonus,'Bonus belajar sebelum ujian: '+e.mapel,'ujian');toast('+'+S.remind.examBonus+' poin. Semoga lancar ujiannya!');render()}
 const view=()=>$('#view');
 
 /* ---------- Tugas ---------- */
 function tugas(){
-  const open=S.tasks.filter(t=>!t.done),done=S.tasks.filter(t=>t.done).slice(0,15);
+  const nw=Date.now();
+  const open=S.tasks.filter(t=>!t.done).sort((a,b)=>(dlMs(a)??9e15)-(dlMs(b)??9e15));
+  const done=S.tasks.filter(t=>t.done).slice(0,15);
   view().innerHTML=`
   <div class="card">
     <h2>Tambah tugas</h2>
     <div class="row">
-      <div style="flex:2"><label>Nama tugas</label><input id="tn" placeholder="Contoh: Kerjakan soal latihan bab 3"></div>
+      <div style="flex:2;min-width:220px"><label>Nama tugas</label><input id="tn" placeholder="Contoh: Laporan praktikum biologi"></div>
       <div><label>Kesulitan</label><select id="td">${S.diff.map((d,i)=>`<option value="${i}">${esc(d.n)} · ${d.p} poin</option>`).join('')}</select></div>
+      <div><label>Deadline (opsional)</label><input id="tdl" type="datetime-local"></div>
       <button class="fit" id="ta">Tambah</button>
     </div>
+    ${S.remind.latePct?`<p class="mut small" style="margin-bottom:0">Tugas yang selesai lewat deadline hanya mendapat ${100-S.remind.latePct}% poin.</p>`:''}
   </div>
   <div class="sp"></div>
   <h2>Belum selesai (${open.length})</h2>
-  <div class="list">${open.length?open.map(t=>`
+  <div class="list">${open.length?open.map(t=>{const d=dlMs(t),late=d&&d<nw,p=late&&S.remind.latePct?Math.round(t.p*(1-S.remind.latePct/100)):t.p;return `
     <div class="item">
-      <div class="grow"><div class="t">${esc(t.n)}</div><span class="chip">${esc(t.d)}</span></div>
-      <span class="pts plus">+${t.p}</span>
-      <button class="ok" data-done="${t.id}">Selesai</button>
-      <button class="bad" data-del="${t.id}" aria-label="Hapus">✕</button>
-    </div>`).join(''):'<div class="empty">Belum ada tugas. Tambahkan di atas dan tentukan sendiri kesulitannya.</div>'}</div>
+      <div class="grow"><div class="t">${esc(t.n)}</div>
+        <span class="chip">${esc(t.d)}</span> ${d?dlChip(d)+` <span class="mut small">${fdt(d)}</span>`:'<span class="mut small">Tanpa deadline</span>'}</div>
+      <span class="pts plus">+${p}</span>
+      <div class="acts">
+        ${d&&!late?`<a class="small" target="_blank" rel="noopener" href="${gcal('⏰ Deadline: '+t.n,Math.max(nw+6e4,d-S.remind.taskH*36e5),Math.max(nw+6e4,d-S.remind.taskH*36e5)+18e5,'Tugas "'+t.n+'" jatuh tempo '+fdt(d)+'.')}"><button class="ghost sm" tabindex="-1">+ Kalender</button></a>`:''}
+        <button class="ghost sm" data-edl="${t.id}">${d?'Ubah deadline':'Atur deadline'}</button>
+        <button class="ok sm" data-done="${t.id}">Selesai</button>
+        <button class="bad sm" data-del="${t.id}" aria-label="Hapus">✕</button>
+      </div>
+    </div>`}).join(''):'<div class="empty">Belum ada tugas. Tambahkan di atas dan tentukan sendiri kesulitannya.</div>'}</div>
   ${done.length?`<div class="sp"></div><h3 class="mut">Baru selesai</h3><div class="list">${done.map(t=>`
-    <div class="item" style="opacity:.7"><div class="grow"><div class="t" style="text-decoration:line-through">${esc(t.n)}</div><span class="chip ok">${esc(t.d)}</span></div><span class="pts plus">+${t.p}</span></div>`).join('')}</div>`:''}`;
+    <div class="item" style="opacity:.7"><div class="grow"><div class="t" style="text-decoration:line-through">${esc(t.n)}</div><span class="chip ok">${esc(t.d)}</span>${t.late?' <span class="chip bad">Terlambat</span>':''}</div><span class="pts plus">+${t.got??t.p}</span></div>`).join('')}</div>`:''}`;
   const addT=()=>{const n=$('#tn').value.trim();if(!n){$('#tn').focus();return}
-    const d=S.diff[$('#td').value];S.tasks.unshift({id:uid(),n,d:d.n,p:d.p,done:false});persist();tugas()};
+    const d=S.diff[$('#td').value],dl=$('#tdl').value||'';
+    S.tasks.unshift({id:uid(),n,d:d.n,p:d.p,done:false,dl});persist();render();toast(dl?'Tugas ditambah. Pengingat '+S.remind.taskH+' jam sebelum deadline.':'Tugas ditambah')};
   $('#ta').onclick=addT;$('#tn').onkeydown=e=>{if(e.key==='Enter')addT()};
   view().querySelectorAll('[data-done]').forEach(b=>b.onclick=()=>{const t=S.tasks.find(x=>x.id===b.dataset.done);
-    t.done=true;t.at=now();S.tasks=[...S.tasks.filter(x=>!x.done),...S.tasks.filter(x=>x.done).sort((a,b)=>(b.at||'').localeCompare(a.at||''))].slice(0,300);
-    add(t.p,'Tugas: '+t.n,'tugas');toast('+'+t.p+' poin');tugas()});
-  view().querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{if(!confirm('Hapus tugas ini?'))return;S.tasks=S.tasks.filter(x=>x.id!==b.dataset.del);persist();tugas()});
+    const d=dlMs(t),late=!!(d&&Date.now()>d);let p=t.p;if(late&&S.remind.latePct)p=Math.round(p*(1-S.remind.latePct/100));
+    t.done=true;t.at=now();t.late=late;t.got=p;
+    S.tasks=[...S.tasks.filter(x=>!x.done),...S.tasks.filter(x=>x.done).sort((a,b)=>(b.at||'').localeCompare(a.at||''))].slice(0,300);
+    add(p,'Tugas: '+t.n+(late?' (terlambat)':''),'tugas');toast('+'+p+' poin'+(late&&S.remind.latePct?' (dipotong karena terlambat)':''));render()});
+  view().querySelectorAll('[data-edl]').forEach(b=>b.onclick=()=>{const t=S.tasks.find(x=>x.id===b.dataset.edl);
+    const box=document.createElement('div');box.className='row';box.style.marginTop='8px';box.style.width='100%';
+    box.innerHTML=`<input type="datetime-local" value="${esc(t.dl||'')}"><button class="fit sm">Simpan</button>${t.dl?'<button class="fit ghost sm">Hapus deadline</button>':''}`;
+    b.closest('.item').appendChild(box);b.disabled=true;
+    const [inp,sv,rm]=box.querySelectorAll('input,button');inp.focus();
+    sv.onclick=()=>{t.dl=inp.value||'';persist();render();toast('Deadline disimpan')};
+    if(rm)rm.onclick=()=>{t.dl='';persist();render();toast('Deadline dihapus')}});
+  view().querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{if(!confirm('Hapus tugas ini?'))return;S.tasks=S.tasks.filter(x=>x.id!==b.dataset.del);persist();render()});
+}
+
+/* ---------- Ujian ---------- */
+function ujian(){
+  const now=Date.now();
+  const up=S.exams.filter(e=>!e.done).sort((a,b)=>examAt(a)-examAt(b));
+  const past=S.exams.filter(e=>e.done).sort((a,b)=>examAt(b)-examAt(a)).slice(0,15);
+  const tmr=new Date(now+DAY);const tv=tmr.getFullYear()+'-'+String(tmr.getMonth()+1).padStart(2,'0')+'-'+String(tmr.getDate()).padStart(2,'0');
+  view().innerHTML=`
+  <div class="card">
+    <h2>Tambah jadwal ujian</h2>
+    <div class="row">
+      <div style="flex:2;min-width:200px"><label>Mata pelajaran / materi</label><input id="em" placeholder="Contoh: Matematika – Trigonometri"></div>
+      <div><label>Tanggal</label><input id="et" type="date" value="${tv}"></div>
+      <div><label>Jam mulai</label><input id="ej" type="time" value="07:30"></div>
+      <button class="fit" id="ea">Tambah</button>
+    </div>
+    <div class="sp"></div>
+    <label>Catatan (opsional)</label><input id="en" placeholder="Contoh: bab 4–6, bawa kalkulator">
+    <p class="mut small" style="margin-bottom:0">Pengingat belajar muncul malam sebelumnya jam <b>${esc(S.remind.exam)}</b>. Kalau sudah belajar, ketuk "Sudah belajar" untuk bonus <b>+${S.remind.examBonus} poin</b>. Ubah di menu Atur.</p>
+  </div>
+  <div class="sp"></div>
+  <h2>Ujian mendatang (${up.length})</h2>
+  <div class="list">${up.length?up.map(e=>{const at=examAt(e),nt=examNight(e),passed=at<now;return `
+    <div class="item">
+      <div class="grow"><div class="t">${esc(e.mapel)}</div>
+        <div class="mut small" style="margin:2px 0 6px">${fd(at)} · ${esc(e.jam)}${e.catatan?' · '+esc(e.catatan):''}</div>
+        ${passed?'<span class="chip">Sudah lewat</span>':dlChip(at)} ${e.studied?'<span class="chip ok">Sudah belajar ✓</span>':`<span class="mut small">Belajar: ${fdt(nt)}</span>`}</div>
+      <div class="acts">
+        ${!passed&&nt>now?`<a target="_blank" rel="noopener" href="${gcal('📚 Belajar untuk ujian '+e.mapel,nt,nt+2*36e5,'Ujian '+e.mapel+' '+fdt(at)+(e.catatan?'. '+e.catatan:''))}"><button class="ghost sm" tabindex="-1">+ Kalender</button></a>`:''}
+        ${!passed?`<button class="soft sm" data-est="${e.id}">Belajar</button>`:''}
+        ${!e.studied&&!passed?`<button class="ok sm" data-esd="${e.id}">Sudah belajar</button>`:''}
+        ${passed?`<button class="ok sm" data-edn="${e.id}">Tandai selesai</button>`:''}
+        <button class="bad sm" data-edel="${e.id}" aria-label="Hapus">✕</button>
+      </div>
+    </div>`}).join(''):'<div class="empty">Belum ada jadwal ujian.</div>'}</div>
+  ${past.length?`<div class="sp"></div><h3 class="mut">Selesai</h3><div class="list">${past.map(e=>`
+    <div class="item" style="opacity:.7"><div class="grow"><div class="t">${esc(e.mapel)}</div><span class="mut small">${fd(examAt(e))}</span></div>${e.studied?'<span class="chip ok">Belajar ✓</span>':''}<button class="bad sm" data-edel="${e.id}" aria-label="Hapus">✕</button></div>`).join('')}</div>`:''}`;
+  const addE=()=>{const m=$('#em').value.trim(),t=$('#et').value,j=$('#ej').value||'07:00';
+    if(!m){$('#em').focus();return}if(!t){$('#et').focus();return}
+    const e={id:uid(),mapel:m,tgl:t,jam:j,catatan:$('#en').value.trim(),done:false,studied:false};
+    S.exams.push(e);persist();render();
+    toast(examNight(e)>Date.now()?'Ujian ditambah. Pengingat: '+fdt(examNight(e)):'Ujian ditambah')};
+  $('#ea').onclick=addE;$('#em').onkeydown=e=>{if(e.key==='Enter')addE()};
+  view().querySelectorAll('[data-est]').forEach(b=>b.onclick=()=>startExamStudy(b.dataset.est));
+  view().querySelectorAll('[data-esd]').forEach(b=>b.onclick=()=>examStudied(b.dataset.esd));
+  view().querySelectorAll('[data-edn]').forEach(b=>b.onclick=()=>{const e=S.exams.find(x=>x.id===b.dataset.edn);e.done=true;persist();render()});
+  view().querySelectorAll('[data-edel]').forEach(b=>b.onclick=()=>{if(!confirm('Hapus jadwal ujian ini?'))return;S.exams=S.exams.filter(x=>x.id!==b.dataset.edel);persist();render()});
 }
 
 /* ---------- Belajar (timer) ---------- */
@@ -322,7 +485,7 @@ function riwayat(){
     <div class="card"><div class="mut">Didapat hari ini</div><div class="big plus" style="font-size:32px">+${fmt(inT)}</div></div>
     <div class="card"><div class="mut">Dipakai hari ini</div><div class="big minus" style="font-size:32px">-${fmt(outT)}</div></div>
   </div>
-  <div class="seg" id="rf" style="margin-bottom:14px">${[['semua','Semua'],['tugas','Tugas'],['belajar','Belajar'],['reward','Reward'],['koreksi','Koreksi']].map(([k,n])=>`<button class="${k===RF?'on':''}" data-f="${k}">${n}</button>`).join('')}</div>
+  <div class="seg" id="rf" style="margin-bottom:14px">${[['semua','Semua'],['tugas','Tugas'],['belajar','Belajar'],['ujian','Ujian'],['reward','Reward'],['koreksi','Koreksi']].map(([k,n])=>`<button class="${k===RF?'on':''}" data-f="${k}">${n}</button>`).join('')}</div>
   <div class="list">${L.length?L.slice(0,200).map(l=>`
     <div class="item"><div class="grow"><div class="t">${esc(l.what)}</div><div class="mut">${new Date(l.t).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'})}</div></div>
     <span class="pts ${l.p>0?'plus':'minus'}">${l.p>0?'+':''}${fmt(l.p)}</span></div>`).join(''):'<div class="empty">Belum ada catatan.</div>'}</div>`;
@@ -359,6 +522,21 @@ function atur(){
       <div class="sp"></div><button class="soft" id="ra">+ Tambah reward</button>
     </div>
     <div class="card">
+      <h2>Pengingat & deadline</h2>
+      <label>Jam pengingat belajar (malam sebelum ujian)</label>
+      <input type="time" id="rx" value="${esc(S.remind.exam)}">
+      <div class="sp"></div>
+      <label>Ingatkan tugas berapa jam sebelum deadline</label>
+      <input type="number" inputmode="numeric" id="rh" value="${S.remind.taskH}">
+      <div class="sp"></div>
+      <div class="row"><div><label>Bonus belajar sebelum ujian</label><input type="number" inputmode="numeric" id="rb" value="${S.remind.examBonus}"></div>
+      <div><label>Potongan poin jika telat (%)</label><input type="number" inputmode="numeric" id="rl" min="0" max="100" value="${S.remind.latePct}"></div></div>
+      <div class="sp"></div>
+      <label>Notifikasi di tablet</label>
+      <div class="row"><span class="mut small" id="nst" style="align-self:center"></span><button class="fit soft" id="nb">Izinkan notifikasi</button><button class="fit ghost" id="nt">Tes</button></div>
+      <p class="mut small" style="margin-bottom:0">Notifikasi paling andal saat aplikasi terbuka atau baru dibuka. Agar pasti berbunyi walau aplikasi ditutup, gunakan tombol <b>+ Kalender</b> pada ujian atau tugas.</p>
+    </div>
+    <div class="card">
       <h2>Koreksi poin</h2>
       <p class="mut" style="margin-top:0">Tambah atau kurangi saldo secara manual, misalnya bonus atau hukuman.</p>
       <div class="row"><input type="number" inputmode="numeric" id="kp" placeholder="Contoh: 50 atau -30"><input id="ka" placeholder="Alasan"><button class="fit" id="kgo">Terapkan</button></div>
@@ -388,6 +566,10 @@ function atur(){
   $('#da').onclick=()=>{S.diff.push({n:'Baru',p:30});persist();atur()};
   $('#la').onclick=()=>{const mx=Math.max(...S.levels.map(l=>l.min));S.levels.push({n:'Level baru',min:mx+5000});persist();atur()};
   $('#ra').onclick=()=>{S.rewards.push({id:uid(),n:'Reward baru',p:100});persist();atur()};
+  on('#rx',el=>S.remind.exam=el.value||'19:00');on('#rh',el=>S.remind.taskH=num(el.value,1));on('#rb',el=>S.remind.examBonus=num(el.value,0));on('#rl',el=>S.remind.latePct=Math.min(100,num(el.value,0)));
+  const nst=()=>{const t=!('Notification' in window)?'Tidak didukung di browser ini':Notification.permission==='granted'?'Aktif ✓':Notification.permission==='denied'?'Diblokir — izinkan dari pengaturan Chrome':'Belum diizinkan';$('#nst').textContent=t;$('#nb').classList.toggle('hide',!('Notification' in window)||Notification.permission!=='default')};nst();
+  $('#nb').onclick=async()=>{try{await Notification.requestPermission()}catch(e){}nst();if(Notification.permission==='granted'){regPeriodic();toast('Notifikasi aktif')}};
+  $('#nt').onclick=async()=>{if(!(await notify({id:'test',title:'Poin Mandiri',body:'Notifikasi berfungsi. Semangat belajar!'})))toast('Izinkan notifikasi dulu')};
   $('#kgo').onclick=()=>{const p=Math.round(Number($('#kp').value));if(!p){$('#kp').focus();return}
     if(p<0&&-p>S.balance&&!confirm('Saldo akan minus. Lanjutkan?'))return;
     add(p,'Koreksi: '+($('#ka').value.trim()||'manual'),'koreksi');$('#kp').value='';$('#ka').value='';toast('Saldo diperbarui')};
@@ -402,6 +584,8 @@ function atur(){
 /* ---------- Mulai ---------- */
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+async function regPeriodic(){try{const r=await navigator.serviceWorker.ready;if(r.periodicSync)await r.periodicSync.register('pm-remind',{minInterval:60*60*1000})}catch(e){}}
+if('Notification' in window&&Notification.permission==='granted')regPeriodic();
 merge(lsGet());render();setSync('Tersimpan di perangkat ini');
 (async()=>{
   try{
