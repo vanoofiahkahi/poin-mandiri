@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '2.4.0';
+const VERSION = '2.5.0';
 
 /* ================= Ikon ================= */
 const P = {
@@ -68,6 +68,8 @@ const P = {
   monitor: '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>',
   arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   chev: '<path d="m6 9 6 6 6-6"/>',
+  backpack: '<path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M8 10h8M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M8 22v-6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v6"/>',
+  heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
   chevl: '<path d="m15 18-6-6 6-6"/>',
   chevr: '<path d="m9 18 6-6-6-6"/>'
 };
@@ -164,7 +166,7 @@ function enterAnim(root) {
 /* Riak cair saat disentuh */
 document.addEventListener('pointerdown', e => {
   if (!motionOn()) return;
-  const el = e.target.closest('.btn, .icon-btn, .nav-item, .bottom-nav button, .seg button, .theme-pick button, .check, .me');
+  const el = e.target.closest('.btn, .icon-btn, .nav-item, .bottom-nav button, .seg button, .theme-pick button, .check, .me, .cat-pick button, .tpl button, .dchips button');
   if (!el || el.disabled) return;
   const r = el.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.2;
   const s = document.createElement('span');
@@ -258,7 +260,7 @@ const DEF = {
   rate: 100,
   levels: [{ n: 'Pemula', min: 0 }, { n: 'Rajin', min: 500 }, { n: 'Tekun', min: 1500 }, { n: 'Disiplin', min: 4000 }, { n: 'Mandiri', min: 10000 }],
   rewards: [{ id: 'r1', n: 'Main game 1 jam', p: 60 }, { id: 'r2', n: 'Nonton 1 film', p: 120 }, { id: 'r3', n: 'Jajan favorit', p: 80 }],
-  tasks: [], exams: [], kas: [], kasPay: [], log: [], earned: 0, balance: 0,
+  tasks: [], exams: [], kas: [], kasPay: [], rem: [], log: [], earned: 0, balance: 0,
   remind: { exam: '19:00', taskH: 24, latePct: 0, examBonus: 20, siren: true },
   profile: { name: '' },
   meta: { modifiedAt: 0, syncedAt: null, dirty: false }
@@ -275,7 +277,7 @@ function merge(d) {
   S.remind = Object.assign({}, DEF.remind, d.remind || {});
   S.profile = Object.assign({}, DEF.profile, d.profile || {});
   S.meta = Object.assign({}, DEF.meta, d.meta || {});
-  ['tasks', 'exams', 'kas', 'kasPay', 'log', 'rewards', 'diff', 'levels'].forEach(k => { if (!Array.isArray(S[k])) S[k] = clone(DEF[k]); });
+  ['tasks', 'exams', 'kas', 'kasPay', 'rem', 'log', 'rewards', 'diff', 'levels'].forEach(k => { if (!Array.isArray(S[k])) S[k] = clone(DEF[k]); });
 }
 function saveLocal() { if (USER) lsSet(stateKey(USER.id), S); }
 const isFresh = s => !(s.log && s.log.length) && !(s.tasks && s.tasks.length) && !(s.exams && s.exams.length);
@@ -380,10 +382,10 @@ async function offerMigration() {
 }
 
 /* ================= Modal & toast ================= */
-function modal({ title, html = '', actions = [] }) {
+function modal({ title, html = '', actions = [], wide = false }) {
   return new Promise(res => {
     const m = $('#modal');
-    m.innerHTML = `<div class="box" role="dialog" aria-modal="true"><h3></h3><div class="mb">${html}</div><div class="acts"></div></div>`;
+    m.innerHTML = `<div class="box${wide ? ' wide' : ''}" role="dialog" aria-modal="true"><h3></h3><div class="mb">${html}</div><div class="acts"></div></div>`;
     $('h3', m).textContent = title;
     enhance(m);
     let closing = false;
@@ -897,10 +899,10 @@ function startLocal() {
 
 /* ================= Aplikasi ================= */
 const NAV = [
-  ['home', 'Beranda', 'home'], ['tugas', 'Tugas', 'checks'], ['ujian', 'Ujian', 'cap'], ['kas', 'Kas', 'wallet'], ['belajar', 'Belajar', 'timer'],
+  ['home', 'Beranda', 'home'], ['tugas', 'Tugas', 'checks'], ['ujian', 'Ujian', 'cap'], ['kas', 'Kas', 'wallet'], ['ingat', 'Pengingat', 'bell'], ['belajar', 'Belajar', 'timer'],
   ['reward', 'Reward', 'gift'], ['riwayat', 'Riwayat', 'history'], ['atur', 'Pengaturan', 'sliders']
 ];
-const TITLES = { tugas: 'Tugas', ujian: 'Ujian', kas: 'Uang Kas', belajar: 'Belajar', reward: 'Reward', riwayat: 'Riwayat', atur: 'Pengaturan' };
+const TITLES = { tugas: 'Tugas', ujian: 'Ujian', kas: 'Uang Kas', ingat: 'Pengingat', belajar: 'Belajar', reward: 'Reward', riwayat: 'Riwayat', atur: 'Pengaturan' };
 const displayName = () => (USER && (USER.local ? S.profile.name : USER.name)) || (USER && USER.email ? USER.email.split('@')[0] : '') || 'Kamu';
 const initial = () => (displayName().trim()[0] || 'R').toUpperCase();
 
@@ -946,7 +948,7 @@ function shell() {
       <div id="alerts" class="alerts"></div>
       <div id="view"></div>
     </main>
-    <nav class="bottom-nav"><span class="nav-blob" aria-hidden="true"></span>${NAV.map(([k, l, ic]) => `<button data-go="${k}">${I(ic)}<span>${k === 'atur' ? 'Atur' : l}</span></button>`).join('')}</nav>
+    <nav class="bottom-nav"><span class="nav-blob" aria-hidden="true"></span>${NAV.map(([k, l, ic]) => `<button data-go="${k}">${I(ic)}<span>${k === 'atur' ? 'Atur' : k === 'ingat' ? 'Ingat' : l}</span></button>`).join('')}</nav>
   </div>`;
   $$('[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
   $$('[data-theme-toggle]').forEach(b => b.onclick = quickToggleTheme);
@@ -970,7 +972,7 @@ function go(v) {
 function render() {
   if (!USER || !$('#view')) return;
   closePop(true);
-  const pages = { home, tugas, ujian, kas, belajar, reward, riwayat, atur };
+  const pages = { home, tugas, ujian, kas, ingat, belajar, reward, riwayat, atur };
   if (V === 'home') { $('#hello').textContent = greeting() + ' 👋'; $('#title').textContent = displayName(); }
   else { $('#hello').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' }); $('#title').textContent = TITLES[V]; }
   pages[V]();
@@ -987,8 +989,9 @@ function badges() {
   const u = S.exams.filter(e => !e.done && !e.studied && dayDiff(examAt(e)) === 1).length;
   const today = ymd(new Date());
   const k = S.kas.filter(x => kasUnpaid(x).length).length;
-  $$('[data-go="tugas"], [data-go="ujian"], [data-go="kas"]').forEach(b => {
-    const n = b.dataset.go === 'tugas' ? t : b.dataset.go === 'ujian' ? u : k;
+  const ri = S.rem.filter(r => { const d = remOcc(r, now, now)[0]; return d && !r.done.includes(d); }).length;
+  $$('[data-go="tugas"], [data-go="ujian"], [data-go="kas"], [data-go="ingat"]').forEach(b => {
+    const n = b.dataset.go === 'tugas' ? t : b.dataset.go === 'ujian' ? u : b.dataset.go === 'kas' ? k : ri;
     let d = $('.dot', b);
     if (!n) { if (d) d.remove(); return; }
     if (!d) { d = document.createElement('span'); d.className = 'dot'; b.appendChild(d); }
@@ -1007,7 +1010,8 @@ function home() {
   const agenda = [
     ...S.tasks.filter(t => !t.done && t.dl).map(t => ({ at: dlMs(t), kind: 'tugas', t: t.n, sub: esc(t.d), ic: 'checks', tone: 't-brand' })),
     ...S.exams.filter(e => !e.done && examAt(e) > now - 3 * 36e5).map(e => ({ at: examAt(e), kind: 'ujian', t: 'Ujian ' + e.mapel, sub: esc(e.jam), ic: 'cap', tone: 't-warn' })),
-    ...S.kas.map(k => { const d = kasUnpaid(k)[0] || kasNext(k); return d && ymdMs(d) - now < 8 * DAY ? { at: kasAt(k, d), kind: 'kas', t: k.n + ' · ' + rp(k.amt), ic: 'wallet', tone: 't-mint' } : null; }).filter(Boolean)
+    ...S.kas.map(k => { const d = kasUnpaid(k)[0] || kasNext(k); return d && ymdMs(d) - now < 8 * DAY ? { at: kasAt(k, d), kind: 'kas', t: k.n + ' · ' + rp(k.amt), ic: 'wallet', tone: 't-mint' } : null; }).filter(Boolean),
+    ...S.rem.map(r => { const d = remNext(r); const c = REM_CAT[r.cat] || REM_CAT.sekolah; return d && ymdMs(d) - now < 4 * DAY ? { at: remAt(r, d), kind: 'ingat', t: r.t, ic: c.ic, tone: c.tone } : null; }).filter(Boolean)
   ].sort((a, b) => a.at - b.at).slice(0, 6);
   const recent = S.log.slice(0, 6);
   view().innerHTML = `
@@ -1058,7 +1062,7 @@ function home() {
   hero.addEventListener('pointermove', e => { const r = hero.getBoundingClientRect(); hero.style.setProperty('--mx', (e.clientX - r.left) + 'px'); hero.style.setProperty('--my', (e.clientY - r.top) + 'px'); });
 }
 function logItem(l) {
-  const ic = { tugas: 'checks', belajar: 'book', reward: 'gift', ujian: 'cap', kas: 'wallet', koreksi: 'pencil' }[l.kind] || 'spark';
+  const ic = { tugas: 'checks', belajar: 'book', reward: 'gift', ujian: 'cap', kas: 'wallet', ingat: 'bell', koreksi: 'pencil' }[l.kind] || 'spark';
   const tone = l.p > 0 ? 't-mint' : 't-danger';
   return `<div class="item"><div class="lead ${tone}">${I(ic)}</div><div class="body"><div class="ttl">${esc(l.what)}</div><div class="faint small">${new Date(l.t).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</div></div><span class="pts num ${l.p > 0 ? 'plus' : 'minus'}">${l.p > 0 ? '+' : ''}${fmt(l.p)}</span></div>`;
 }
@@ -1321,7 +1325,7 @@ function kas() {
   });
   $$('[data-ke]', view()).forEach(b => b.onclick = async () => {
     const k = S.kas.find(x => x.id === b.dataset.ke); if (!k) return;
-    const p = modal({ title: 'Ubah pengingat kas', html: '<div id="kedit">' + kasForm(k) + '</div>', actions: [{ label: 'Batal', cls: 'ghost', value: null }, { label: 'Simpan', cls: 'grad', validate: m => !!kasRead($('#kedit', m)), get: m => kasRead($('#kedit', m)) }] });
+    const p = modal({ wide: true, title: 'Ubah pengingat kas', html: '<div id="kedit">' + kasForm(k) + '</div>', actions: [{ label: 'Batal', cls: 'ghost', value: null }, { label: 'Simpan', cls: 'grad', validate: m => !!kasRead($('#kedit', m)), get: m => kasRead($('#kedit', m)) }] });
     kasFormBind($('#kedit'));
     const d = await p; if (!d) return;
     Object.assign(k, d, { c: Date.now() }); persist(); render(); toast('Pengingat kas diperbarui');
@@ -1353,6 +1357,223 @@ function payKas(id, all) {
       S.kasPay = S.kasPay.filter(p => !payIds.includes(p.id));
       logIds.forEach(undoLog); persist(); render(); toast('Dibatalkan');
     }
+  });
+}
+
+/* ---------- Pengingat non-akademik (hanya notifikasi, tanpa alarm) ---------- */
+const REM_CAT = {
+  sekolah: { n: 'Sekolah', sub: 'Non-akademik', ic: 'backpack', tone: 't-brand', chip: 'brand' },
+  pribadi: { n: 'Pribadi', sub: 'Di luar sekolah', ic: 'heart', tone: 't-mint', chip: 'mint' }
+};
+const REM_TPL = {
+  sekolah: [
+    ['Bawa baju olahraga', { rep: 'weekly', days: [1], jam: '06:00', lead: 'eve' }],
+    ['Piket kelas', { rep: 'weekly', days: [2], jam: '06:30', lead: 'eve' }],
+    ['Ekskul', { rep: 'weekly', days: [5], jam: '14:00', lead: 60 }],
+    ['Rapat OSIS', { rep: 'once', jam: '13:00', lead: 60 }],
+    ['Bawa bekal', { rep: 'weekly', days: [1, 2, 3, 4, 5], jam: '06:00', lead: 0 }],
+    ['Kembalikan buku perpustakaan', { rep: 'once', jam: '07:00', lead: 'eve' }],
+    ['Kumpulkan surat izin / formulir', { rep: 'once', jam: '07:00', lead: 'eve' }],
+    ['Pakai seragam batik', { rep: 'weekly', days: [4], jam: '05:45', lead: 'eve' }]
+  ],
+  pribadi: [
+    ['Ulang tahun teman', { rep: 'yearly', jam: '08:00', lead: 'eve' }],
+    ['Les / kursus', { rep: 'weekly', days: [3], jam: '16:00', lead: 60 }],
+    ['Beli kuota internet', { rep: 'monthly', jam: '19:00', lead: 0 }],
+    ['Olahraga', { rep: 'weekly', days: [6], jam: '07:00', lead: 15 }],
+    ['Cuci sepatu', { rep: 'weekly', days: [6], jam: '09:00', lead: 0 }],
+    ['Rapikan kamar', { rep: 'weekly', days: [0], jam: '09:00', lead: 0 }],
+    ['Telepon keluarga', { rep: 'weekly', days: [0], jam: '19:00', lead: 0 }],
+    ['Minum air putih', { rep: 'daily', jam: '10:00', lead: 0 }]
+  ]
+};
+const LEAD = { 0: 'Tepat waktu', 15: '15 menit sebelum', 60: '1 jam sebelum', eve: 'Malam sebelumnya', both: 'Malam sebelumnya + tepat waktu' };
+const HARI_S = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+const REP_N = { once: 'Sekali', daily: 'Setiap hari', weekly: 'Mingguan', monthly: 'Bulanan', yearly: 'Tahunan' };
+
+function remOcc(r, fromMs, toMs) {
+  const from = sod(fromMs), to = sod(toMs);
+  if (r.rep === 'once') { const t = ymdMs(r.date); return t >= from && t <= to ? [r.date] : []; }
+  const out = [], base = r.date ? new Date(r.date + 'T00:00') : new Date(ymdMs(r.start));
+  const d = new Date(Math.max(from, ymdMs(r.start), r.rep === 'monthly' && r.date ? ymdMs(r.date) : 0)); let g = 0;
+  while (d.getTime() <= to && g++ < 800) {
+    const dow = d.getDay(), dt = d.getDate(), mo = d.getMonth(), dim = new Date(d.getFullYear(), mo + 1, 0).getDate();
+    const ok = r.rep === 'daily' || (r.rep === 'weekly' && (r.days || []).includes(dow)) ||
+      (r.rep === 'monthly' && dt === Math.min(base.getDate(), dim)) ||
+      (r.rep === 'yearly' && mo === base.getMonth() && dt === Math.min(base.getDate(), dim));
+    if (ok) out.push(ymd(d));
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
+const remAt = (r, date) => new Date(date + 'T' + (r.jam || '07:00')).getTime();
+const remNext = r => remOcc(r, Date.now(), Date.now() + 370 * DAY).find(d => !r.done.includes(d));
+function remTimes(r, date) {
+  const at = remAt(r, date), ev = new Date(date + 'T00:00');
+  ev.setDate(ev.getDate() - 1);
+  const [h, m] = (S.remind.exam || '19:00').split(':'); ev.setHours(+h || 19, +m || 0, 0, 0);
+  if (r.lead === 'eve') return [[ev.getTime(), 'eve']];
+  if (r.lead === 'both') return [[ev.getTime(), 'eve'], [at, 'now']];
+  return [[at - (Number(r.lead) || 0) * 6e4, Number(r.lead) ? 'pre' : 'now']];
+}
+function remSched(r) {
+  const jam = (r.jam || '').replace(':', '.');
+  if (r.rep === 'once') return fd(ymdMs(r.date)) + ' · ' + jam;
+  if (r.rep === 'daily') return 'Setiap hari · ' + jam;
+  if (r.rep === 'weekly') {
+    const ds = [...(r.days || [])].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7));
+    const txt = ds.join() === '1,2,3,4,5' ? 'Sen–Jum' : ds.length === 7 ? 'Setiap hari' : ds.map(x => HARI_S[x]).join(', ');
+    return 'Setiap ' + txt + ' · ' + jam;
+  }
+  const b = new Date(r.date + 'T00:00');
+  if (r.rep === 'monthly') return 'Tiap tanggal ' + b.getDate() + ' · ' + jam;
+  return 'Tiap ' + b.toLocaleDateString('id-ID', { day: 'numeric', month: 'long' }) + ' · ' + jam;
+}
+function remRule(r) {
+  if (r.rep === 'daily') return 'RRULE:FREQ=DAILY';
+  if (r.rep === 'weekly') return 'RRULE:FREQ=WEEKLY;BYDAY=' + (r.days || []).map(x => BYDAY[x]).join(',');
+  if (r.rep === 'monthly') return 'RRULE:FREQ=MONTHLY;BYMONTHDAY=' + new Date(r.date + 'T00:00').getDate();
+  if (r.rep === 'yearly') return 'RRULE:FREQ=YEARLY';
+  return '';
+}
+const softCalBtn = (title, start, rrule, details) => IS_IOS
+  ? `<button class="btn ghost sm" data-ics="${esc(JSON.stringify({ t: title, s: start, r: rrule || '' }))}">${I('calplus')}Kalender</button>`
+  : calBtn('🔔 ' + title, start, start + 18e5, details, rrule);
+
+function remForm(r) {
+  r = r || { cat: RFORM_CAT, t: '', rep: 'once', days: [1], jam: '07:00', lead: 'eve', note: '', pts: 0, date: ymd(new Date(Date.now() + DAY)) };
+  const dayOrder = [1, 2, 3, 4, 5, 6, 0];
+  return `<div class="rform" data-cat="${r.cat}">
+    <div class="cat-pick">${Object.entries(REM_CAT).map(([k, c]) => `<button type="button" data-cat="${k}" class="${r.cat === k ? 'on' : ''}"><span class="ico ${c.tone}">${I(c.ic)}</span><span>${c.n}<small>${c.sub}</small></span></button>`).join('')}</div>
+    <div class="tpl"></div>
+    <div class="stack">
+      <div class="form-row">
+        <label class="field grow2"><span>Judul</span><input class="input" data-f="t" value="${esc(r.t)}" placeholder="Contoh: Bawa baju olahraga"></label>
+        <label class="field"><span>Ulangi</span><select class="input" data-f="rep">${Object.entries(REP_N).map(([k, n]) => `<option value="${k}" ${r.rep === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      </div>
+      <div class="form-row">
+        <label class="field" data-w="date"><span data-dl>Tanggal</span><input class="input" type="date" data-f="date" value="${esc(r.date || '')}"></label>
+        <div class="field" data-w="days"><span>Hari</span><div class="dchips">${dayOrder.map(d => `<button type="button" data-d="${d}" class="${(r.days || []).includes(d) ? 'on' : ''}">${HARI_S[d]}</button>`).join('')}</div></div>
+        <label class="field"><span>Jam</span><input class="input" type="time" data-f="jam" value="${esc(r.jam)}"></label>
+        <label class="field"><span>Ingatkan</span><select class="input" data-f="lead">${Object.entries(LEAD).map(([k, n]) => `<option value="${k}" ${String(r.lead) === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      </div>
+      <div class="form-row">
+        <label class="field grow2"><span>Catatan (opsional)</span><input class="input" data-f="note" value="${esc(r.note || '')}" placeholder="Contoh: kaos olahraga + sepatu"></label>
+        <label class="field"><span>Poin saat selesai (opsional)</span><input class="input" type="number" inputmode="numeric" min="0" data-f="pts" value="${r.pts || 0}"></label>
+      </div>
+    </div></div>`;
+}
+function remFormBind(root) {
+  const f = $('.rform', root), q = k => $(`[data-f="${k}"]`, f);
+  const sync = () => {
+    const rep = q('rep').value;
+    $('[data-w="date"]', f).hidden = rep === 'daily' || rep === 'weekly';
+    $('[data-w="days"]', f).hidden = rep !== 'weekly';
+    $('[data-dl]', f).textContent = rep === 'monthly' ? 'Mulai (tanggal tiap bulan)' : rep === 'yearly' ? 'Tanggal (tiap tahun)' : 'Tanggal';
+  };
+  const tpl = () => {
+    $('.tpl', f).innerHTML = REM_TPL[f.dataset.cat].map(([n], i) => `<button type="button" data-i="${i}">${esc(n)}</button>`).join('');
+    $$('.tpl button', f).forEach(b => b.onclick = () => {
+      const [n, o] = REM_TPL[f.dataset.cat][+b.dataset.i];
+      q('t').value = n; setVal(q('rep'), o.rep); setVal(q('jam'), o.jam); setVal(q('lead'), String(o.lead));
+      if (o.days) $$('.dchips button', f).forEach(x => x.classList.toggle('on', o.days.includes(+x.dataset.d)));
+      if (!q('date').value) setVal(q('date'), ymd(new Date(Date.now() + DAY)));
+      sync();
+      if (motionOn()) b.animate([{ transform: 'scale(.9)' }, { transform: 'scale(1)' }], { duration: SP.d, easing: SP.e });
+    });
+  };
+  $$('.cat-pick button', f).forEach(b => b.onclick = () => {
+    f.dataset.cat = b.dataset.cat; if (!root.closest || !root.closest('#modal')) RFORM_CAT = b.dataset.cat;
+    $$('.cat-pick button', f).forEach(x => x.classList.toggle('on', x === b)); tpl();
+    if (motionOn()) $$('.tpl button', f).forEach((x, i) => x.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 300, delay: i * 25, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' }));
+  });
+  $$('.dchips button', f).forEach(b => b.onclick = () => b.classList.toggle('on'));
+  q('rep').addEventListener('change', sync);
+  tpl(); sync();
+}
+function remRead(root) {
+  const f = $('.rform', root), q = k => $(`[data-f="${k}"]`, f);
+  const t = q('t').value.trim(), rep = q('rep').value;
+  const days = $$('.dchips button.on', f).map(b => +b.dataset.d);
+  if (!t) { toast('Isi judul pengingat'); q('t').focus(); return null; }
+  if (rep === 'weekly' && !days.length) { toast('Pilih minimal satu hari'); return null; }
+  if ((rep === 'once' || rep === 'monthly' || rep === 'yearly') && !q('date').value) { toast('Pilih tanggal'); return null; }
+  const lead = q('lead').value;
+  return { cat: f.dataset.cat, t, rep, days, date: q('date').value || ymd(new Date()), jam: q('jam').value || '07:00', lead: lead === 'eve' || lead === 'both' ? lead : Number(lead), note: q('note').value.trim(), pts: Math.max(0, Math.round(Number(q('pts').value) || 0)) };
+}
+
+let RCAT = 'semua', RFORM_CAT = 'sekolah';
+function ingat() {
+  const now = Date.now(), today = ymd(new Date());
+  const list = S.rem.filter(r => RCAT === 'semua' || r.cat === RCAT);
+  const groups = { today: [], missed: [], next: [], done: [] };
+  list.forEach(r => {
+    const tOcc = remOcc(r, now, now)[0];
+    if (tOcc && !r.done.includes(tOcc)) groups.today.push({ r, d: tOcc });
+    else if (r.rep === 'once' && r.date < today && !r.done.includes(r.date)) groups.missed.push({ r, d: r.date });
+    else { const n = remNext(r); if (n) groups.next.push({ r, d: n }); else groups.done.push({ r, d: r.date }); }
+  });
+  groups.today.sort((a, b) => remAt(a.r, a.d) - remAt(b.r, b.d));
+  groups.next.sort((a, b) => remAt(a.r, a.d) - remAt(b.r, b.d));
+  const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+  const item = ({ r, d }, kind) => {
+    const c = REM_CAT[r.cat] || REM_CAT.sekolah, at = remAt(r, d), rule = remRule(r);
+    const when = kind === 'today' ? `<span class="chip ${at < now ? 'warn' : 'brand'}">${I('clock')}Hari ini ${r.jam.replace(':', '.')}${at < now ? ' · lewat' : ''}</span>`
+      : kind === 'missed' ? `<span class="chip danger">${I('warn')}Terlewat</span>`
+        : kind === 'next' ? `<span class="chip">${I('cal')}${dayDiff(at) === 1 ? 'Besok' : fd(at)} ${r.jam.replace(':', '.')}</span>` : `<span class="chip mint">${I('check')}Selesai</span>`;
+    return `<div class="item ${kind === 'done' ? 'done' : ''}" style="flex-wrap:wrap">
+      <div class="lead ${c.tone}">${I(c.ic)}</div>
+      <div class="body"><div class="ttl">${esc(r.t)}</div>
+        <div class="faint small" style="margin-top:2px">${remSched(r)}${r.note ? ' · ' + esc(r.note) : ''}</div>
+        <div class="meta"><span class="chip ${c.chip}">${c.n}</span>${when}<span class="chip">${I('bell')}${LEAD[r.lead]}</span>${r.pts ? `<span class="chip">${I('spark')}+${r.pts}</span>` : ''}</div></div>
+      <div class="acts">
+        ${kind === 'today' || kind === 'missed' ? `<button class="btn mint sm" data-rd="${r.id}" data-date="${d}">${I('check')}Selesai</button>` : ''}
+        ${kind !== 'done' && kind !== 'missed' ? softCalBtn(r.t, rule ? remAt(r, remNext(r) || d) : at, rule, remSched(r) + (r.note ? '. ' + r.note : '')) : ''}
+        <button class="icon-btn sm" data-re="${r.id}" aria-label="Ubah">${I('pencil')}</button>
+        <button class="icon-btn sm danger" data-rx="${r.id}" aria-label="Hapus">${I('trash')}</button>
+      </div></div>`;
+  };
+  const sec = (title, arr, kind) => arr.length ? `<div class="sec-title"><h3>${title} <span class="count">${arr.length}</span></h3></div><div class="list">${arr.map(x => item(x, kind)).join('')}</div>` : '';
+  view().innerHTML = `
+  ${perm === 'default' ? `<section class="card" style="margin-bottom:16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div class="lead t-brand" style="width:44px;height:44px;border-radius:13px;display:grid;place-items:center">${I('bell')}</div><div style="flex:1;min-width:200px"><b>Izinkan notifikasi</b><div class="muted small">Pengingat di menu ini muncul sebagai notifikasi biasa, tanpa sirene atau alarm.</div></div><button class="btn grad" id="rperm">${I('bell')}Izinkan</button></section>` : ''}
+  <section class="card">
+    <h2>Tambah pengingat</h2><p class="sub">Untuk hal di luar pelajaran. Muncul sebagai <b>notifikasi biasa</b>, tanpa alarm. Pilih contoh di bawah atau tulis sendiri.</p>
+    <div id="rform">${remForm()}</div>
+    <div style="margin-top:14px"><button class="btn grad" id="radd">${I('plus')}Tambah pengingat</button></div>
+  </section>
+  <div class="sec-title"><div class="seg" id="rcat">${[['semua', 'Semua'], ['sekolah', 'Sekolah'], ['pribadi', 'Pribadi']].map(([k, n]) => `<button class="${RCAT === k ? 'on' : ''}" data-c="${k}">${n} · ${k === 'semua' ? S.rem.length : S.rem.filter(r => r.cat === k).length}</button>`).join('')}</div></div>
+  ${list.length ? sec('Hari ini', groups.today, 'today') + sec('Terlewat', groups.missed, 'missed') + sec('Akan datang', groups.next, 'next') + sec('Selesai', groups.done.slice(0, 10), 'done')
+      : emptyBox('bell', 'Belum ada pengingat', 'Tambahkan pengingat sekolah atau pribadi di atas.')}`;
+  remFormBind($('#rform'));
+  $('#radd').onclick = () => {
+    const d = remRead($('#rform')); if (!d) return;
+    S.rem.push(Object.assign({ id: uid(), done: [], start: ymd(new Date()), c: Date.now() }, d));
+    persist(); RFORM_CAT = d.cat; render();
+    const n = S.rem[S.rem.length - 1], nx = remNext(n);
+    toast(nx ? 'Pengingat ditambah · ' + (dayDiff(remAt(n, nx)) === 0 ? 'hari ini ' : dayDiff(remAt(n, nx)) === 1 ? 'besok ' : fd(remAt(n, nx)) + ' ') + n.jam.replace(':', '.') : 'Pengingat ditambah');
+  };
+  if ($('#rperm')) $('#rperm').onclick = async () => { try { await Notification.requestPermission(); } catch (e) {} if (Notification.permission === 'granted') { regPeriodic(); toast('Notifikasi aktif'); } render(); };
+  $$('#rcat button').forEach(b => b.onclick = () => { RCAT = b.dataset.c; render(); });
+  $$('[data-rd]', view()).forEach(b => b.onclick = () => remDone(b.dataset.rd, b.dataset.date));
+  $$('[data-rx]', view()).forEach(b => b.onclick = async () => {
+    if (!await ask('Hapus pengingat?', 'Pengingat ini dan jadwal berulangnya dihapus.', 'Hapus', 'danger solid')) return;
+    S.rem = S.rem.filter(x => x.id !== b.dataset.rx); persist(); render();
+  });
+  $$('[data-re]', view()).forEach(b => b.onclick = async () => {
+    const r = S.rem.find(x => x.id === b.dataset.re); if (!r) return;
+    const p = modal({ wide: true, title: 'Ubah pengingat', html: '<div id="redit">' + remForm(r) + '</div>', actions: [{ label: 'Batal', cls: 'ghost', value: null }, { label: 'Simpan', cls: 'grad', validate: m => !!remRead($('#redit', m)), get: m => remRead($('#redit', m)) }] });
+    remFormBind($('#redit'));
+    const d = await p; if (!d) return;
+    Object.assign(r, d, { c: Date.now() }); persist(); render(); toast('Pengingat diperbarui');
+  });
+}
+function remDone(id, date) {
+  const r = S.rem.find(x => x.id === id); if (!r || r.done.includes(date)) return;
+  r.done.push(date); if (r.done.length > 300) r.done = r.done.slice(-300);
+  const logId = r.pts ? add(r.pts, 'Pengingat: ' + r.t, 'ingat') : (persist(), null);
+  render();
+  toast((r.pts ? '+' + r.pts + ' poin · ' : '') + 'Ditandai selesai', {
+    label: 'Batalkan', fn: () => { r.done = r.done.filter(x => x !== date); if (logId) undoLog(logId); persist(); render(); toast('Dibatalkan'); }
   });
 }
 
@@ -1492,7 +1713,7 @@ function riwayat() {
     <div class="card stat"><div class="ico t-danger">${I('down')}</div><div class="v num minus">−${fmt(outT)}</div><div class="l">Dipakai hari ini</div></div>
     <div class="card stat"><div class="ico t-brand">${I('trophy')}</div><div class="v num">${fmt(S.earned)}</div><div class="l">Total sepanjang waktu</div></div>
   </div>
-  <div class="sec-title"><div class="seg" id="rf">${[['semua', 'Semua'], ['tugas', 'Tugas'], ['belajar', 'Belajar'], ['ujian', 'Ujian'], ['kas', 'Kas'], ['reward', 'Reward'], ['koreksi', 'Koreksi']].map(([k, n]) => `<button class="${k === RF ? 'on' : ''}" data-f="${k}">${n}</button>`).join('')}</div></div>
+  <div class="sec-title"><div class="seg" id="rf">${[['semua', 'Semua'], ['tugas', 'Tugas'], ['belajar', 'Belajar'], ['ujian', 'Ujian'], ['kas', 'Kas'], ['ingat', 'Pengingat'], ['reward', 'Reward'], ['koreksi', 'Koreksi']].map(([k, n]) => `<button class="${k === RF ? 'on' : ''}" data-f="${k}">${n}</button>`).join('')}</div></div>
   <div class="list">${L.length ? L.slice(0, 250).map(logItem).join('') : emptyBox('history', 'Belum ada catatan', 'Riwayat poin akan muncul di sini.')}</div>`;
   $$('#rf button').forEach(b => b.onclick = () => { RF = b.dataset.f; render(); });
 }
@@ -1713,6 +1934,10 @@ function alerts() {
   const soon = S.tasks.filter(t => !t.done && t.dl && dlMs(t) >= now && dlMs(t) - now <= S.remind.taskH * 36e5);
   if (late.length) out.push(`<div class="alert danger"><div class="ico">${I('warn')}</div><div class="body"><b>${late.length} tugas lewat deadline</b><span class="small muted">${late.slice(0, 3).map(t => esc(t.n)).join(', ')}${late.length > 3 ? '…' : ''}</span></div>${V !== 'tugas' ? `<div class="acts"><button class="btn ghost sm" data-ago="tugas">Lihat</button></div>` : ''}</div>`);
   if (soon.length) out.push(`<div class="alert warn"><div class="ico">${I('clock')}</div><div class="body"><b>${soon.length} tugas deadline dalam ${S.remind.taskH} jam</b><span class="small muted">${soon.slice(0, 3).map(t => esc(t.n) + ' (' + fdt(dlMs(t)) + ')').join(', ')}</span></div>${V !== 'tugas' ? `<div class="acts"><button class="btn ghost sm" data-ago="tugas">Lihat</button></div>` : ''}</div>`);
+  if (V === 'home') {
+    const td = S.rem.map(r => ({ r, d: remOcc(r, now, now)[0] })).filter(x => x.d && !x.r.done.includes(x.d)).sort((a, b) => remAt(a.r, a.d) - remAt(b.r, b.d));
+    if (td.length) out.push(`<div class="alert info"><div class="ico">${I('bell')}</div><div class="body"><b>${td.length} pengingat hari ini</b><span class="small muted">${td.slice(0, 3).map(x => esc(x.r.t) + ' ' + x.r.jam.replace(':', '.')).join(' · ')}${td.length > 3 ? '…' : ''}</span></div><div class="acts"><button class="btn ghost sm" data-ago="ingat">Lihat</button></div></div>`);
+  }
   if (IS_IOS && !IS_STANDALONE && !lsGet('remindplus:ios-hint')) out.unshift(`<div class="alert info"><div class="ico">${I('upload')}</div><div class="body"><b>Pasang remind+ di iPhone/iPad</b><span class="small muted">Di Safari, ketuk tombol Bagikan (kotak dengan panah ke atas), lalu pilih <strong>Tambahkan ke Layar Utama</strong>. Notifikasi baru bisa aktif setelah dipasang.</span></div><div class="acts"><button class="btn ghost sm" data-iosok>Mengerti</button></div></div>`);
   box.innerHTML = out.join('');
   const iosOk = $('[data-iosok]', box); if (iosOk) iosOk.onclick = () => { lsSet('remindplus:ios-hint', true); alerts(); };
@@ -1740,6 +1965,14 @@ function reminderList() {
       if (k.h1) { const ev = new Date(d + 'T00:00'); ev.setDate(ev.getDate() - 1); const [h, m] = (S.remind.exam || '19:00').split(':'); ev.setHours(+h || 19, +m || 0, 0, 0); push(k.c, { id: 'kas1-' + k.id + '-' + d, at: ev.getTime(), title: 'Besok bayar ' + k.n, body: 'Siapkan ' + rp(k.amt) + ' malam ini.' }); }
     });
   });
+  S.rem.forEach(r => {
+    remOcc(r, Date.now() - DAY, Date.now() + 2 * DAY).filter(d => !r.done.includes(d)).forEach(d => {
+      remTimes(r, d).forEach(([at, k], i) => push(r.c, {
+        id: 'rem-' + r.id + '-' + d + '-' + i, at, soft: true, title: r.t,
+        body: (k === 'eve' ? 'Besok ' : k === 'pre' ? 'Nanti ' : '') + (r.jam || '').replace(':', '.') + ' · ' + (r.note || (REM_CAT[r.cat] || REM_CAT.sekolah).n)
+      }));
+    });
+  });
   return L;
 }
 const NKEY = 'remindplus:notified';
@@ -1747,25 +1980,31 @@ const getN = () => lsGet(NKEY, {});
 const setN = n => lsSet(NKEY, n);
 async function notify(r) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return false;
-  const opt = { body: r.body, tag: r.id, icon: 'icon-192.png', badge: 'badge-96.png', renotify: true, requireInteraction: true, silent: false, vibrate: [800, 300, 800, 300, 800, 300, 800] };
-  try { const reg = await navigator.serviceWorker.ready; await reg.showNotification('⏰ ' + r.title, opt); return true; }
-  catch (e) { try { new Notification('⏰ ' + r.title, opt); return true; } catch (x) { return false; } }
+  const opt = r.soft
+    ? { body: r.body, tag: r.id, icon: 'icon-192.png', badge: 'badge-96.png', renotify: false, requireInteraction: false, silent: false, vibrate: [180, 90, 180] }
+    : { body: r.body, tag: r.id, icon: 'icon-192.png', badge: 'badge-96.png', renotify: true, requireInteraction: true, silent: false, vibrate: [800, 300, 800, 300, 800, 300, 800] };
+  const title = (r.soft ? '🔔 ' : '⏰ ') + r.title;
+  try { const reg = await navigator.serviceWorker.ready; await reg.showNotification(title, opt); return true; }
+  catch (e) { try { new Notification(title, opt); return true; } catch (x) { return false; } }
 }
 let RT = [];
 async function syncReminders() {
   if (!USER) return;
   const L = reminderList(), now = Date.now(), N = getN();
   try { const c = await caches.open('pm-data'), r = await c.match('./reminders.json'); if (r) { const d = await r.json(); Object.assign(N, d.notified || {}); } } catch (e) {}
-  for (const r of L) { if (r.at <= now && now - r.at < 12 * 36e5 && !N[r.id]) { await notify(r); N[r.id] = now; alarm(r); } }
+  for (const r of L) { if (r.at <= now && now - r.at < 12 * 36e5 && !N[r.id]) { await notify(r); N[r.id] = now; if (!r.soft) alarm(r); else softAlert(r); } }
   for (const k in N) if (now - N[k] > 30 * DAY) delete N[k];
   setN(N);
   RT.forEach(clearTimeout); RT = [];
   L.filter(r => r.at > now && r.at - now < DAY).forEach(r => RT.push(setTimeout(async () => {
     const n = getN(); if (n[r.id]) return;
-    await notify(r); n[r.id] = Date.now(); setN(n); alarm(r); alerts();
+    await notify(r); n[r.id] = Date.now(); setN(n); if (!r.soft) alarm(r); else softAlert(r); alerts();
   }, r.at - now)));
   try { const c = await caches.open('pm-data'); await c.put('./reminders.json', new Response(JSON.stringify({ list: L, notified: getN() }), { headers: { 'Content-Type': 'application/json' } })); } catch (e) {}
 }
+
+/* Pengingat lembut saat aplikasi terbuka: cukup toast, tanpa sirene */
+function softAlert(r) { if (!document.hidden) toast('🔔 ' + r.title + ' · ' + r.body); }
 
 /* Alarm darurat layar penuh */
 let AL = null, ACX = null;

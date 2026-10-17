@@ -1,5 +1,5 @@
 /* remind+ service worker: offline, cache, dan pengingat latar belakang */
-const CACHE = 'remindplus-v6';
+const CACHE = 'remindplus-v7';
 const FONTS = 'remindplus-fonts';
 const SHELL = ['./', './index.html', './css/app.css', './js/config.js', './js/supa.js', './js/app.js', './manifest.webmanifest',
   './logo.svg', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './badge-96.png'];
@@ -36,7 +36,9 @@ async function checkReminders() {
   let changed = false;
   for (const x of d.list || []) {
     if (x.at <= now && now - x.at < 12 * 36e5 && !N[x.id]) {
-      await self.registration.showNotification('⏰ ' + x.title, { body: x.body, tag: x.id, icon: 'icon-192.png', badge: 'badge-96.png', renotify: true, requireInteraction: true, vibrate: [800, 300, 800, 300, 800, 300, 800] });
+      await self.registration.showNotification((x.soft ? '🔔 ' : '⏰ ') + x.title, x.soft
+        ? { body: x.body, tag: x.id, icon: 'icon-192.png', badge: 'badge-96.png', vibrate: [180, 90, 180] }
+        : { body: x.body, tag: x.id, icon: 'icon-192.png', badge: 'badge-96.png', renotify: true, requireInteraction: true, vibrate: [800, 300, 800, 300, 800, 300, 800] });
       N[x.id] = now; changed = true;
     }
   }
