@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '2.2.0';
+const VERSION = '2.3.0';
 
 /* ================= Ikon ================= */
 const P = {
@@ -499,8 +499,35 @@ function alarmIntent(ms, msg) {
   const d = new Date(ms);
   return 'intent:#Intent;action=android.intent.action.SET_ALARM;i.android.intent.extra.alarm.HOUR=' + d.getHours() + ';i.android.intent.extra.alarm.MINUTES=' + d.getMinutes() + ';S.android.intent.extra.alarm.MESSAGE=' + encodeURIComponent(('remind+ · ' + msg).slice(0, 60)) + ';B.android.intent.extra.alarm.SKIP_UI=false;end';
 }
+/* iPhone / iPad: Safari tidak bisa membuat alarm di aplikasi Jam, jadi diganti file kalender (.ics) berpengingat */
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const IS_STANDALONE = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
 const canAlarm = ms => ms > Date.now() && ms - Date.now() < DAY;
-const alarmBtn = (ms, msg) => canAlarm(ms) ? `<a class="btn alarm-btn sm" href="${alarmIntent(ms, msg)}" title="Pasang alarm di aplikasi Jam">${I('alarm')}Alarm HP</a>` : '';
+const alarmBtn = (ms, msg, rrule) => {
+  if (IS_IOS) return ms > Date.now() || rrule ? `<button class="btn alarm-btn sm" data-ics="${esc(JSON.stringify({ t: msg, s: ms, r: rrule || '' }))}" title="Simpan pengingat ke Kalender iPhone">${I('alarm')}Pengingat iPhone</button>` : '';
+  return canAlarm(ms) ? `<a class="btn alarm-btn sm" href="${alarmIntent(ms, msg)}" title="Pasang alarm di aplikasi Jam">${I('alarm')}Alarm HP</a>` : '';
+};
+const icsText = s => String(s || '').replace(/\\/g, '\\\\').replace(/[,;]/g, m => '\\' + m).replace(/\n/g, '\\n');
+function makeIcs(title, start, mins, rrule) {
+  const z = ms => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//remind+//ID', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT',
+    'UID:' + uid() + '@remindplus', 'DTSTAMP:' + z(Date.now()), 'DTSTART:' + z(start), 'DTEND:' + z(start + mins * 6e4),
+    'SUMMARY:' + icsText('⏰ ' + title), 'DESCRIPTION:' + icsText('Pengingat dari remind+'), rrule ? rrule : null,
+    'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsText(title), 'TRIGGER:-PT0M', 'END:VALARM',
+    'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsText(title), 'TRIGGER:-PT10M', 'END:VALARM',
+    'END:VEVENT', 'END:VCALENDAR'].filter(Boolean).join('\r\n');
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-ics]'); if (!b) return;
+  let d; try { d = JSON.parse(b.dataset.ics); } catch (x) { return; }
+  const start = d.r && d.s < Date.now() ? d.s + DAY : d.s;
+  const blob = new Blob([makeIcs(d.t, start, 15, d.r)], { type: 'text/calendar;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'remind-plus.ics';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  toast('Buka file lalu ketuk "Tambahkan ke Kalender"');
+});
 const calBtn = (title, start, end, details, recur) => `<a class="btn ghost sm" target="_blank" rel="noopener" href="${gcal(title, start, end, details, recur)}" title="Simpan ke Google Kalender">${I('calplus')}Kalender</a>`;
 
 /* ================= Statistik ================= */
@@ -1097,7 +1124,7 @@ function kas() {
       <div class="acts">
         ${un.length > 1 ? `<button class="btn mint sm" data-kpall="${k.id}">${I('check')}Bayar semua ${rp(un.length * k.amt)}</button>` : ''}
         ${un.length ? `<button class="btn ${un.length > 1 ? 'ghost' : 'mint'} sm" data-kp="${k.id}">${I('check')}${un.length > 1 ? 'Bayar 1' : 'Sudah bayar'}</button>` : `<button class="btn ghost sm" data-kp="${k.id}">Bayar duluan</button>`}
-        ${rAt ? alarmBtn(rAt, 'Bayar ' + k.n) : ''}
+        ${rAt ? alarmBtn(rAt, 'Bayar ' + k.n, kasRule(k)) : ''}
         ${calBtn('💰 Bayar ' + k.n + ' ' + rp(k.amt), kasAt(k, nextDate || nx || today), kasAt(k, nextDate || nx || today) + 9e5, k.n + ' ' + rp(k.amt) + ' — ' + kasSched(k), kasRule(k))}
         <button class="icon-btn sm" data-ke="${k.id}" aria-label="Ubah">${I('pencil')}</button>
         <button class="icon-btn sm danger" data-kd="${k.id}" aria-label="Hapus">${I('trash')}</button>
@@ -1348,7 +1375,7 @@ function atur() {
           <button class="btn ghost sm" id="nt">${I('bell')}Tes notifikasi</button>
           <span class="faint small">Notifikasi: ${notifSt}</span>
         </div>
-        <p class="faint small" style="margin:0">Agar alarm <b>pasti berbunyi walau mode Jangan Ganggu aktif</b>, ketuk <b>Alarm HP</b> pada ujian atau tugas. Tombolnya muncul saat pengingat tinggal kurang dari 24 jam.</p>
+        ${IS_IOS ? `<p class="faint small" style="margin:0">Di iPhone/iPad, notifikasi hanya muncul saat remind+ terbuka. Agar <b>pasti berbunyi walau aplikasi tertutup</b>, ketuk <b>Pengingat iPhone</b> pada ujian, tugas, atau kas, lalu simpan ke Kalender. Supaya tetap berbunyi saat Fokus aktif, buka <b>Pengaturan iPhone → Notifikasi → Kalender</b> lalu nyalakan <b>Notifikasi Sensitif Waktu</b>.</p>` : `<p class="faint small" style="margin:0">Agar alarm <b>pasti berbunyi walau mode Jangan Ganggu aktif</b>, ketuk <b>Alarm HP</b> pada ujian atau tugas. Tombolnya muncul saat pengingat tinggal kurang dari 24 jam.</p>`}
       </div>
     </section>
     <section class="card">
@@ -1509,7 +1536,9 @@ function alerts() {
   const soon = S.tasks.filter(t => !t.done && t.dl && dlMs(t) >= now && dlMs(t) - now <= S.remind.taskH * 36e5);
   if (late.length) out.push(`<div class="alert danger"><div class="ico">${I('warn')}</div><div class="body"><b>${late.length} tugas lewat deadline</b><span class="small muted">${late.slice(0, 3).map(t => esc(t.n)).join(', ')}${late.length > 3 ? '…' : ''}</span></div>${V !== 'tugas' ? `<div class="acts"><button class="btn ghost sm" data-ago="tugas">Lihat</button></div>` : ''}</div>`);
   if (soon.length) out.push(`<div class="alert warn"><div class="ico">${I('clock')}</div><div class="body"><b>${soon.length} tugas deadline dalam ${S.remind.taskH} jam</b><span class="small muted">${soon.slice(0, 3).map(t => esc(t.n) + ' (' + fdt(dlMs(t)) + ')').join(', ')}</span></div>${V !== 'tugas' ? `<div class="acts"><button class="btn ghost sm" data-ago="tugas">Lihat</button></div>` : ''}</div>`);
+  if (IS_IOS && !IS_STANDALONE && !lsGet('remindplus:ios-hint')) out.unshift(`<div class="alert info"><div class="ico">${I('upload')}</div><div class="body"><b>Pasang remind+ di iPhone/iPad</b><span class="small muted">Di Safari, ketuk tombol Bagikan (kotak dengan panah ke atas), lalu pilih <strong>Tambahkan ke Layar Utama</strong>. Notifikasi baru bisa aktif setelah dipasang.</span></div><div class="acts"><button class="btn ghost sm" data-iosok>Mengerti</button></div></div>`);
   box.innerHTML = out.join('');
+  const iosOk = $('[data-iosok]', box); if (iosOk) iosOk.onclick = () => { lsSet('remindplus:ios-hint', true); alerts(); };
   $$('[data-ago]', box).forEach(b => b.onclick = () => go(b.dataset.ago));
   $$('[data-ast]', box).forEach(b => b.onclick = () => startExamStudy(b.dataset.ast));
   $$('[data-asd]', box).forEach(b => b.onclick = () => examStudied(b.dataset.asd));
@@ -1562,23 +1591,29 @@ async function syncReminders() {
 }
 
 /* Alarm darurat layar penuh */
-let AL = null;
+let AL = null, ACX = null;
+function audioCtx() {
+  try { if (!ACX) ACX = new (window.AudioContext || window.webkitAudioContext)(); if (ACX.state === 'suspended') ACX.resume(); } catch (e) {}
+  return ACX;
+}
+/* iOS & Chrome hanya mengizinkan suara setelah layar disentuh: siapkan sekali di sentuhan pertama */
+['pointerdown', 'keydown'].forEach(ev => addEventListener(ev, function unlock() { const c = audioCtx(); if (c && c.state === 'running') removeEventListener(ev, unlock); }, { passive: true }));
 function alarm(r) {
   if (!S.remind.siren) return;
   $('#alT').textContent = r.title; $('#alB').textContent = r.body; $('#alarm').hidden = false;
   stopSiren();
   AL = { r, v: null };
   try {
-    const AC = new (window.AudioContext || window.webkitAudioContext)();
+    const AC = audioCtx();
     const g = AC.createGain(); g.gain.value = .9; g.connect(AC.destination);
     const o = AC.createOscillator(); o.type = 'square'; o.connect(g); o.start();
     const t0 = AC.currentTime; for (let i = 0; i < 600; i++) o.frequency.setValueAtTime(i % 2 ? 650 : 1050, t0 + i * .45);
-    AL.AC = AC; AL.o = o;
+    AL.g = g; AL.o = o;
   } catch (e) {}
   const vib = () => { try { navigator.vibrate && navigator.vibrate([700, 250, 700]); } catch (e) {} };
   vib(); AL.v = setInterval(vib, 1200);
 }
-function stopSiren() { if (!AL) return; try { AL.o && AL.o.stop(); AL.AC && AL.AC.close(); } catch (e) {} clearInterval(AL.v); try { navigator.vibrate && navigator.vibrate(0); } catch (e) {} }
+function stopSiren() { if (!AL) return; try { AL.o && AL.o.stop(); AL.g && AL.g.disconnect(); } catch (e) {} clearInterval(AL.v); try { navigator.vibrate && navigator.vibrate(0); } catch (e) {} }
 function closeAlarm() { stopSiren(); AL = null; $('#alarm').hidden = true; }
 $('#alOff').onclick = closeAlarm;
 $('#alGo').onclick = () => { const r = AL && AL.r; closeAlarm(); if (!USER || !r) return; if (r.id.startsWith('ex-')) startExamStudy(r.id.split('-')[1]); else if (r.id.startsWith('kas')) go('kas'); else go('tugas'); };
