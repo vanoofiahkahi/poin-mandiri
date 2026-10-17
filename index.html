@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Poin Mandiri</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2457c5">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root{--bg:#f3f5f9;--card:#fff;--txt:#162033;--mut:#667085;--bd:#e3e7ee;--pri:#2457c5;--pri-s:#e8eefc;--ok:#15803d;--ok-s:#e3f6e9;--bad:#c62828;--bad-s:#fde8e8;--gold:#b7791f;--gold-s:#fdf3e1}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f141c;--card:#171e29;--txt:#e8edf5;--mut:#98a2b3;--bd:#273142;--pri:#6f9bff;--pri-s:#1d2a44;--ok:#4ade80;--ok-s:#14301f;--bad:#f87171;--bad-s:#3a1717;--gold:#f2b84b;--gold-s:#3a2c12}}
+:root[data-theme="dark"]{--bg:#0f141c;--card:#171e29;--txt:#e8edf5;--mut:#98a2b3;--bd:#273142;--pri:#6f9bff;--pri-s:#1d2a44;--ok:#4ade80;--ok-s:#14301f;--bad:#f87171;--bad-s:#3a1717;--gold:#f2b84b;--gold-s:#3a2c12}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:12px 18px;min-height:46px;background:var(--pri);color:#fff;font-weight:600}
+button.ghost{background:transparent;color:var(--txt);border:1px solid var(--bd)}
+button.soft{background:var(--pri-s);color:var(--pri)}
+button.ok{background:var(--ok);color:#fff}
+button.bad{background:transparent;color:var(--bad);border:1px solid var(--bd)}
+button:disabled{opacity:.45;cursor:not-allowed}
+input,select,textarea{font:inherit;width:100%;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--txt);min-height:46px}
+label{display:block;font-size:13px;color:var(--mut);margin:0 0 6px}
+.app{display:grid;grid-template-columns:210px 1fr;min-height:100vh}
+nav{background:var(--card);border-right:1px solid var(--bd);padding:20px 12px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px}
+.brand{font-weight:800;font-size:19px;padding:4px 12px 18px;letter-spacing:-.01em}
+.brand span{color:var(--pri)}
+.tab{background:transparent;color:var(--mut);text-align:left;font-weight:600;padding:14px 14px;border-radius:12px}
+.tab.on{background:var(--pri-s);color:var(--pri)}
+.sync{margin-top:auto;font-size:12px;color:var(--mut);padding:8px 12px}
+main{padding:22px 26px 40px;min-width:0}
+.hero{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;margin-bottom:20px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:18px}
+.big{font-size:44px;font-weight:800;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.mut{color:var(--mut);font-size:14px}
+.lvl{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.lvl b{font-size:20px}
+.bar{height:12px;background:var(--bd);border-radius:99px;overflow:hidden;margin:12px 0 8px}
+.bar i{display:block;height:100%;background:var(--pri);border-radius:99px;transition:width .4s}
+h2{font-size:20px;margin:0 0 14px}
+h3{font-size:16px;margin:0 0 12px}
+.row{display:flex;gap:12px;align-items:end;flex-wrap:wrap}
+.row>*{flex:1;min-width:140px}
+.row>.fit{flex:0 0 auto;min-width:0}
+.list{display:flex;flex-direction:column;gap:10px}
+.item{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--bd);border-radius:14px;background:var(--card)}
+.item .grow{flex:1;min-width:0}
+.item .t{font-weight:600;overflow-wrap:anywhere}
+.chip{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px;background:var(--pri-s);color:var(--pri)}
+.chip.ok{background:var(--ok-s);color:var(--ok)}
+.chip.bad{background:var(--bad-s);color:var(--bad)}
+.chip.gold{background:var(--gold-s);color:var(--gold)}
+.pts{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.plus{color:var(--ok)}.minus{color:var(--bad)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.timer{font-size:64px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:-.02em;margin:8px 0}
+.center{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.empty{color:var(--mut);text-align:center;padding:26px;border:1px dashed var(--bd);border-radius:14px}
+.calc{background:var(--gold-s);border-radius:12px;padding:14px;margin:12px 0;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.calc b{font-size:22px;color:var(--gold)}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg button{background:transparent;color:var(--txt);border:1px solid var(--bd);font-weight:600}
+.seg button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--txt);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:600;z-index:20;max-width:90vw}
+.hide{display:none!important}
+.sp{height:16px}
+table{width:100%;border-collapse:collapse}
+td{padding:8px 4px;border-bottom:1px solid var(--bd);vertical-align:middle}
+td input{min-height:40px;padding:8px}
+td button{min-height:40px;padding:6px 12px}
+@media (max-width:820px){
+ .app{grid-template-columns:1fr}
+ nav{position:fixed;bottom:0;top:auto;left:0;right:0;height:auto;flex-direction:row;padding:6px;border-right:0;border-top:1px solid var(--bd);z-index:10;justify-content:space-around}
+ .brand,.sync{display:none}
+ .tab{flex:1;text-align:center;padding:10px 4px;font-size:13px}
+ main{padding:16px 16px 100px}
+ .hero,.grid2{grid-template-columns:1fr}
+ .big{font-size:38px}.timer{font-size:52px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav>
+    <div class="brand">Poin <span>Mandiri</span></div>
+    <button class="tab on" data-v="tugas">Tugas</button>
+    <button class="tab" data-v="belajar">Belajar</button>
+    <button class="tab" data-v="reward">Reward</button>
+    <button class="tab" data-v="riwayat">Riwayat</button>
+    <button class="tab" data-v="atur">Atur</button>
+    <div class="sync" id="sync">Memuat…</div>
+  </nav>
+  <main>
+    <section class="hero">
+      <div class="card">
+        <div class="mut">Saldo poin</div>
+        <div class="big" id="saldo">0</div>
+        <div class="mut" id="sub" style="margin-top:8px"></div>
+      </div>
+      <div class="card">
+        <div class="lvl"><b id="lvName">-</b><span class="mut" id="lvNext"></span></div>
+        <div class="bar"><i id="lvBar" style="width:0"></i></div>
+        <div class="mut">Level naik dari total poin yang pernah didapat, bukan saldo.</div>
+      </div>
+    </section>
+    <div id="view"></div>
+  </main>
+</div>
+<div class="toast hide" id="toast"></div>
+
+<script>
+/* ---------- State ---------- */
+const DEF={
+  v:1,
+  diff:[{n:'Mudah',p:10},{n:'Sedang',p:25},{n:'Sulit',p:50},{n:'Ekstrem',p:100}],
+  study:{p:10,m:25},               // 10 poin tiap 25 menit
+  rate:100,                        // 1 poin = Rp100
+  levels:[{n:'Pemula',min:0},{n:'Rajin',min:500},{n:'Tekun',min:1500},{n:'Disiplin',min:4000},{n:'Mandiri',min:10000}],
+  rewards:[{id:'r1',n:'Main game 1 jam',p:60},{id:'r2',n:'Nonton 1 film',p:120},{id:'r3',n:'Jajan favorit',p:80}],
+  tasks:[],log:[],earned:0,balance:0
+};
+let S=structuredClone(DEF);
+const LS='poin-mandiri-v1';
+let DB=null,REF=null,saveT=null,writing=false,pending=false;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>Math.round(n).toLocaleString('id-ID');
+const rp=n=>'Rp'+Math.round(n).toLocaleString('id-ID');
+const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+const now=()=>new Date().toISOString();
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.remove('hide');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.add('hide'),2200)}
+function setSync(m){$('#sync').textContent=m}
+
+function lsGet(){try{return JSON.parse(localStorage.getItem(LS)||'null')}catch(e){return null}}
+function lsSet(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}}
+function merge(d){S=Object.assign(structuredClone(DEF),d||{})}
+
+function persist(){
+  lsSet();
+  if(!REF){setSync('Tersimpan di perangkat ini');return}
+  clearTimeout(saveT);saveT=setTimeout(flush,600);setSync('Menyimpan…');
+}
+async function flush(){
+  if(writing){pending=true;return}
+  writing=true;
+  try{await REF.set(JSON.parse(JSON.stringify(S)));setSync('Tersimpan ke akun ✓')}
+  catch(e){setSync(e&&e.code==='quota_exceeded'?'Penyimpanan penuh — hapus riwayat lama':'Tersimpan di perangkat ini')}
+  writing=false;if(pending){pending=false;flush()}
+}
+
+/* ---------- Poin ---------- */
+function add(p,what,kind){
+  p=Math.round(p);if(!p)return;
+  S.balance+=p;if(p>0)S.earned+=p;
+  S.log.unshift({id:uid(),t:now(),p,what,kind});
+  if(S.log.length>800)S.log.length=800;
+  const before=levelOf(S.earned-Math.max(p,0)).i,after=levelOf(S.earned).i;
+  persist();renderHero();
+  if(after>before)toast('Naik level! Sekarang: '+S.levels[after].n);
+}
+function levelOf(e){
+  const L=[...S.levels].sort((a,b)=>a.min-b.min);let i=0;
+  L.forEach((l,k)=>{if(e>=l.min)i=k});
+  S.levels=L;return{i,cur:L[i],next:L[i+1]};
+}
+function renderHero(){
+  $('#saldo').textContent=fmt(S.balance);
+  $('#sub').textContent='Total didapat '+fmt(S.earned)+' poin · setara '+rp(S.balance*S.rate);
+  const {cur,next}=levelOf(S.earned);
+  $('#lvName').textContent=cur?cur.n:'-';
+  if(next){const pc=(S.earned-cur.min)/(next.min-cur.min)*100;$('#lvBar').style.width=Math.min(100,pc)+'%';$('#lvNext').textContent=fmt(next.min-S.earned)+' poin lagi → '+next.n}
+  else{$('#lvBar').style.width='100%';$('#lvNext').textContent='Level tertinggi'}
+}
+
+/* ---------- Navigasi ---------- */
+let V='tugas';
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{V=b.dataset.v;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));render();scrollTo(0,0)});
+function render(){({tugas,belajar,reward,riwayat,atur})[V]();renderHero()}
+const view=()=>$('#view');
+
+/* ---------- Tugas ---------- */
+function tugas(){
+  const open=S.tasks.filter(t=>!t.done),done=S.tasks.filter(t=>t.done).slice(0,15);
+  view().innerHTML=`
+  <div class="card">
+    <h2>Tambah tugas</h2>
+    <div class="row">
+      <div style="flex:2"><label>Nama tugas</label><input id="tn" placeholder="Contoh: Kerjakan soal latihan bab 3"></div>
+      <div><label>Kesulitan</label><select id="td">${S.diff.map((d,i)=>`<option value="${i}">${esc(d.n)} · ${d.p} poin</option>`).join('')}</select></div>
+      <button class="fit" id="ta">Tambah</button>
+    </div>
+  </div>
+  <div class="sp"></div>
+  <h2>Belum selesai (${open.length})</h2>
+  <div class="list">${open.length?open.map(t=>`
+    <div class="item">
+      <div class="grow"><div class="t">${esc(t.n)}</div><span class="chip">${esc(t.d)}</span></div>
+      <span class="pts plus">+${t.p}</span>
+      <button class="ok" data-done="${t.id}">Selesai</button>
+      <button class="bad" data-del="${t.id}" aria-label="Hapus">✕</button>
+    </div>`).join(''):'<div class="empty">Belum ada tugas. Tambahkan di atas dan tentukan sendiri kesulitannya.</div>'}</div>
+  ${done.length?`<div class="sp"></div><h3 class="mut">Baru selesai</h3><div class="list">${done.map(t=>`
+    <div class="item" style="opacity:.7"><div class="grow"><div class="t" style="text-decoration:line-through">${esc(t.n)}</div><span class="chip ok">${esc(t.d)}</span></div><span class="pts plus">+${t.p}</span></div>`).join('')}</div>`:''}`;
+  const addT=()=>{const n=$('#tn').value.trim();if(!n){$('#tn').focus();return}
+    const d=S.diff[$('#td').value];S.tasks.unshift({id:uid(),n,d:d.n,p:d.p,done:false});persist();tugas()};
+  $('#ta').onclick=addT;$('#tn').onkeydown=e=>{if(e.key==='Enter')addT()};
+  view().querySelectorAll('[data-done]').forEach(b=>b.onclick=()=>{const t=S.tasks.find(x=>x.id===b.dataset.done);
+    t.done=true;t.at=now();S.tasks=[...S.tasks.filter(x=>!x.done),...S.tasks.filter(x=>x.done).sort((a,b)=>(b.at||'').localeCompare(a.at||''))].slice(0,300);
+    add(t.p,'Tugas: '+t.n,'tugas');toast('+'+t.p+' poin');tugas()});
+  view().querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{if(!confirm('Hapus tugas ini?'))return;S.tasks=S.tasks.filter(x=>x.id!==b.dataset.del);persist();tugas()});
+}
+
+/* ---------- Belajar (timer) ---------- */
+let TM=(()=>{try{return JSON.parse(localStorage.getItem('pm-timer')||'null')}catch(e){return null}})()||{run:false,start:0,acc:0,topic:''};
+const saveTM=()=>{try{localStorage.setItem('pm-timer',JSON.stringify(TM))}catch(e){}};
+const elapsed=()=>TM.acc+(TM.run?Date.now()-TM.start:0);
+const ptsFor=min=>Math.floor(min/S.study.m)*S.study.p;
+let tick=null;
+function belajar(){
+  view().innerHTML=`
+  <div class="grid2">
+    <div class="card">
+      <h2>Timer belajar</h2>
+      <label>Sedang belajar apa?</label>
+      <input id="bt" placeholder="Contoh: Bahasa Inggris, coding, fisika" value="${esc(TM.topic)}">
+      <div class="timer" id="clk">00:00:00</div>
+      <div class="mut" style="text-align:center" id="clkp"></div>
+      <div class="sp"></div>
+      <div class="center">
+        <button id="bs"></button>
+        <button class="ok" id="bf">Selesai & ambil poin</button>
+        <button class="ghost" id="br">Reset</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Catat manual</h2>
+      <p class="mut" style="margin-top:0">Untuk belajar yang tidak memakai timer.</p>
+      <label>Topik</label><input id="mt" placeholder="Topik">
+      <div class="sp"></div>
+      <label>Durasi (menit)</label><input id="mm" type="number" inputmode="numeric" min="1" placeholder="60">
+      <div class="calc"><span>Poin yang didapat</span><b id="mp">0</b></div>
+      <button id="ms" style="width:100%">Simpan</button>
+      <p class="mut">Aturan: <b>${S.study.p} poin</b> setiap <b>${S.study.m} menit</b>. Ubah di menu Atur.</p>
+    </div>
+  </div>`;
+  const draw=()=>{const ms=elapsed(),s=Math.floor(ms/1000);
+    $('#clk').textContent=[s/3600,s%3600/60,s%60].map(x=>String(Math.floor(x)).padStart(2,'0')).join(':');
+    const m=Math.floor(ms/60000),nx=S.study.m-(m%S.study.m);
+    $('#clkp').textContent=fmt(ptsFor(m))+' poin terkumpul · '+nx+' menit lagi untuk +'+S.study.p;
+    $('#bs').textContent=TM.run?'Jeda':(TM.acc?'Lanjut':'Mulai');$('#bs').className=TM.run?'soft':''};
+  clearInterval(tick);tick=setInterval(()=>{if(V==='belajar')draw();else clearInterval(tick)},1000);draw();
+  $('#bt').oninput=e=>{TM.topic=e.target.value;saveTM()};
+  $('#bs').onclick=()=>{if(TM.run){TM.acc+=Date.now()-TM.start;TM.run=false}else{TM.start=Date.now();TM.run=true}saveTM();draw()};
+  $('#br').onclick=()=>{if(elapsed()>60000&&!confirm('Reset timer tanpa mengambil poin?'))return;TM={run:false,start:0,acc:0,topic:TM.topic};saveTM();draw()};
+  $('#bf').onclick=()=>{const m=Math.floor(elapsed()/60000),p=ptsFor(m);
+    if(m<1){toast('Belum ada waktu belajar');return}
+    if(!p&&!confirm('Baru '+m+' menit, belum cukup untuk poin. Tetap selesaikan?'))return;
+    if(p)add(p,'Belajar '+m+' menit'+(TM.topic?': '+TM.topic:''),'belajar');else toast('Sesi dicatat tanpa poin');
+    if(p)toast('+'+p+' poin dari '+m+' menit belajar');
+    TM={run:false,start:0,acc:0,topic:TM.topic};saveTM();draw()};
+  const upd=()=>$('#mp').textContent=fmt(ptsFor(Number($('#mm').value)||0));$('#mm').oninput=upd;
+  $('#ms').onclick=()=>{const m=Math.floor(Number($('#mm').value));if(!m||m<1){$('#mm').focus();return}
+    const p=ptsFor(m);if(!p){toast('Minimal '+S.study.m+' menit untuk mendapat poin');return}
+    const t=$('#mt').value.trim();add(p,'Belajar '+m+' menit'+(t?': '+t:''),'belajar');toast('+'+p+' poin');$('#mm').value='';$('#mt').value='';upd()};
+}
+
+/* ---------- Reward ---------- */
+let KAT='Top-up game';
+function reward(){
+  const KATS=['Top-up game','Belanja','Jajan / makan','Hiburan','Lainnya'];
+  view().innerHTML=`
+  <div class="grid2">
+    <div class="card">
+      <h2>Tukar dengan pengeluaran</h2>
+      <p class="mut" style="margin-top:0">Masukkan nominal yang ingin dibelanjakan. Poin dihitung otomatis dengan kurs <b>1 poin = ${rp(S.rate)}</b>.</p>
+      <label>Kategori</label>
+      <div class="seg" id="kat">${KATS.map(k=>`<button class="${k===KAT?'on':''}" data-k="${esc(k)}">${esc(k)}</button>`).join('')}</div>
+      <div class="sp"></div>
+      <label>Untuk apa? (opsional)</label><input id="rd" placeholder="Contoh: Diamond Mobile Legends, skin, buku">
+      <div class="sp"></div>
+      <label>Nominal (Rp)</label><input id="rn" type="number" inputmode="numeric" min="0" placeholder="50000">
+      <div class="calc"><span>Poin yang terpakai</span><b id="rpz">0</b></div>
+      <div class="mut" id="rinfo" style="margin-bottom:12px"></div>
+      <button id="rgo" style="width:100%">Tukar poin</button>
+    </div>
+    <div class="card">
+      <h2>Reward tetap</h2>
+      <p class="mut" style="margin-top:0">Hadiah yang bukan uang, dengan harga poin yang Anda tentukan sendiri. Terbuka begitu saldo cukup.</p>
+      <div class="list">${S.rewards.length?S.rewards.map(r=>{const ok=S.balance>=r.p;return `
+        <div class="item">
+          <div class="grow"><div class="t">${esc(r.n)}</div>${ok?'<span class="chip ok">Bisa ditukar</span>':`<span class="chip gold">Kurang ${fmt(r.p-S.balance)} poin</span>`}</div>
+          <span class="pts">${fmt(r.p)}</span>
+          <button ${ok?'':'disabled'} data-rw="${r.id}">Tukar</button>
+        </div>`}).join(''):'<div class="empty">Belum ada. Tambahkan di menu Atur.</div>'}</div>
+    </div>
+  </div>`;
+  view().querySelectorAll('#kat button').forEach(b=>b.onclick=()=>{KAT=b.dataset.k;view().querySelectorAll('#kat button').forEach(x=>x.classList.toggle('on',x===b))});
+  const calc=()=>{const n=Number($('#rn').value)||0,p=Math.ceil(n/S.rate);$('#rpz').textContent=fmt(p);
+    $('#rinfo').textContent=n?(p>S.balance?'Saldo kurang '+fmt(p-S.balance)+' poin.':'Sisa saldo setelah ditukar: '+fmt(S.balance-p)+' poin.'):'';
+    $('#rgo').disabled=!n||p>S.balance;return p};
+  $('#rn').oninput=calc;calc();
+  $('#rgo').onclick=()=>{const n=Number($('#rn').value),p=calc();if(!n||p>S.balance)return;
+    const d=$('#rd').value.trim();
+    if(!confirm('Tukar '+fmt(p)+' poin untuk '+KAT+(d?' ('+d+')':'')+' senilai '+rp(n)+'?'))return;
+    add(-p,KAT+(d?': '+d:'')+' · '+rp(n),'reward');toast('-'+fmt(p)+' poin. Selamat menikmati!');reward()};
+  view().querySelectorAll('[data-rw]').forEach(b=>b.onclick=()=>{const r=S.rewards.find(x=>x.id===b.dataset.rw);
+    if(!r||S.balance<r.p)return;if(!confirm('Tukar '+fmt(r.p)+' poin untuk "'+r.n+'"?'))return;
+    add(-r.p,'Reward: '+r.n,'reward');toast('Reward ditukar!');reward()});
+}
+
+/* ---------- Riwayat ---------- */
+let RF='semua';
+function riwayat(){
+  const L=S.log.filter(l=>RF==='semua'||l.kind===RF);
+  const today=new Date().toDateString();
+  const td=S.log.filter(l=>new Date(l.t).toDateString()===today);
+  const inT=td.filter(l=>l.p>0).reduce((a,b)=>a+b.p,0),outT=-td.filter(l=>l.p<0).reduce((a,b)=>a+b.p,0);
+  view().innerHTML=`
+  <div class="grid2" style="margin-bottom:16px">
+    <div class="card"><div class="mut">Didapat hari ini</div><div class="big plus" style="font-size:32px">+${fmt(inT)}</div></div>
+    <div class="card"><div class="mut">Dipakai hari ini</div><div class="big minus" style="font-size:32px">-${fmt(outT)}</div></div>
+  </div>
+  <div class="seg" id="rf" style="margin-bottom:14px">${[['semua','Semua'],['tugas','Tugas'],['belajar','Belajar'],['reward','Reward'],['koreksi','Koreksi']].map(([k,n])=>`<button class="${k===RF?'on':''}" data-f="${k}">${n}</button>`).join('')}</div>
+  <div class="list">${L.length?L.slice(0,200).map(l=>`
+    <div class="item"><div class="grow"><div class="t">${esc(l.what)}</div><div class="mut">${new Date(l.t).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'})}</div></div>
+    <span class="pts ${l.p>0?'plus':'minus'}">${l.p>0?'+':''}${fmt(l.p)}</span></div>`).join(''):'<div class="empty">Belum ada catatan.</div>'}</div>`;
+  view().querySelectorAll('#rf button').forEach(b=>b.onclick=()=>{RF=b.dataset.f;riwayat()});
+}
+
+/* ---------- Atur ---------- */
+function atur(){
+  view().innerHTML=`
+  <div class="grid2">
+    <div class="card">
+      <h2>Tingkat kesulitan tugas</h2>
+      <table id="dt">${S.diff.map((d,i)=>`<tr><td><input data-dn="${i}" value="${esc(d.n)}"></td><td style="width:110px"><input type="number" inputmode="numeric" data-dp="${i}" value="${d.p}"></td><td style="width:56px"><button class="bad" data-dx="${i}">✕</button></td></tr>`).join('')}</table>
+      <div class="sp"></div><button class="soft" id="da">+ Tambah tingkat</button>
+    </div>
+    <div class="card">
+      <h2>Aturan poin</h2>
+      <label>Poin belajar</label>
+      <div class="row"><input type="number" inputmode="numeric" id="sp" value="${S.study.p}"><span class="fit mut" style="align-self:center">poin setiap</span><input type="number" inputmode="numeric" id="sm" value="${S.study.m}"><span class="fit mut" style="align-self:center">menit</span></div>
+      <div class="sp"></div>
+      <label>Kurs penukaran: 1 poin = Rp…</label>
+      <input type="number" inputmode="numeric" id="rt" value="${S.rate}">
+      <p class="mut">Contoh: kurs Rp100 → top-up Rp50.000 memakai 500 poin.</p>
+    </div>
+    <div class="card">
+      <h2>Level</h2>
+      <table>${S.levels.map((l,i)=>`<tr><td><input data-ln="${i}" value="${esc(l.n)}"></td><td style="width:130px"><input type="number" inputmode="numeric" data-lm="${i}" value="${l.min}" ${i===0?'disabled':''}></td><td style="width:56px">${i===0?'':`<button class="bad" data-lx="${i}">✕</button>`}</td></tr>`).join('')}</table>
+      <div class="sp"></div><button class="soft" id="la">+ Tambah level</button>
+      <p class="mut">Angka = total poin yang dibutuhkan.</p>
+    </div>
+    <div class="card">
+      <h2>Reward tetap</h2>
+      <table>${S.rewards.map((r,i)=>`<tr><td><input data-rn="${i}" value="${esc(r.n)}"></td><td style="width:110px"><input type="number" inputmode="numeric" data-rp="${i}" value="${r.p}"></td><td style="width:56px"><button class="bad" data-rx="${i}">✕</button></td></tr>`).join('')}</table>
+      <div class="sp"></div><button class="soft" id="ra">+ Tambah reward</button>
+    </div>
+    <div class="card">
+      <h2>Koreksi poin</h2>
+      <p class="mut" style="margin-top:0">Tambah atau kurangi saldo secara manual, misalnya bonus atau hukuman.</p>
+      <div class="row"><input type="number" inputmode="numeric" id="kp" placeholder="Contoh: 50 atau -30"><input id="ka" placeholder="Alasan"><button class="fit" id="kgo">Terapkan</button></div>
+    </div>
+    <div class="card">
+      <h2>Data</h2>
+      <div class="center" style="justify-content:flex-start">
+        <button class="ghost" id="ex">Salin cadangan</button>
+        <button class="ghost" id="im">Pulihkan cadangan</button>
+        <button class="bad" id="rs">Reset semua</button>
+      </div>
+      <textarea id="bx" class="hide" rows="5" style="margin-top:12px" placeholder="Tempel teks cadangan di sini"></textarea>
+      <button id="bxgo" class="hide" style="margin-top:10px">Pulihkan</button>
+    </div>
+  </div>`;
+  const num=(v,min=0)=>Math.max(min,Math.round(Number(v)||0));
+  const on=(sel,fn,ev='change')=>view().querySelectorAll(sel).forEach(el=>el.addEventListener(ev,()=>{fn(el);persist();renderHero()}));
+  on('[data-dn]',el=>S.diff[el.dataset.dn].n=el.value.trim()||'Tanpa nama');
+  on('[data-dp]',el=>S.diff[el.dataset.dp].p=num(el.value,1));
+  on('[data-ln]',el=>S.levels[el.dataset.ln].n=el.value.trim()||'Level');
+  on('[data-lm]',el=>{S.levels[el.dataset.lm].min=num(el.value,1);levelOf(S.earned);atur()});
+  on('[data-rn]',el=>S.rewards[el.dataset.rn].n=el.value.trim()||'Reward');
+  on('[data-rp]',el=>S.rewards[el.dataset.rp].p=num(el.value,1));
+  on('#sp',el=>S.study.p=num(el.value,1));on('#sm',el=>S.study.m=num(el.value,1));on('#rt',el=>S.rate=num(el.value,1));
+  const rm=(sel,arr,keep)=>view().querySelectorAll(sel).forEach(b=>b.onclick=()=>{if(S[arr].length<=keep){toast('Minimal '+keep);return}S[arr].splice(Number(b.dataset[Object.keys(b.dataset)[0]]),1);persist();atur()});
+  rm('[data-dx]','diff',1);rm('[data-lx]','levels',1);rm('[data-rx]','rewards',0);
+  $('#da').onclick=()=>{S.diff.push({n:'Baru',p:30});persist();atur()};
+  $('#la').onclick=()=>{const mx=Math.max(...S.levels.map(l=>l.min));S.levels.push({n:'Level baru',min:mx+5000});persist();atur()};
+  $('#ra').onclick=()=>{S.rewards.push({id:uid(),n:'Reward baru',p:100});persist();atur()};
+  $('#kgo').onclick=()=>{const p=Math.round(Number($('#kp').value));if(!p){$('#kp').focus();return}
+    if(p<0&&-p>S.balance&&!confirm('Saldo akan minus. Lanjutkan?'))return;
+    add(p,'Koreksi: '+($('#ka').value.trim()||'manual'),'koreksi');$('#kp').value='';$('#ka').value='';toast('Saldo diperbarui')};
+  $('#ex').onclick=async()=>{const t=JSON.stringify(S);try{await navigator.clipboard.writeText(t);toast('Cadangan disalin. Simpan di catatan Anda.')}catch(e){$('#bx').classList.remove('hide');$('#bx').value=t;$('#bx').select();toast('Salin teks di kotak di bawah')}};
+  $('#im').onclick=()=>{$('#bx').classList.remove('hide');$('#bxgo').classList.remove('hide');$('#bx').value='';$('#bx').focus()};
+  $('#bxgo').onclick=()=>{try{const d=JSON.parse($('#bx').value);if(typeof d!=='object'||!Array.isArray(d.log))throw 0;
+    if(!confirm('Ganti semua data dengan cadangan ini?'))return;merge(d);persist();toast('Data dipulihkan');render()}catch(e){toast('Teks cadangan tidak valid')}};
+  $('#rs').onclick=()=>{if(!confirm('Hapus semua poin, tugas, dan riwayat? Pengaturan juga kembali ke awal.'))return;if(!confirm('Yakin? Ini tidak bisa dibatalkan.'))return;
+    S=structuredClone(DEF);persist();toast('Semua data direset');render()};
+}
+
+/* ---------- Mulai ---------- */
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+merge(lsGet());render();setSync('Tersimpan di perangkat ini');
+(async()=>{
+  try{
+    if(!window.claude||!claude.use)return;
+    const [db,user]=await Promise.all([claude.use('db'),claude.use('user')]);
+    if(!db||!user)return;
+    const id=await user.id();if(!id)return;
+    DB=db;REF=db.doc('data/users/'+id+'/state');
+    const snap=await REF.get();
+    if(snap.exists){const d=snap.data();const local=lsGet();
+      // pakai data akun, kecuali perangkat ini punya data lebih baru yang belum tersinkron
+      const lt=local&&local.log&&local.log[0]?local.log[0].t:'',rt=d.log&&d.log[0]?d.log[0].t:'';
+      if(local&&lt>rt){merge(local);flush()}else{merge(JSON.parse(JSON.stringify(d)));lsSet()}
+      setSync('Tersimpan ke akun ✓');render();
+    }else{await flush()}
+    REF.onSnapshot(s=>{if(!s.exists||s.metadata.hasPendingWrites||writing)return;
+      const d=s.data();if(JSON.stringify(d)===JSON.stringify(S))return;
+      merge(JSON.parse(JSON.stringify(d)));lsSet();if(V!=='atur')render();else renderHero()},()=>{});
+  }catch(e){REF=null;setSync('Tersimpan di perangkat ini')}
+})();
+</script>
+</body>
+</html>
