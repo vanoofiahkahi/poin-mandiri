@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '2.3.0';
+const VERSION = '2.4.0';
 
 /* ================= Ikon ================= */
 const P = {
@@ -66,7 +66,10 @@ const P = {
   info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
   warn: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/>',
   monitor: '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>',
-  arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>'
+  arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  chev: '<path d="m6 9 6 6 6-6"/>',
+  chevl: '<path d="m15 18-6-6 6-6"/>',
+  chevr: '<path d="m9 18 6-6-6-6"/>'
 };
 const I = (n, c = 'ic') => `<svg class="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || ''}</svg>`;
 
@@ -382,6 +385,7 @@ function modal({ title, html = '', actions = [] }) {
     const m = $('#modal');
     m.innerHTML = `<div class="box" role="dialog" aria-modal="true"><h3></h3><div class="mb">${html}</div><div class="acts"></div></div>`;
     $('h3', m).textContent = title;
+    enhance(m);
     let closing = false;
     const close = v => {
       if (closing) return; closing = true;
@@ -436,6 +440,176 @@ function hideToast() {
   if (!motionOn()) { t.hidden = true; return; }
   t.animate([{ opacity: 1, transform: 'translate(-50%, 0) scale(1)' }, { opacity: 0, transform: 'translate(-50%, 14px) scale(.94)' }], { duration: 220, easing: 'ease-in', fill: 'forwards' })
     .onfinish = () => { if (t._seq === seq) { t.hidden = true; t.getAnimations().forEach(a => a.cancel()); } };
+}
+
+/* ================= Pemilih kustom: dropdown, tanggal, jam ================= */
+const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+const pad2 = n => String(n).padStart(2, '0');
+let POP = null;
+function closePop(instant) {
+  if (!POP) return;
+  const p = POP; POP = null;
+  p.anchor.setAttribute('aria-expanded', 'false'); p.anchor.classList.remove('open');
+  if (instant || !motionOn()) { p.el.remove(); return; }
+  p.el.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: `translateY(${p.up ? 6 : -6}px) scale(.96)` }], { duration: 150, easing: 'ease-in', fill: 'forwards' }).onfinish = () => p.el.remove();
+}
+function openPop(anchor, cls, minW) {
+  closePop(true);
+  const el = document.createElement('div');
+  el.className = 'pop ' + (cls || '');
+  document.body.appendChild(el);
+  POP = { el, anchor, up: false };
+  anchor.setAttribute('aria-expanded', 'true'); anchor.classList.add('open');
+  POP.place = () => {
+    const r = anchor.getBoundingClientRect(), vw = innerWidth, vh = innerHeight;
+    el.style.maxHeight = ''; el.style.width = Math.min(Math.max(r.width, minW || 220), vw - 24) + 'px';
+    const h = el.offsetHeight, below = vh - r.bottom - 12, above = r.top - 12;
+    const up = h > below && above > below; POP.up = up;
+    el.style.left = Math.min(Math.max(12, r.left), vw - 12 - el.offsetWidth) + 'px';
+    el.style.top = (up ? Math.max(12, r.top - 8 - Math.min(h, above)) : r.bottom + 8) + 'px';
+    el.style.maxHeight = Math.max(160, (up ? above : below) - 8) + 'px';
+    el.style.transformOrigin = up ? 'bottom center' : 'top center';
+  };
+  return el;
+}
+function popIn(el) {
+  POP.place();
+  if (motionOn()) el.animate([{ opacity: 0, transform: `translateY(${POP.up ? 10 : -10}px) scale(.93)` }, { opacity: 1, transform: 'none' }], { duration: SP.d, easing: SP.e });
+}
+document.addEventListener('pointerdown', e => { if (POP && !POP.el.contains(e.target) && !POP.anchor.contains(e.target)) closePop(); }, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && POP) { const a = POP.anchor; closePop(); a.focus(); } });
+addEventListener('resize', () => closePop(true));
+addEventListener('scroll', e => {
+  if (!POP || POP.el.contains(e.target)) return;
+  const r = POP.anchor.getBoundingClientRect();
+  if (!POP.anchor.isConnected || r.bottom < 0 || r.top > innerHeight) closePop(true); else POP.place();
+}, true);
+
+function enhance(root) {
+  if (!root) return;
+  $$('select.input:not([data-enh])', root).forEach(enhSelect);
+  $$('input.input[type=date]:not([data-enh]), input.input[type=time]:not([data-enh]), input.input[type=datetime-local]:not([data-enh])', root).forEach(enhDate);
+}
+function pickBtn(native, icon, role) {
+  native.dataset.enh = '1'; native.classList.add('native-hidden'); native.tabIndex = -1;
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'input pick'; b.setAttribute('aria-haspopup', role); b.setAttribute('aria-expanded', 'false');
+  b.innerHTML = `<span class="pv"></span>${I(icon, 'ic pick-ic')}`;
+  native.after(b); native._btn = b;
+  return b;
+}
+function setVal(inp, v) { inp.value = v; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); }
+
+/* Dropdown */
+function enhSelect(sel) {
+  const b = pickBtn(sel, 'chev', 'listbox');
+  const upd = () => { $('.pv', b).textContent = sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex].textContent : '—'; };
+  upd(); sel.addEventListener('change', upd);
+  b.onclick = () => {
+    if (POP && POP.anchor === b) { closePop(); return; }
+    const el = openPop(b, 'pop-list', 200);
+    el.setAttribute('role', 'listbox');
+    el.innerHTML = [...sel.options].map((o, i) => `<button type="button" class="opt ${i === sel.selectedIndex ? 'on' : ''}" data-i="${i}" role="option" aria-selected="${i === sel.selectedIndex}"><span>${esc(o.textContent)}</span>${I('check', 'ic opt-ck')}</button>`).join('');
+    popIn(el);
+    const opts = $$('.opt', el);
+    opts.forEach(o => o.onclick = () => {
+      const i = +o.dataset.i;
+      opts.forEach(x => x.classList.toggle('on', x === o));
+      if (sel.selectedIndex !== i) { sel.selectedIndex = i; sel.dispatchEvent(new Event('change', { bubbles: true })); }
+      setTimeout(() => { closePop(); b.focus({ preventScroll: true }); }, motionOn() ? 120 : 0);
+    });
+    const cur = opts[sel.selectedIndex] || opts[0];
+    if (cur) { el.scrollTop = cur.offsetTop - el.clientHeight / 2 + cur.offsetHeight / 2; cur.focus({ preventScroll: true }); }
+    if (motionOn()) opts.slice(0, 14).forEach((o, i) => o.animate([{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }], { duration: 300, delay: 20 + i * 22, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' }));
+    el.onkeydown = e => {
+      const i = opts.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown') { e.preventDefault(); (opts[i + 1] || opts[0]).focus(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); (opts[i - 1] || opts[opts.length - 1]).focus(); }
+    };
+  };
+}
+
+/* Tanggal, jam, dan tanggal + jam */
+function fmtPick(type, v) {
+  if (!v) return '';
+  if (type === 'time') return v.replace(':', '.');
+  const d = new Date(type === 'date' ? v + 'T00:00' : v);
+  if (isNaN(d)) return v;
+  const ds = d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  return type === 'date' ? ds : ds + ' · ' + pad2(d.getHours()) + '.' + pad2(d.getMinutes());
+}
+function enhDate(inp) {
+  const type = inp.type;
+  const b = pickBtn(inp, type === 'time' ? 'clock' : 'cal', 'dialog');
+  const ph = inp.dataset.ph || (type === 'time' ? 'Pilih jam' : type === 'date' ? 'Pilih tanggal' : 'Pilih tanggal & jam');
+  const upd = () => { const pv = $('.pv', b); pv.textContent = inp.value ? fmtPick(type, inp.value) : ph; pv.classList.toggle('ph', !inp.value); };
+  upd(); inp.addEventListener('change', upd); inp.addEventListener('input', upd);
+  b.onclick = () => { if (POP && POP.anchor === b) { closePop(); return; } openDatePop(inp, b, type); };
+}
+function openDatePop(inp, b, type) {
+  const hasDate = type !== 'time', hasTime = type !== 'date';
+  let sel = null, h = 7, m = 0;
+  if (type === 'time') { const t = (inp.value || '07:00').split(':'); h = +t[0] || 0; m = +t[1] || 0; }
+  else if (inp.value) {
+    const d = new Date(type === 'date' ? inp.value + 'T00:00' : inp.value);
+    if (!isNaN(d)) { sel = new Date(d.getFullYear(), d.getMonth(), d.getDate()); h = d.getHours(); m = d.getMinutes(); }
+  } else if (type === 'datetime-local') { h = 23; m = 59; }
+  const view = sel ? new Date(sel) : new Date(); view.setDate(1);
+  const wide = innerWidth >= 600;
+  const el = openPop(b, 'pop-date', type === 'datetime-local' ? (wide ? 500 : 320) : type === 'time' ? 230 : 320);
+  el.setAttribute('role', 'dialog');
+  const today = sod(Date.now());
+  const calHtml = () => {
+    const y = view.getFullYear(), mo = view.getMonth(), first = (new Date(y, mo, 1).getDay() + 6) % 7;
+    let cells = '';
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(y, mo, 1 - first + i), t = d.getTime();
+      cells += `<button type="button" class="day ${d.getMonth() !== mo ? 'out' : ''} ${t === today ? 'today' : ''} ${sel && t === sel.getTime() ? 'on' : ''}" data-t="${t}">${d.getDate()}</button>`;
+    }
+    return `<div class="cal-head"><button type="button" class="icon-btn sm" data-nav="-1" aria-label="Bulan sebelumnya">${I('chevl')}</button><b>${BULAN[mo]} ${y}</b><button type="button" class="icon-btn sm" data-nav="1" aria-label="Bulan berikutnya">${I('chevr')}</button></div>
+      <div class="cal-wd">${['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map(x => `<span>${x}</span>`).join('')}</div><div class="cal-grid">${cells}</div>`;
+  };
+  const colHtml = (k, n, v) => `<div><div class="tp-lbl">${k === 'h' ? 'Jam' : 'Menit'}</div><div class="tp-col" data-k="${k}">${Array.from({ length: n }, (_, i) => `<button type="button" class="${i === v ? 'on' : ''}" data-v="${i}">${pad2(i)}</button>`).join('')}</div></div>`;
+  const tpHtml = () => `<div class="tp">${colHtml('h', 24, h)}<div class="tp-sep">:</div>${colHtml('m', 60, m)}</div>`;
+  const foot = type === 'date'
+    ? `<button type="button" class="btn ghost sm" data-today>Hari ini</button>`
+    : type === 'time' ? `<button type="button" class="btn grad sm" data-ok>Selesai</button>`
+      : `${inp.value ? '<button type="button" class="btn ghost sm" data-clear>Tanpa deadline</button>' : ''}<button type="button" class="btn grad sm" data-ok>Simpan</button>`;
+  el.innerHTML = `${hasDate && hasTime ? `<div class="dt-wrap"><div class="cal">${calHtml()}</div>${tpHtml()}</div>` : hasDate ? `<div class="cal">${calHtml()}</div>` : tpHtml()}<div class="pop-foot">${foot}</div>`;
+  const apply = () => {
+    if (type === 'time') setVal(inp, pad2(h) + ':' + pad2(m));
+    else if (type === 'date') { if (sel) setVal(inp, ymd(sel)); }
+    else { const d = sel || new Date(today); setVal(inp, ymd(d) + 'T' + pad2(h) + ':' + pad2(m)); }
+  };
+  const bindCal = () => {
+    const c = $('.cal', el); if (!c) return;
+    $$('[data-nav]', c).forEach(x => x.onclick = () => {
+      view.setMonth(view.getMonth() + +x.dataset.nav); c.innerHTML = calHtml(); bindCal();
+      if (motionOn()) $('.cal-grid', c).animate([{ opacity: 0, transform: `translateX(${+x.dataset.nav * 14}px)` }, { opacity: 1, transform: 'none' }], { duration: 320, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    });
+    $$('.day', c).forEach(x => x.onclick = () => {
+      sel = new Date(+x.dataset.t);
+      $$('.day', c).forEach(y => y.classList.toggle('on', y === x));
+      if (motionOn()) x.animate([{ transform: 'scale(.8)' }, { transform: 'scale(1)' }], { duration: SP.d, easing: SP.e });
+      if (type === 'date') { apply(); setTimeout(() => closePop(), motionOn() ? 160 : 0); }
+      else if (x.classList.contains('out')) { view.setFullYear(sel.getFullYear(), sel.getMonth(), 1); c.innerHTML = calHtml(); bindCal(); }
+    });
+  };
+  bindCal();
+  $$('.tp-col', el).forEach(col => {
+    col.onclick = e => {
+      const x = e.target.closest('button'); if (!x) return;
+      if (col.dataset.k === 'h') h = +x.dataset.v; else m = +x.dataset.v;
+      $$('button', col).forEach(y => y.classList.toggle('on', y === x));
+      col.scrollTo({ top: x.offsetTop - col.clientHeight / 2 + x.offsetHeight / 2, behavior: motionOn() ? 'smooth' : 'auto' });
+      if (type === 'time') apply();
+    };
+  });
+  const ok = $('[data-ok]', el); if (ok) ok.onclick = () => { apply(); closePop(); b.focus({ preventScroll: true }); };
+  const td = $('[data-today]', el); if (td) td.onclick = () => { sel = new Date(today); apply(); closePop(); };
+  const cl = $('[data-clear]', el); if (cl) cl.onclick = () => { setVal(inp, ''); closePop(); };
+  popIn(el);
+  $$('.tp-col', el).forEach(col => { const on = $('.on', col); if (on) col.scrollTop = on.offsetTop - col.clientHeight / 2 + on.offsetHeight / 2; });
 }
 
 /* ================= Poin & level ================= */
@@ -795,10 +969,12 @@ function go(v) {
 }
 function render() {
   if (!USER || !$('#view')) return;
+  closePop(true);
   const pages = { home, tugas, ujian, kas, belajar, reward, riwayat, atur };
   if (V === 'home') { $('#hello').textContent = greeting() + ' 👋'; $('#title').textContent = displayName(); }
   else { $('#hello').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' }); $('#title').textContent = TITLES[V]; }
   pages[V]();
+  enhance(view());
   if (ENTER) { ENTER = false; enterAnim(view()); }
   updateIdentity();
   alerts();
@@ -900,7 +1076,7 @@ function tugas() {
     <div class="form-row">
       <label class="field grow2"><span>Nama tugas</span><input class="input" id="tn" placeholder="Contoh: Laporan praktikum biologi"></label>
       <label class="field"><span>Kesulitan</span><select class="input" id="td">${S.diff.map((d, i) => `<option value="${i}">${esc(d.n)} · ${d.p} poin</option>`).join('')}</select></label>
-      <label class="field"><span>Deadline (opsional)</span><input class="input" id="tdl" type="datetime-local"></label>
+      <label class="field"><span>Deadline (opsional)</span><input class="input" id="tdl" type="datetime-local" data-ph="Tanpa deadline"></label>
       <button class="btn grad" id="ta">${I('plus')}Tambah</button>
     </div>
     ${S.remind.latePct ? `<p class="faint small" style="margin:12px 0 0">Tugas yang selesai lewat deadline hanya mendapat ${100 - S.remind.latePct}% poin.</p>` : ''}
@@ -946,7 +1122,8 @@ function tugas() {
     const box = document.createElement('div'); box.className = 'inline-edit';
     box.innerHTML = `<input class="input" type="datetime-local" value="${esc(t.dl || '')}"><button class="btn sm">Simpan</button>${t.dl ? '<button class="btn ghost sm">Hapus deadline</button>' : ''}`;
     item.style.flexWrap = 'wrap'; item.appendChild(box);
-    const [inp, sv, rm] = $$('input,button', box); inp.focus();
+    const [inp, sv, rm] = $$('input,button', box);
+    inp.dataset.ph = 'Pilih tanggal & jam'; enhance(box); setTimeout(() => inp._btn && inp._btn.click(), 60);
     sv.onclick = () => { t.dl = inp.value || ''; t.c = Date.now(); persist(); render(); toast('Deadline disimpan'); };
     if (rm) rm.onclick = () => { t.dl = ''; persist(); render(); toast('Deadline dihapus'); };
   });
