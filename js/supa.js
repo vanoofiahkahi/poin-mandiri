@@ -35,7 +35,10 @@
     }
 
     async _fetch(path, { method = 'GET', body, token, headers = {} } = {}) {
-      const h = Object.assign({ apikey: this.key, 'Content-Type': 'application/json', Authorization: 'Bearer ' + (token || this.key) }, headers);
+      const h = Object.assign({ apikey: this.key, 'Content-Type': 'application/json' }, headers);
+      // Kunci baru (sb_publishable_…) bukan JWT: cukup di header apikey. Kunci lama (anon JWT) juga dikirim sebagai Bearer.
+      if (token) h.Authorization = 'Bearer ' + token;
+      else if (!/^sb_/.test(this.key)) h.Authorization = 'Bearer ' + this.key;
       let r;
       try {
         r = await fetch(this.url + path, { method, headers: h, body: body === undefined ? undefined : JSON.stringify(body) });
