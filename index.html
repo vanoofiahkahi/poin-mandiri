@@ -17,11 +17,15 @@
 /* Terapkan tema sebelum halaman tampil agar tidak berkedip */
 (function(){var p='auto';try{p=localStorage.getItem('remindplus:theme')||'auto'}catch(e){}
 var d=p==='dark'||(p==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);
-document.documentElement.setAttribute('data-theme',d?'dark':'light');})();
+document.documentElement.setAttribute('data-theme',d?'dark':'light');
+var f={};try{f=JSON.parse(localStorage.getItem('remindplus:fx')||'{}')||{}}catch(e){}
+document.documentElement.setAttribute('data-glass',f.glass===false?'off':'on');
+document.documentElement.setAttribute('data-motion',f.motion===false?'off':'on');})();
 </script>
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 <div id="root"><div class="boot"><img src="logo.svg" alt="" width="64" height="64"></div></div>
 <div id="toast" class="toast" hidden></div>
 <div id="modal" class="modal" hidden></div>

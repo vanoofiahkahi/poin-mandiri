@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '2.1.0';
+const VERSION = '2.2.0';
 
 /* ================= Ikon ================= */
 const P = {
@@ -87,7 +87,133 @@ function refreshThemeButtons() {
   $$('[data-theme-toggle]').forEach(b => { b.innerHTML = I(isDark() ? 'sun' : 'moon'); b.title = isDark() ? 'Mode terang' : 'Mode gelap'; });
   $$('.theme-pick button').forEach(b => b.classList.toggle('on', b.dataset.t === themePref()));
 }
-function quickToggleTheme() { setTheme(isDark() ? 'light' : 'dark'); refreshThemeButtons(); }
+function quickToggleTheme(e) { themeTransition(() => setTheme(isDark() ? 'light' : 'dark'), e); }
+
+/* ================= Gerak & efek kaca ================= */
+const FX_KEY = 'remindplus:fx';
+let FX = Object.assign({ glass: true, motion: true }, lsGet(FX_KEY, {}) || {});
+function setFx(patch) {
+  FX = Object.assign(FX, patch); lsSet(FX_KEY, FX);
+  document.documentElement.setAttribute('data-glass', FX.glass ? 'on' : 'off');
+  document.documentElement.setAttribute('data-motion', FX.motion ? 'on' : 'off');
+}
+const rmq = matchMedia('(prefers-reduced-motion: reduce)');
+const motionOn = () => FX.motion && !rmq.matches;
+
+/* Kurva pegas fisik → fungsi easing linear() (Chrome 113+), dengan cadangan cubic-bezier */
+function spring(stiffness, damping, mass = 1) {
+  let x = 0, v = 0, t = 0;
+  const dt = 1 / 120, pts = [0];
+  for (let i = 0; i < 900; i++) {
+    const f = -stiffness * (x - 1) - damping * v;
+    v += (f / mass) * dt; x += v * dt; t += dt; pts.push(x);
+    if (i > 40 && Math.abs(x - 1) < 0.0008 && Math.abs(v) < 0.008) break;
+  }
+  const step = Math.max(1, Math.ceil(pts.length / 64)), s = [];
+  for (let i = 0; i < pts.length; i += step) s.push(+pts[i].toFixed(4));
+  s.push(1);
+  const ok = window.CSS && CSS.supports && CSS.supports('transition-timing-function', 'linear(0, 1)');
+  return { e: ok ? 'linear(' + s.join(', ') + ')' : 'cubic-bezier(.34,1.56,.64,1)', d: Math.round(t * 1000) };
+}
+const SP = spring(210, 20);        // umum: sedikit memantul
+const SP_SOFT = spring(150, 22);   // masuk halaman: lembut
+const SP_NAV = spring(260, 22);    // indikator menu: cair & cepat
+
+/* Indikator menu yang mengalir seperti cairan */
+function moveBlobs(instant) {
+  $$('.nav-blob').forEach(b => {
+    const box = b.parentElement;
+    placeBlob(b, $(box.classList.contains('side') ? '.nav-item.on' : 'button.on', box), instant);
+  });
+}
+function placeBlob(blob, on, instant) {
+  if (!on || !on.offsetParent) { blob.style.opacity = '0'; blob._r = null; return; }
+  const r = { x: on.offsetLeft, y: on.offsetTop, w: on.offsetWidth, h: on.offsetHeight };
+  const prev = blob._r; blob._r = r;
+  blob.style.width = r.w + 'px'; blob.style.height = r.h + 'px';
+  blob.style.transform = `translate(${r.x}px, ${r.y}px)`; blob.style.opacity = '1';
+  if (instant || !prev || !motionOn() || (prev.x === r.x && prev.y === r.y && prev.w === r.w && prev.h === r.h)) return;
+  const dx = r.x - prev.x, dy = r.y - prev.y, horiz = Math.abs(dx) > Math.abs(dy);
+  const k = Math.min(.55, (horiz ? Math.abs(dx) / r.w : Math.abs(dy) / r.h) * .14);
+  const sx = horiz ? 1 + k : 1 - k * .35, sy = horiz ? 1 - k * .35 : 1 + k;
+  blob.animate([
+    { transform: `translate(${prev.x}px, ${prev.y}px) scale(${prev.w / r.w}, ${prev.h / r.h})` },
+    { transform: `translate(${prev.x + dx * .5}px, ${prev.y + dy * .5}px) scale(${sx}, ${sy})`, offset: .4 },
+    { transform: `translate(${r.x}px, ${r.y}px) scale(1, 1)` }
+  ], { duration: SP_NAV.d, easing: SP_NAV.e });
+}
+addEventListener('resize', () => moveBlobs(true));
+
+/* Isi halaman muncul bertahap */
+function enterAnim(root) {
+  if (!motionOn() || !root) return;
+  const els = [];
+  $$(':scope > *', root).forEach(el => {
+    if (el.matches('.grid')) els.push(...el.children);
+    else if (el.matches('.list')) els.push(...[...el.children].slice(0, 8));
+    else els.push(el);
+  });
+  els.slice(0, 22).forEach((el, i) => el.animate(
+    [{ opacity: 0, transform: 'translateY(18px) scale(.98)' }, { opacity: 1, transform: 'none' }],
+    { duration: SP_SOFT.d, delay: i * 45, easing: SP_SOFT.e, fill: 'backwards' }));
+}
+
+/* Riak cair saat disentuh */
+document.addEventListener('pointerdown', e => {
+  if (!motionOn()) return;
+  const el = e.target.closest('.btn, .icon-btn, .nav-item, .bottom-nav button, .seg button, .theme-pick button, .check, .me');
+  if (!el || el.disabled) return;
+  const r = el.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.2;
+  const s = document.createElement('span');
+  s.className = 'ripple';
+  s.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX - r.left - d / 2}px;top:${e.clientY - r.top - d / 2}px`;
+  el.appendChild(s);
+  s.addEventListener('animationend', () => s.remove());
+}, { passive: true });
+
+/* Angka poin melayang */
+function floatPoints(x, y, text) {
+  if (!motionOn()) return;
+  const f = document.createElement('div');
+  f.className = 'floatpt'; f.textContent = text;
+  f.style.left = x + 'px'; f.style.top = y + 'px';
+  document.body.appendChild(f);
+  f.animate([
+    { opacity: 0, transform: 'translate(-50%, 0) scale(.6)' },
+    { opacity: 1, transform: 'translate(-50%, -28px) scale(1.15)', offset: .3 },
+    { opacity: 0, transform: 'translate(-50%, -80px) scale(1)' }
+  ], { duration: 1100, easing: 'cubic-bezier(.2,.8,.2,1)' }).onfinish = () => f.remove();
+}
+
+/* Saldo menghitung naik/turun */
+let LAST_BAL = null;
+function countUp(el, to) {
+  const from = LAST_BAL === null ? 0 : LAST_BAL;
+  LAST_BAL = to;
+  if (!el) return;
+  if (!motionOn() || from === to) { el.textContent = fmt(to); return; }
+  const t0 = performance.now(), d = 1000;
+  const step = now => {
+    const k = Math.min(1, (now - t0) / d), e = 1 - Math.pow(1 - k, 4);
+    el.textContent = fmt(from + (to - from) * e);
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+/* Ganti tema dengan lingkaran yang meluas dari titik sentuh */
+function themeTransition(fn, e) {
+  const done = () => { fn(); refreshThemeButtons(); };
+  if (!document.startViewTransition || !motionOn()) { done(); return; }
+  const x = e && e.clientX ? e.clientX : innerWidth - 40, y = e && e.clientY ? e.clientY : 40;
+  const R = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+  const t = document.startViewTransition(done);
+  t.ready.then(() => {
+    document.documentElement.animate(
+      { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${R}px at ${x}px ${y}px)`] },
+      { duration: 700, easing: 'cubic-bezier(.2,.8,.2,1)', pseudoElement: '::view-transition-new(root)' });
+  }).catch(() => {});
+}
 
 /* ================= Server akun ================= */
 const SERVER_KEY = 'remindplus:server';
@@ -256,7 +382,14 @@ function modal({ title, html = '', actions = [] }) {
     const m = $('#modal');
     m.innerHTML = `<div class="box" role="dialog" aria-modal="true"><h3></h3><div class="mb">${html}</div><div class="acts"></div></div>`;
     $('h3', m).textContent = title;
-    const close = v => { m.hidden = true; m.innerHTML = ''; res(v); };
+    let closing = false;
+    const close = v => {
+      if (closing) return; closing = true;
+      const fin = () => { m.getAnimations().forEach(a => a.cancel()); m.hidden = true; m.innerHTML = ''; res(v); };
+      if (!motionOn()) { fin(); return; }
+      $('.box', m).animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(6px) scale(.95)' }], { duration: 170, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' });
+      m.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 190, easing: 'ease-in', fill: 'forwards' }).onfinish = fin;
+    };
     actions.forEach(a => {
       const b = document.createElement('button');
       b.className = 'btn ' + (a.cls || '');
@@ -266,6 +399,10 @@ function modal({ title, html = '', actions = [] }) {
     });
     m.onclick = e => { if (e.target === m) close(null); };
     m.hidden = false;
+    if (motionOn()) {
+      m.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: 'ease-out' });
+      $('.box', m).animate([{ opacity: 0, transform: 'translateY(18px) scale(.9)' }, { opacity: 1, transform: 'none' }], { duration: SP.d, easing: SP.e });
+    }
     const f = $('input', m); if (f) setTimeout(() => f.focus(), 60);
   });
 }
@@ -280,12 +417,25 @@ function toast(msg, action) {
     const b = document.createElement('button');
     b.className = 'linkish'; b.style.cssText = 'margin-left:14px;color:inherit;text-decoration:underline';
     b.textContent = action.label;
-    b.onclick = () => { t.hidden = true; action.fn(); };
+    b.onclick = () => { t._seq++; t.hidden = true; action.fn(); };
     t.appendChild(b);
   }
+  t._seq = (t._seq || 0) + 1;
+  const was = t.hidden;
+  t.getAnimations().forEach(a => a.cancel());
   t.hidden = false;
+  if (motionOn()) t.animate(was
+    ? [{ opacity: 0, transform: 'translate(-50%, 22px) scale(.88)' }, { opacity: 1, transform: 'translate(-50%, 0) scale(1)' }]
+    : [{ transform: 'translate(-50%, 0) scale(.96)' }, { transform: 'translate(-50%, 0) scale(1)' }], { duration: SP.d, easing: SP.e });
   clearTimeout(t._h);
-  t._h = setTimeout(() => { t.hidden = true; }, action ? 5500 : 2400);
+  t._h = setTimeout(hideToast, action ? 5500 : 2400);
+}
+function hideToast() {
+  const t = $('#toast'); if (t.hidden) return;
+  const seq = t._seq;
+  if (!motionOn()) { t.hidden = true; return; }
+  t.animate([{ opacity: 1, transform: 'translate(-50%, 0) scale(1)' }, { opacity: 0, transform: 'translate(-50%, 14px) scale(.94)' }], { duration: 220, easing: 'ease-in', fill: 'forwards' })
+    .onfinish = () => { if (t._seq === seq) { t.hidden = true; t.getAnimations().forEach(a => a.cancel()); } };
 }
 
 /* ================= Poin & level ================= */
@@ -400,6 +550,10 @@ function showAuth(mode, opts = {}) {
   $('[data-theme-toggle]').onclick = quickToggleTheme;
   refreshThemeButtons();
   authCard();
+  if (motionOn()) {
+    $('.auth-card').animate([{ opacity: 0, transform: 'translateY(24px) scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: SP_SOFT.d, easing: SP_SOFT.e });
+    $$('.auth-art h1, .auth-art p, .feat > div').forEach((el, i) => el.animate([{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'none' }], { duration: SP_SOFT.d, delay: 80 + i * 60, easing: SP_SOFT.e, fill: 'backwards' }));
+  }
 }
 const pwField = (id, label, ph, ac) => `<label class="field"><span>${label}</span><div class="input-wrap"><input class="input" id="${id}" type="password" placeholder="${ph}" autocomplete="${ac}" minlength="6" required><button type="button" class="icon-btn sm eye" data-eye="${id}" aria-label="Tampilkan password">${I('eye')}</button></div></label>`;
 function msgBox() { return AUTH.error ? `<div class="err">${esc(AUTH.error)}</div>` : AUTH.info ? `<div class="ok">${esc(AUTH.info)}</div>` : ''; }
@@ -569,7 +723,7 @@ function shell() {
   $('#root').innerHTML = `
   <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7B5CFF"/><stop offset=".55" stop-color="#4E6BFF"/><stop offset="1" stop-color="#1FC9A2"/></linearGradient></defs></svg>
   <div class="app">
-    <aside class="side">
+    <aside class="side"><span class="nav-blob" aria-hidden="true"></span>
       <div class="brand"><img src="logo.svg" alt=""><span>remind<b>+</b></span></div>
       ${NAV.map(([k, l, ic]) => `<button class="nav-item" data-go="${k}">${I(ic)}<span>${l}</span></button>`).join('')}
       <div class="side-foot">
@@ -591,7 +745,7 @@ function shell() {
       <div id="alerts" class="alerts"></div>
       <div id="view"></div>
     </main>
-    <nav class="bottom-nav">${NAV.map(([k, l, ic]) => `<button data-go="${k}">${I(ic)}<span>${k === 'atur' ? 'Atur' : l}</span></button>`).join('')}</nav>
+    <nav class="bottom-nav"><span class="nav-blob" aria-hidden="true"></span>${NAV.map(([k, l, ic]) => `<button data-go="${k}">${I(ic)}<span>${k === 'atur' ? 'Atur' : l}</span></button>`).join('')}</nav>
   </div>`;
   $$('[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
   $$('[data-theme-toggle]').forEach(b => b.onclick = quickToggleTheme);
@@ -603,11 +757,14 @@ function updateIdentity() {
   $$('[data-name]').forEach(e => { e.textContent = displayName(); });
   $$('[data-mail]').forEach(e => { e.textContent = USER.local ? 'Mode tanpa akun' : USER.email; });
 }
+let ENTER = true;
 function go(v) {
+  if (v !== V) ENTER = true;
   V = v;
   $$('[data-go]').forEach(b => b.classList.toggle('on', b.dataset.go === v && !b.classList.contains('me') && !b.classList.contains('avatar')));
   render();
-  window.scrollTo(0, 0);
+  moveBlobs();
+  window.scrollTo({ top: 0, behavior: motionOn() ? 'smooth' : 'auto' });
 }
 function render() {
   if (!USER || !$('#view')) return;
@@ -615,6 +772,7 @@ function render() {
   if (V === 'home') { $('#hello').textContent = greeting() + ' 👋'; $('#title').textContent = displayName(); }
   else { $('#hello').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' }); $('#title').textContent = TITLES[V]; }
   pages[V]();
+  if (ENTER) { ENTER = false; enterAnim(view()); }
   updateIdentity();
   alerts();
   badges();
@@ -651,9 +809,9 @@ function home() {
   const recent = S.log.slice(0, 6);
   view().innerHTML = `
   <div class="grid g-home">
-    <section class="hero">
+    <section class="hero"><span class="liq" aria-hidden="true"></span>
       <div class="lbl">Saldo poin</div>
-      <div class="big num">${fmt(S.balance)}<small>poin</small></div>
+      <div class="big num"><span id="balNum">${fmt(LAST_BAL === null ? 0 : LAST_BAL)}</span><small>poin</small></div>
       <div class="meta">≈ ${rp(S.balance * S.rate)} · total didapat ${fmt(S.earned)}</div>
       <div class="acts">
         <button class="btn" data-go2="reward">${I('gift')}Tukar reward</button>
@@ -662,7 +820,7 @@ function home() {
       </div>
     </section>
     <section class="card level">
-      <div class="ring"><svg width="96" height="96" viewBox="0 0 96 96"><circle class="track" cx="48" cy="48" r="40" fill="none" stroke-width="9"/><circle class="val" cx="48" cy="48" r="40" fill="none" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct)}"/></svg>
+      <div class="ring"><svg width="96" height="96" viewBox="0 0 96 96"><circle class="track" cx="48" cy="48" r="40" fill="none" stroke-width="9"/><circle class="val" cx="48" cy="48" r="40" fill="none" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${ENTER && motionOn() ? C : C * (1 - pct)}" data-to="${C * (1 - pct)}"/></svg>
         <div class="lv"><div><small>Level</small>${levelOf(S.earned).i + 1}</div></div></div>
       <div style="min-width:0">
         <h3>${esc(cur.n)}</h3>
@@ -691,6 +849,10 @@ function home() {
     </section>
   </div>`;
   $$('[data-go2]', view()).forEach(b => b.onclick = () => go(b.dataset.go2));
+  countUp($('#balNum'), S.balance);
+  const ringV = $('.ring .val'); if (ringV) requestAnimationFrame(() => requestAnimationFrame(() => { ringV.style.strokeDashoffset = ringV.dataset.to; }));
+  const hero = $('.hero');
+  hero.addEventListener('pointermove', e => { const r = hero.getBoundingClientRect(); hero.style.setProperty('--mx', (e.clientX - r.left) + 'px'); hero.style.setProperty('--my', (e.clientY - r.top) + 'px'); });
 }
 function logItem(l) {
   const ic = { tugas: 'checks', belajar: 'book', reward: 'gift', ujian: 'cap', kas: 'wallet', koreksi: 'pencil' }[l.kind] || 'spark';
@@ -741,7 +903,12 @@ function tugas() {
   };
   $('#ta').onclick = addT; $('#tn').onkeydown = e => { if (e.key === 'Enter') addT(); };
   $$('#tf button').forEach(b => b.onclick = () => { TF = b.dataset.f; render(); });
-  $$('[data-done]', view()).forEach(b => b.onclick = () => completeTask(b.dataset.done));
+  $$('[data-done]', view()).forEach(b => b.onclick = () => {
+    const r = b.getBoundingClientRect(), id = b.dataset.done;
+    if (!motionOn()) { completeTask(id); return; }
+    b.classList.add('on', 'pop'); b.disabled = true;
+    setTimeout(() => { const p = completeTask(id); if (p) floatPoints(r.left + r.width / 2, r.top - 6, '+' + p); }, 300);
+  });
   $$('[data-del]', view()).forEach(b => b.onclick = async () => {
     if (!await ask('Hapus tugas?', 'Tugas ini akan dihapus. Poin yang sudah didapat tidak berubah.', 'Hapus', 'danger solid')) return;
     S.tasks = S.tasks.filter(x => x.id !== b.dataset.del); persist(); render();
@@ -768,6 +935,7 @@ function completeTask(id) {
   toast('+' + p + ' poin' + (late && S.remind.latePct ? ' (dipotong karena terlambat)' : ''), {
     label: 'Batalkan', fn: () => { const x = S.tasks.find(y => y.id === id); if (x) { x.done = false; delete x.at; delete x.late; delete x.got; } undoLog(logId); persist(); render(); toast('Dibatalkan'); }
   });
+  return p;
 }
 
 /* ---------- Ujian ---------- */
@@ -1160,6 +1328,11 @@ function atur() {
         <button data-t="dark"><span class="sw sw-dark"></span>${I('moon')}Gelap</button>
         <button data-t="auto"><span class="sw sw-auto"></span>${I('monitor')}Otomatis</button>
       </div>
+      <div class="stack" style="margin-top:18px;gap:12px">
+        <label class="switch"><input type="checkbox" id="fxg" ${FX.glass ? 'checked' : ''}>Efek kaca (liquid glass)</label>
+        <label class="switch"><input type="checkbox" id="fxm" ${FX.motion ? 'checked' : ''}>Animasi halus</label>
+        <p class="faint small" style="margin:0">Matikan salah satunya jika tablet terasa lambat atau baterai cepat habis.</p>
+      </div>
     </section>
     <section class="card">
       <h2>Pengingat & alarm</h2><p class="sub">Atur kapan remind+ mengingatkan Anda.</p>
@@ -1238,7 +1411,9 @@ function atur() {
   $('#da').onclick = () => { S.diff.push({ n: 'Baru', p: 30 }); persist(); render(); };
   $('#la').onclick = () => { const mx = Math.max(...S.levels.map(l => l.min)); S.levels.push({ n: 'Level baru', min: mx + 5000 }); persist(); render(); };
   $('#ra').onclick = () => { S.rewards.push({ id: uid(), n: 'Reward baru', p: 100 }); persist(); render(); };
-  $$('.theme-pick button', view()).forEach(b => b.onclick = () => { setTheme(b.dataset.t); refreshThemeButtons(); });
+  $$('.theme-pick button', view()).forEach(b => b.onclick = e => themeTransition(() => setTheme(b.dataset.t), e));
+  $('#fxg').onchange = e => { setFx({ glass: e.target.checked }); toast(e.target.checked ? 'Efek kaca aktif' : 'Efek kaca dimatikan'); };
+  $('#fxm').onchange = e => { setFx({ motion: e.target.checked }); toast(e.target.checked ? 'Animasi aktif' : 'Animasi dimatikan'); };
   // akun
   $('#pnS').onclick = async () => {
     const n = $('#pn').value.trim(); if (!n) return;

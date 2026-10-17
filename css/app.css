@@ -398,3 +398,127 @@ a { color: var(--brand); text-decoration: none; }
   .theme-pick { grid-template-columns: repeat(3, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* =====================================================================
+   Liquid glass — permukaan kaca, latar aurora, animasi pegas
+   ===================================================================== */
+:root { --spring: cubic-bezier(.34, 1.56, .64, 1); }
+[data-theme="light"] {
+  --glass: rgba(255,255,255,.58); --glass-2: rgba(255,255,255,.46); --glass-strong: rgba(255,255,255,.80);
+  --glass-line: rgba(255,255,255,.78);
+  --glass-hl: linear-gradient(180deg, rgba(255,255,255,.75) 0%, rgba(255,255,255,0) 38%);
+  --glass-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 0 0 1px rgba(20,24,60,.06), 0 18px 40px -22px rgba(40,30,120,.32);
+  --field: rgba(255,255,255,.62);
+  --blob-a: rgba(140,116,255,.50); --blob-b: rgba(70,170,255,.40); --blob-c: rgba(46,230,166,.36); --blob-d: rgba(255,140,200,.30);
+}
+[data-theme="dark"] {
+  --glass: rgba(24,27,40,.50); --glass-2: rgba(255,255,255,.04); --glass-strong: rgba(28,31,46,.80);
+  --glass-line: rgba(255,255,255,.10);
+  --glass-hl: linear-gradient(180deg, rgba(255,255,255,.09) 0%, rgba(255,255,255,0) 35%);
+  --glass-shadow: inset 0 1px 0 rgba(255,255,255,.09), 0 0 0 1px rgba(255,255,255,.02), 0 24px 50px -26px rgba(0,0,0,.9);
+  --field: rgba(255,255,255,.05);
+  --blob-a: rgba(124,92,255,.45); --blob-b: rgba(40,110,255,.32); --blob-c: rgba(31,201,162,.26); --blob-d: rgba(200,80,255,.22);
+}
+body { background-image: none; }
+
+/* Latar aurora yang bergerak pelan (hanya transform → ringan) */
+.aurora { position: fixed; inset: -12vmax; z-index: -1; overflow: hidden; pointer-events: none; }
+.aurora i { position: absolute; width: 64vmax; height: 64vmax; border-radius: 50%; background: radial-gradient(circle at center, var(--c) 0%, transparent 66%); will-change: transform; animation: drift 28s ease-in-out infinite alternate; }
+.aurora i:nth-child(1) { --c: var(--blob-a); left: -6%; top: -10%; }
+.aurora i:nth-child(2) { --c: var(--blob-b); right: -12%; top: 4%; animation-duration: 34s; animation-delay: -9s; }
+.aurora i:nth-child(3) { --c: var(--blob-c); left: 18%; bottom: -22%; animation-duration: 31s; animation-delay: -15s; }
+.aurora i:nth-child(4) { --c: var(--blob-d); right: 8%; bottom: -6%; width: 48vmax; height: 48vmax; animation-duration: 38s; animation-delay: -4s; }
+@keyframes drift {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(7vmax, 4vmax) scale(1.14); }
+  66% { transform: translate(-5vmax, 8vmax) scale(.9); }
+  100% { transform: translate(4vmax, -6vmax) scale(1.06); }
+}
+
+/* Permukaan kaca */
+.card, .side, .bottom-nav, .alert, .modal .box, .toast, .auth-card {
+  background-color: var(--glass); background-image: var(--glass-hl);
+  -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%);
+  border: 1px solid var(--glass-line); box-shadow: var(--glass-shadow);
+}
+.side { border: 0; border-right: 1px solid var(--glass-line); box-shadow: none; }
+.bottom-nav { background-color: var(--glass-strong); border-radius: 26px; }
+.me, .item, .seg, .calc { background-color: var(--glass-2); border-color: var(--glass-line); }
+.me { box-shadow: inset 0 1px 0 rgba(255,255,255,.12); }
+.seg { border: 1px solid var(--glass-line); }
+.seg button.on { background: var(--glass-strong); box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 4px 14px -6px rgba(0,0,0,.25); }
+[data-theme="dark"] .seg button.on { background: rgba(255,255,255,.12); box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 6px 16px -8px rgba(0,0,0,.8); }
+.input, select.input, textarea.input { background: var(--field); border-color: var(--glass-line); }
+[data-theme="light"] .input { border-color: rgba(20,24,60,.10); }
+.input:focus { background: var(--glass-strong); }
+.alert.warn { background-color: color-mix(in srgb, var(--warn) 15%, transparent); }
+.alert.danger { background-color: color-mix(in srgb, var(--danger) 15%, transparent); }
+.alert.info { background-color: color-mix(in srgb, var(--brand) 14%, transparent); }
+.auth-card { padding: 30px; border-radius: var(--r-xl); }
+.theme-pick button { background: var(--glass-2); border-color: var(--glass-line); }
+.empty { border-color: var(--glass-line); background: var(--glass-2); }
+.btn.ghost { border-color: var(--glass-line); background: var(--glass-2); }
+[data-theme="light"] .btn.ghost { border-color: rgba(20,24,60,.10); }
+.icon-btn { background: var(--glass-2); border-color: var(--glass-line); }
+
+/* Indikator menu cair */
+.nav-blob {
+  position: absolute; left: 0; top: 0; z-index: 0; border-radius: 14px; pointer-events: none; opacity: 0; transform-origin: center;
+  background: linear-gradient(180deg, rgba(255,255,255,.7), rgba(255,255,255,.25)), var(--brand-soft);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.95), inset 0 -2px 6px rgba(106,77,255,.12), 0 8px 20px -10px rgba(106,77,255,.55), 0 0 0 1px var(--brand-line);
+  transition: opacity .25s;
+}
+[data-theme="dark"] .nav-blob {
+  background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.03)), rgba(140,116,255,.22);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28), inset 0 0 14px rgba(140,116,255,.28), 0 10px 26px -10px rgba(140,116,255,.75), 0 0 0 1px rgba(140,116,255,.38);
+}
+.bottom-nav .nav-blob { border-radius: 17px; }
+.nav-item, .bottom-nav button { position: relative; z-index: 1; }
+.nav-item.on, .bottom-nav button.on { background: transparent; }
+.nav-item.on::before { content: none; }
+.nav-item:hover:not(.on) { background: var(--glass-2); }
+
+/* Sentuhan: pegas + riak */
+.btn, .icon-btn, .nav-item, .bottom-nav button, .seg button, .theme-pick button, .check, .me { position: relative; overflow: hidden; isolation: isolate; }
+.btn, .icon-btn, .nav-item, .bottom-nav button, .seg button, .theme-pick button, .check, .me {
+  transition: transform .5s var(--spring), background-color .2s, color .2s, box-shadow .25s, filter .2s, border-color .2s, opacity .2s;
+}
+.btn:active, .icon-btn:active, .nav-item:active, .bottom-nav button:active, .seg button:active, .theme-pick button:active, .check:active, .me:active { transform: scale(.94); transition-duration: .12s; }
+.ripple { position: absolute; border-radius: 50%; pointer-events: none; z-index: -1; transform: scale(0);
+  background: radial-gradient(circle, color-mix(in srgb, currentColor 26%, transparent) 0%, color-mix(in srgb, currentColor 10%, transparent) 45%, transparent 70%);
+  animation: ripple .75s cubic-bezier(.2,.8,.2,1) forwards; }
+@keyframes ripple { to { transform: scale(1); opacity: 0; } }
+.check.pop { animation: chk .55s var(--spring); }
+@keyframes chk { 0% { transform: scale(.7); box-shadow: 0 0 0 0 color-mix(in srgb, var(--mint) 60%, transparent); } 55% { transform: scale(1.22); } 100% { transform: scale(1); box-shadow: 0 0 0 16px transparent; } }
+.floatpt { position: fixed; z-index: 85; pointer-events: none; font-weight: 800; font-size: 22px; color: var(--mint); letter-spacing: -.02em; text-shadow: 0 4px 18px rgba(0,0,0,.25); }
+
+/* Hero: cairan bergerak + kilau mengikuti sentuhan */
+.hero { box-shadow: inset 0 1px 0 rgba(255,255,255,.4), inset 0 0 0 1px rgba(255,255,255,.14), var(--shadow-lg); isolation: isolate; }
+.hero .liq { position: absolute; inset: -45%; z-index: 0; pointer-events: none; will-change: transform;
+  background: radial-gradient(30% 30% at 28% 30%, rgba(255,255,255,.22), transparent 70%), radial-gradient(28% 28% at 72% 62%, rgba(46,230,166,.55), transparent 70%), radial-gradient(32% 32% at 40% 82%, rgba(160,120,255,.55), transparent 70%);
+  animation: liq 16s ease-in-out infinite alternate; }
+@keyframes liq { 50% { transform: translate(6%, -4%) rotate(14deg) scale(1.08); } 100% { transform: translate(-4%, 5%) rotate(-10deg) scale(.96); } }
+.hero::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(240px circle at var(--mx, 18%) var(--my, 0%), rgba(255,255,255,.30), transparent 60%); }
+.hero > :not(.liq) { position: relative; z-index: 2; }
+.hero .btn.glass { -webkit-backdrop-filter: blur(14px) saturate(160%); backdrop-filter: blur(14px) saturate(160%); box-shadow: inset 0 1px 0 rgba(255,255,255,.35); }
+.hero .btn:not(.glass) { box-shadow: inset 0 1px 0 #fff, 0 8px 20px -10px rgba(0,0,0,.4); }
+.ring .val { transition: stroke-dashoffset 1.2s cubic-bezier(.2,.9,.2,1); }
+
+/* Toast & modal: animasi diatur JavaScript */
+.toast { animation: none; background-color: var(--glass-strong); color: var(--text); border-radius: 999px; padding: 12px 20px; }
+.modal { animation: none; background: rgba(5,6,12,.32); }
+.modal .box { animation: none; background-color: var(--glass-strong); }
+
+/* Pergantian tema: lingkaran meluas */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+
+/* Mode ringan: tanpa efek kaca */
+[data-glass="off"] .aurora { display: none; }
+[data-glass="off"] .card, [data-glass="off"] .side, [data-glass="off"] .bottom-nav, [data-glass="off"] .alert,
+[data-glass="off"] .modal .box, [data-glass="off"] .toast, [data-glass="off"] .auth-card, [data-glass="off"] .hero .btn.glass {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+[data-glass="off"] .card, [data-glass="off"] .side, [data-glass="off"] .bottom-nav, [data-glass="off"] .modal .box,
+[data-glass="off"] .toast, [data-glass="off"] .auth-card { background-color: var(--surface); }
+[data-glass="off"] .item, [data-glass="off"] .me { background-color: var(--surface); }
+[data-motion="off"] *, [data-motion="off"] *::before, [data-motion="off"] *::after { animation: none !important; transition: none !important; }
