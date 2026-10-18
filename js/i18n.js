@@ -213,6 +213,11 @@
     'Jadwal hari ini': "Today's timetable", 'Jadwal besok': "Tomorrow's timetable", 'Isi jadwal': 'Fill in', 'Belum ada pelajaran untuk hari ini.': 'No lessons for today yet.',
     'Sekarang: {0}': 'Now: {0}', 'berikutnya {0} jam {1}': 'next {0} at {1}', 'Berikutnya: {0} jam {1}': 'Next: {0} at {1}', 'Pelajaran hari ini sudah selesai': "Today's lessons are over", 'Mulai {0}': 'Starts {0}',
 
+    'Belum ada pelajaran': 'No lessons yet', 'Tambah pelajaran, atau salin dari hari lain.': 'Add a lesson, or copy from another day.',
+    '{0} pelajaran · selesai {1}': (a, b) => `${a} lesson${s(a)} · ends ${b}`, 'Turunkan': 'Move down', 'Lainnya': 'More',
+    'Salin dari hari lain…': 'Copy from another day…', 'Salin dari hari lain': 'Copy from another day', 'Salin minggu lalu ke hari kosong': "Copy last week into empty days",
+    'Kosongkan hari ini': 'Clear this day', 'Tidak ada hari kosong yang bisa diisi': 'No empty days to fill', '{0} dihapus': '{0} deleted', 'Pengaturan jadwal disimpan': 'Timetable settings saved',
+
     /* ---------- data bawaan (nama awal) ---------- */
     'Mudah': 'Easy', 'Sedang': 'Medium', 'Sulit': 'Hard', 'Ekstrem': 'Extreme',
     'Pemula': 'Beginner', 'Rajin': 'Diligent', 'Tekun': 'Persistent', 'Disiplin': 'Disciplined', 'Mandiri': 'Independent',

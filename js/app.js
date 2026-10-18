@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '2.8.0';
+const VERSION = '2.8.1';
 
 /* ================= Ikon ================= */
 const P = {
@@ -72,7 +72,8 @@ const P = {
   heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
   chevl: '<path d="m15 18-6-6 6-6"/>',
   chevr: '<path d="m9 18 6-6-6-6"/>',
-  chevu: '<path d="m18 15-6-6-6 6"/>'
+  chevu: '<path d="m18 15-6-6-6 6"/>',
+  more: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>'
 };
 const I = (n, c = 'ic') => `<svg class="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || ''}</svg>`;
 
@@ -1610,139 +1611,227 @@ function ttTouch(date) { const d = S.tt[date]; if (d) d.c = Date.now(); persist(
 function ttPrune() { const lim = ymd(new Date(Date.now() - 200 * DAY)); for (const k in S.tt) if (k < lim || (!ttHas(k) && k !== TTD)) delete S.tt[k]; }
 const subjDL = () => `<datalist id="subjDL">${S.subj.map(s => `<option value="${esc(s.n)}"></option>`).join('')}</datalist>`;
 
-/* Satu baris jadwal */
-function ttRow(s, opts = {}) {
-  const { it, i, a, b } = s, live = opts.today && nowMin() >= a && nowMin() < b;
-  if (it.k === 'b') return `<div class="item tt-item tt-break ${live ? 'now' : ''}">
-      <div class="tt-time"><b>${fromMin(a)}</b><span>${fromMin(b)}</span></div>
-      <div class="body"><div class="ttl">${esc(tx(it.l) || tx('Istirahat'))}</div><div class="faint small">${T`${it.min} menit`}</div></div>
-      ${opts.edit ? `<div class="acts"><button class="icon-btn sm" data-tbe="${i}" aria-label="Ubah">${I('pencil')}</button>${i ? `<button class="icon-btn sm" data-tu="${i}" aria-label="Naikkan">${I('chevu')}</button>` : ''}<button class="icon-btn sm danger" data-tx="${i}" aria-label="Hapus">${I('trash')}</button></div>` : ''}
-    </div>`;
-  const sub = subjOf(it.s);
-  return `<div class="item tt-item ${live ? 'now' : ''}" style="--h:${subjHue(it.s)}">
-      <div class="tt-time"><b>${fromMin(a)}</b><span>${fromMin(b)}</span></div>
-      <div class="body"><div class="ttl">${esc(subjName(it.s))}${live ? ` <span class="chip mint">${tx('Sekarang')}</span>` : ''}</div>
-        <div class="faint small">${sub && sub.t ? esc(sub.t) + ' · ' : ''}${T`${it.n} sesi`}</div></div>
-      ${opts.edit ? `<div class="acts">
-        <div class="tt-step"><button class="icon-btn sm" data-tm="${i}" aria-label="Kurangi sesi">−</button><b class="num">${it.n}</b><button class="icon-btn sm" data-tp="${i}" aria-label="Tambah sesi">+</button></div>
-        ${i ? `<button class="icon-btn sm" data-tu="${i}" aria-label="Naikkan">${I('chevu')}</button>` : ''}
-        <button class="icon-btn sm danger" data-tx="${i}" aria-label="Hapus">${I('trash')}</button></div>` : ''}
-    </div>`;
-}
-
-let TTD = null;
+/* Halaman jadwal: strip minggu dengan sorotan cair, isi hari diganti tanpa memuat ulang halaman */
+let TTD = null, TT_OPEN = -1;
+const ttLive = (a, b) => TTD === ymd(new Date()) && nowMin() >= a && nowMin() < b;
 function jadwal() {
   if (!TTD) TTD = ttDefaultDate();
+  TT_OPEN = -1;
   ttPrune();
-  const wk = weekOf(TTD), today = ymd(new Date()), day = S.tt[TTD];
-  const slots = day ? ttSlots(day) : [];
-  const lessons = slots.filter(x => x.it.k !== 'b');
-  const sess = lessons.reduce((a, x) => a + x.it.n, 0);
-  const prevSame = addDays(TTD, -7);
   view().innerHTML = `
-  <section class="card">
+  <section class="card tt-card">
+    <div class="tt-top">
+      <h2 id="ttMonth"></h2>
+      <div class="tt-tools">
+        <button class="icon-btn sm" id="ttSubj" title="Mata pelajaran & guru" aria-label="Mata pelajaran & guru">${I('book')}</button>
+        <button class="icon-btn sm" id="ttSet" title="Pengaturan jadwal" aria-label="Pengaturan jadwal">${I('sliders')}</button>
+      </div>
+    </div>
     <div class="tt-week">
       <button class="icon-btn sm" data-wk="-7" aria-label="Minggu sebelumnya">${I('chevl')}</button>
-      <div class="tt-days">${wk.map(d => { const x = new Date(d + 'T00:00'); return `<button class="tt-day ${d === TTD ? 'on' : ''} ${d === today ? 'today' : ''}" data-d="${d}"><small>${HARI_S[x.getDay()]}</small><b>${x.getDate()}</b><i class="${ttHas(d) ? 'has' : ''}"></i></button>`; }).join('')}</div>
+      <div class="tt-days" id="ttDays"></div>
       <button class="icon-btn sm" data-wk="7" aria-label="Minggu berikutnya">${I('chevr')}</button>
     </div>
+    <div class="tt-body" id="ttBody"></div>
+  </section>`;
+  ttWeek(0);
+  ttDayDraw(0);
+  $$('[data-wk]', view()).forEach(b => b.onclick = () => ttGo(addDays(TTD, +b.dataset.wk)));
+  $('#ttSubj').onclick = subjModal;
+  $('#ttSet').onclick = ttSettingsModal;
+  // geser ke kiri/kanan untuk pindah hari
+  const body = $('#ttBody'); let sx = null, sy = 0;
+  body.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') { sx = e.clientX; sy = e.clientY; } }, { passive: true });
+  body.addEventListener('pointerup', e => {
+    if (sx === null) return; const dx = e.clientX - sx, dy = e.clientY - sy; sx = null;
+    if (Math.abs(dx) > 70 && Math.abs(dy) < 45) ttStep(dx < 0 ? 1 : -1);
+  }, { passive: true });
+}
+/* Pindah ke hari berikut/sebelumnya (lewati Minggu) */
+function ttStep(n) { let d = addDays(TTD, n); if (new Date(d + 'T00:00').getDay() === 0) d = addDays(d, n); ttGo(d); }
+function ttGo(d) {
+  if (d === TTD) return;
+  const dir = d > TTD ? 1 : -1, sameWeek = weekOf(d)[0] === weekOf(TTD)[0];
+  TTD = d; TT_OPEN = -1;
+  if (sameWeek) ttMoveBlob(); else ttWeek(dir);
+  ttDayDraw(dir);
+}
+function ttWeek(dir) {
+  const box = $('#ttDays'); if (!box) return;
+  const wk = weekOf(TTD), today = ymd(new Date()), mon = new Date(wk[0] + 'T00:00');
+  $('#ttMonth').textContent = BULAN[mon.getMonth()] + ' ' + mon.getFullYear();
+  box.innerHTML = `<span class="nav-blob tt-blob" aria-hidden="true"></span>` + wk.map(d => { const x = new Date(d + 'T00:00'); return `<button class="tt-day ${d === TTD ? 'on' : ''} ${d === today ? 'today' : ''}" data-d="${d}"><small>${HARI_S[x.getDay()]}</small><b>${x.getDate()}</b><i class="${ttHas(d) ? 'has' : ''}"></i></button>`; }).join('');
+  $$('.tt-day', box).forEach(b => b.onclick = () => ttGo(b.dataset.d));
+  placeBlob($('.tt-blob', box), $('.tt-day.on', box), true);
+  if (dir && motionOn()) $$('.tt-day', box).forEach((b, i) => b.animate(
+    [{ opacity: 0, transform: `translateX(${dir * 26}px) scale(.94)` }, { opacity: 1, transform: 'none' }],
+    { duration: SP.d, delay: (dir > 0 ? i : 5 - i) * 28, easing: SP.e, fill: 'backwards' }));
+  if (dir && motionOn()) { const bl = $('.tt-blob', box); bl.animate([{ opacity: 0, transform: bl.style.transform + ' scale(.6)' }, { opacity: 1, transform: bl.style.transform }], { duration: SP.d, easing: SP.e }); }
+}
+function ttMoveBlob() {
+  const box = $('#ttDays'); if (!box) return;
+  $$('.tt-day', box).forEach(b => b.classList.toggle('on', b.dataset.d === TTD));
+  placeBlob($('.tt-blob', box), $('.tt-day.on', box));
+}
+function ttDots() { $$('#ttDays .tt-day').forEach(b => $('i', b).className = ttHas(b.dataset.d) ? 'has' : ''); }
+addEventListener('resize', () => { const bl = $('#ttDays .tt-blob'); if (bl) placeBlob(bl, $('#ttDays .tt-day.on'), true); });
+
+function ttRowHtml(s) {
+  const { it, i, a, b } = s, open = TT_OPEN === i, live = ttLive(a, b);
+  const ctl = open ? `<div class="tt-ctl">
+      ${it.k === 'b' ? `<button class="btn ghost sm" data-tbe="${i}">${I('pencil')}Ubah</button>`
+        : `<div class="tt-step"><button class="icon-btn sm" data-tm="${i}" aria-label="Kurangi sesi">−</button><b class="num">${T`${it.n} sesi`}</b><button class="icon-btn sm" data-tp="${i}" aria-label="Tambah sesi">+</button></div>`}
+      <span style="flex:1"></span>
+      <button class="icon-btn sm" data-tu="${i}" aria-label="Naikkan" ${i ? '' : 'disabled'}>${I('chevu')}</button>
+      <button class="icon-btn sm" data-td="${i}" aria-label="Turunkan" ${i < S.tt[TTD].items.length - 1 ? '' : 'disabled'}>${I('chev')}</button>
+      <button class="icon-btn sm danger" data-tx="${i}" aria-label="Hapus">${I('trash')}</button></div>` : '';
+  if (it.k === 'b') return `<div class="tt-row tt-brk ${open ? 'open' : ''} ${live ? 'now' : ''}" data-i="${i}">
+      <div class="tt-main"><div class="tt-time"><b>${fromMin(a)}</b></div>
+      <div class="tt-brk-l"><span>${esc(tx(it.l) || tx('Istirahat'))} · ${T`${it.min} menit`}</span></div></div>${ctl}</div>`;
+  const sub = subjOf(it.s);
+  return `<div class="tt-row ${open ? 'open' : ''} ${live ? 'now' : ''}" data-i="${i}" style="--h:${subjHue(it.s)}">
+      <div class="tt-main"><div class="tt-time"><b>${fromMin(a)}</b><span>${fromMin(b)}</span></div>
+      <div class="tt-txt"><div class="ttl">${esc(subjName(it.s))}</div><div class="tt-sub">${sub && sub.t ? esc(sub.t) : ''}</div></div>
+      ${live ? `<span class="tt-now">${tx('Sekarang')}</span>` : `<span class="tt-n">${it.n}×</span>`}</div>${ctl}</div>`;
+}
+function ttDayDraw(dir, keepOpen) {
+  const box = $('#ttBody'); if (!box) return;
+  if (!keepOpen) TT_OPEN = Math.min(TT_OPEN, -1);
+  const day = S.tt[TTD], slots = day ? ttSlots(day) : [];
+  const lessons = slots.filter(x => x.it.k !== 'b');
+  const prevSame = addDays(TTD, -7);
+  box.innerHTML = `
     <div class="tt-head">
-      <div style="min-width:0"><h2>${fd(ymdMs(TTD))}</h2><div class="muted small">${slots.length ? T`${lessons.length} pelajaran · ${sess} sesi · selesai ${fromMin(slots[slots.length - 1].b)}` : tx('Belum diisi')}</div></div>
-      <label class="field tt-start"><span>Jam mulai</span><input class="input" type="time" id="tts" value="${esc(day ? day.start : (S.ttStart || '07:00'))}"></label>
+      <div style="min-width:0"><h3>${fd(ymdMs(TTD))}</h3>
+        <div class="muted small">${slots.length ? T`${lessons.length} pelajaran · selesai ${fromMin(slots[slots.length - 1].b)}` : tx('Belum diisi')}</div></div>
+      <div class="tt-start"><input class="input" type="time" id="tts" value="${esc(day ? day.start : (S.ttStart || '07:00'))}"></div>
     </div>
-    <div class="list">${slots.length ? slots.map(s => ttRow(s, { edit: true, today: TTD === today })).join('')
-      : `<div class="empty">${I('cal')}<b>${tx('Jadwal hari ini masih kosong')}</b>${tx('Tambah pelajaran di bawah, atau salin dari hari lain.')}${ttHas(prevSame) ? `<div style="margin-top:14px"><button class="btn soft sm" id="ttPrev">${I('copy')}${T`Salin dari ${fd(ymdMs(prevSame))}`}</button></div>` : ''}</div>`}</div>
-    <div class="tt-acts">
+    <div class="tt-list">${slots.length ? slots.map(ttRowHtml).join('')
+      : `<div class="tt-empty">${I('cal')}<b>${tx('Belum ada pelajaran')}</b>${ttHas(prevSame) ? `<button class="btn soft sm" id="ttPrev">${I('copy')}${T`Salin dari ${fd(ymdMs(prevSame))}`}</button>` : `<span>${tx('Tambah pelajaran, atau salin dari hari lain.')}</span>`}</div>`}</div>
+    <div class="tt-foot">
       <button class="btn grad sm" id="ttAddL">${I('plus')}Pelajaran</button>
-      <button class="btn ghost sm" id="ttAddB">${I('clock')}Istirahat</button>
-      <button class="btn ghost sm" id="ttCopy">${I('copy')}Salin dari…</button>
-      ${slots.length ? `<button class="btn danger sm" id="ttClr">${I('trash')}Kosongkan</button>` : ''}
-    </div>
-  </section>
-  <div class="grid g2" style="margin-top:16px">
-    <section class="card">
-      <div class="card-head"><h2>Mata pelajaran & guru</h2><button class="btn soft sm" id="sjAdd">${I('plus')}Tambah</button></div>
-      <div class="rows">${S.subj.map((s, i) => `<div class="r"><span class="tt-dot" style="--h:${s.h}"></span><div class="tt-sf"><input class="input" data-sn="${i}" value="${esc(s.n)}" placeholder="Mata pelajaran"><input class="input" data-st="${i}" value="${esc(s.t)}" placeholder="Guru"></div><button class="icon-btn sm danger" data-sx="${i}" aria-label="Hapus">${I('x')}</button></div>`).join('') || `<p class="faint small">${tx('Belum ada.')}</p>`}</div>
-    </section>
-    <section class="card">
-      <h2>Pengaturan jadwal</h2><p class="sub">Berlaku untuk semua hari.</p>
-      <div class="stack">
-        <div class="form-row">
-          <label class="field"><span>Durasi 1 sesi (menit)</span><input class="input" type="number" inputmode="numeric" min="5" id="ttMin" value="${S.ttMin}"></label>
-          <label class="field"><span>Jam mulai biasanya</span><input class="input" type="time" id="ttSt" value="${esc(S.ttStart || '07:00')}"></label>
-        </div>
-        <label class="field"><span>Ingatkan sebelum pelajaran</span><select class="input" id="ttLead">${[0, 5, 10, 15].map(m => `<option value="${m}" ${S.remind.ttLead === m ? 'selected' : ''}>${m ? T`${m} menit sebelum` : tx('Mati')}</option>`).join('')}</select></label>
-        <p class="faint small" style="margin:0">${tx('Muncul sebagai notifikasi biasa, tanpa alarm.')}</p>
-      </div>
-    </section>
-  </div>`;
-  const reDay = () => { ENTER = false; render(); };
-  const ensure = () => { if (!S.tt[TTD]) S.tt[TTD] = { start: $('#tts').value || S.ttStart || '07:00', items: [], c: Date.now() }; return S.tt[TTD]; };
-  $$('.tt-day', view()).forEach(b => b.onclick = () => { TTD = b.dataset.d; reDay(); });
-  $$('[data-wk]', view()).forEach(b => b.onclick = () => { TTD = addDays(TTD, +b.dataset.wk); reDay(); });
-  $('#tts').onchange = e => { if (!e.target.value) return; ensure().start = e.target.value; ttTouch(TTD); reDay(); };
-  const it = i => S.tt[TTD].items[+i];
-  $$('[data-tp]', view()).forEach(b => b.onclick = () => { const x = it(b.dataset.tp); x.n = Math.min(8, x.n + 1); ttTouch(TTD); reDay(); });
-  $$('[data-tm]', view()).forEach(b => b.onclick = () => { const x = it(b.dataset.tm); if (x.n > 1) { x.n--; ttTouch(TTD); reDay(); } });
-  $$('[data-tu]', view()).forEach(b => b.onclick = () => { const a = S.tt[TTD].items, i = +b.dataset.tu; [a[i - 1], a[i]] = [a[i], a[i - 1]]; ttTouch(TTD); reDay(); });
-  $$('[data-tx]', view()).forEach(b => b.onclick = () => {
-    const a = S.tt[TTD].items, i = +b.dataset.tx, old = a[i]; a.splice(i, 1); ttTouch(TTD); reDay();
-    toast(tx('Dihapus dari jadwal'), { label: 'Batalkan', fn: () => { (S.tt[TTD] || ensure()).items.splice(i, 0, old); ttTouch(TTD); reDay(); } });
-  });
-  $$('[data-tbe]', view()).forEach(b => b.onclick = async () => { const x = it(b.dataset.tbe); const d = await breakModal(x); if (d) { Object.assign(x, d); ttTouch(TTD); reDay(); } });
-  $('#ttAddL').onclick = async () => {
-    if (!S.subj.length) { toast(tx('Tambahkan mata pelajaran dulu')); $('#sjAdd').focus(); return; }
-    const d = await lessonModal(); if (!d) return;
-    ensure().items.push({ k: 'l', s: d.s, n: d.n }); ttTouch(TTD); reDay();
-  };
-  $('#ttAddB').onclick = async () => { const d = await breakModal(); if (!d) return; ensure().items.push(Object.assign({ k: 'b' }, d)); ttTouch(TTD); reDay(); };
-  const copyFrom = src => { S.tt[TTD] = { start: S.tt[src].start, items: clone(S.tt[src].items), c: Date.now() }; persist(); reDay(); toast(T`Disalin dari ${fd(ymdMs(src))}`); };
-  if ($('#ttPrev')) $('#ttPrev').onclick = () => copyFrom(prevSame);
-  $('#ttCopy').onclick = async () => {
-    const days = Object.keys(S.tt).filter(d => d !== TTD && ttHas(d)).sort().reverse().slice(0, 21);
-    const lastWk = weekOf(addDays(wk[0], -7)), canWeek = lastWk.some(ttHas);
-    if (!days.length) { toast(tx('Belum ada hari lain yang sudah diisi')); return; }
-    const v = await modal({ title: tx('Salin jadwal'), wide: true,
-      html: `${canWeek ? `<button class="btn soft block" data-cw style="margin-bottom:14px">${I('copy')}${tx('Salin seluruh minggu lalu ke minggu ini')}</button><p class="faint small" style="margin:-6px 0 14px">${tx('Hanya mengisi hari yang masih kosong.')}</p>` : ''}
-        <div class="field"><span>${tx('Atau salin ke hari ini dari:')}</span><div class="list tt-src">${days.map(d => `<button class="item" data-src="${d}"><div class="body"><div class="ttl">${fd(ymdMs(d))}</div><div class="faint small">${S.tt[d].items.filter(x => x.k !== 'b').map(x => esc(subjName(x.s))).join(' · ')}</div></div>${I('chevr')}</button>`).join('')}</div></div>`,
-      actions: [{ label: 'Batal', cls: 'ghost', value: null }] });
-    void v;
-  };
-  if ($('#ttClr')) $('#ttClr').onclick = async () => {
-    if (!await ask(tx('Kosongkan jadwal hari ini?'), tx('Semua pelajaran dan istirahat di hari ini dihapus.'), 'Kosongkan', 'danger solid')) return;
-    delete S.tt[TTD]; persist(); reDay();
-  };
-  // mata pelajaran
-  const on = (sel, fn) => $$(sel, view()).forEach(el => el.addEventListener('change', () => { fn(el); persist(); }));
-  on('[data-sn]', el => { S.subj[el.dataset.sn].n = el.value.trim() || tx('Tanpa nama'); });
-  on('[data-st]', el => { S.subj[el.dataset.st].t = el.value.trim(); });
-  $$('[data-sx]', view()).forEach(b => b.onclick = async () => {
-    const s = S.subj[+b.dataset.sx], used = Object.values(S.tt).some(d => (d.items || []).some(x => x.s === s.id));
-    if (used && !await ask(T`Hapus ${s.n}?`, tx('Mata pelajaran ini masih ada di jadwal. Di sana akan tampil sebagai "Mapel dihapus".'), 'Hapus', 'danger solid')) return;
-    S.subj.splice(+b.dataset.sx, 1); persist(); reDay();
-  });
-  $('#sjAdd').onclick = () => { S.subj.push({ id: uid(), n: tx('Mapel baru'), t: '', h: (S.subj.length * 47 + 15) % 360 }); persist(); reDay(); setTimeout(() => { const x = $$('[data-sn]', view()).pop(); if (x) { x.focus(); x.select(); } }, 50); };
-  on('#ttMin', el => { S.ttMin = Math.max(5, Math.round(Number(el.value) || 35)); setTimeout(reDay, 0); });
-  on('#ttSt', el => { S.ttStart = el.value || '07:00'; });
-  on('#ttLead', el => { S.remind.ttLead = Number(el.value) || 0; S.remind.ttAt = Date.now(); });
-}
-function ttCopyClick(e) {
-  const m = $('#modal'); if (m.hidden || V !== 'jadwal') return;
-  const src = e.target.closest('[data-src]'), cw = e.target.closest('[data-cw]');
-  if (!src && !cw) return;
-  if (src) {
-    const s = src.dataset.src;
-    S.tt[TTD] = { start: S.tt[s].start, items: clone(S.tt[s].items), c: Date.now() };
-    persist(); toast(T`Disalin dari ${fd(ymdMs(s))}`);
-  } else {
-    const wk = weekOf(TTD); let n = 0;
-    wk.forEach(d => { const s = addDays(d, -7); if (ttHas(s) && !ttHas(d)) { S.tt[d] = { start: S.tt[s].start, items: clone(S.tt[s].items), c: Date.now() }; n++; } });
-    persist(); toast(n ? T`${n} hari disalin dari minggu lalu` : tx('Semua hari minggu ini sudah terisi'));
+      <button class="btn ghost sm" id="ttAddB">${I('plus')}Istirahat</button>
+      <span style="flex:1"></span>
+      <button class="icon-btn sm" id="ttMore" aria-label="Lainnya">${I('more')}</button>
+    </div>`;
+  enhance(box);
+  ttBindDay(box);
+  if (dir && motionOn()) {
+    box.animate([{ opacity: 0, transform: `translateX(${dir * 34}px)`, filter: 'blur(8px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: SP_SOFT.d, easing: SP_SOFT.e });
+    $$('.tt-row', box).slice(0, 10).forEach((r, k) => r.animate([{ opacity: 0, transform: `translateX(${dir * 18}px)` }, { opacity: 1, transform: 'none' }], { duration: SP.d, delay: 40 + k * 32, easing: SP.e, fill: 'backwards' }));
   }
-  const cancel = $('.acts .btn', m); if (cancel) cancel.click();
-  setTimeout(() => { ENTER = false; render(); }, 250);
 }
-document.addEventListener('click', ttCopyClick);
+function ttChanged(open) { const d = S.tt[TTD]; if (d) d.c = Date.now(); persist(); TT_OPEN = open === undefined ? TT_OPEN : open; ttDayDraw(0, true); ttDots(); badges(); }
+function ttBindDay(box) {
+  const ensure = () => { if (!S.tt[TTD]) S.tt[TTD] = { start: $('#tts', box).value || S.ttStart || '07:00', items: [], c: Date.now() }; return S.tt[TTD]; };
+  const items = () => S.tt[TTD].items;
+  $('#tts', box).onchange = e => { if (!e.target.value) return; ensure().start = e.target.value; ttChanged(); };
+  $$('.tt-row', box).forEach(r => $('.tt-main', r).onclick = () => {
+    const i = +r.dataset.i, was = TT_OPEN;
+    TT_OPEN = was === i ? -1 : i;
+    ttDayDraw(0, true);
+    const nr = $(`.tt-row[data-i="${TT_OPEN}"] .tt-ctl`, box);
+    if (nr && motionOn()) nr.animate([{ opacity: 0, transform: 'translateY(-8px) scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: SP.d, easing: SP.e });
+  });
+  $$('[data-tp]', box).forEach(b => b.onclick = () => { const x = items()[+b.dataset.tp]; x.n = Math.min(8, x.n + 1); ttChanged(); });
+  $$('[data-tm]', box).forEach(b => b.onclick = () => { const x = items()[+b.dataset.tm]; if (x.n > 1) { x.n--; ttChanged(); } });
+  const swap = (i, j) => { const a = items(); if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; ttChanged(j); };
+  $$('[data-tu]', box).forEach(b => b.onclick = () => swap(+b.dataset.tu, +b.dataset.tu - 1));
+  $$('[data-td]', box).forEach(b => b.onclick = () => swap(+b.dataset.td, +b.dataset.td + 1));
+  $$('[data-tx]', box).forEach(b => b.onclick = () => {
+    const i = +b.dataset.tx, old = items()[i], date = TTD;
+    const row = b.closest('.tt-row');
+    const done = () => { items().splice(i, 1); ttChanged(-1); };
+    if (motionOn() && row) row.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(-30px) scale(.96)' }], { duration: 200, easing: 'ease-in', fill: 'forwards' }).onfinish = done; else done();
+    toast(tx('Dihapus dari jadwal'), { label: 'Batalkan', fn: () => { if (!S.tt[date]) S.tt[date] = { start: S.ttStart || '07:00', items: [], c: Date.now() }; S.tt[date].items.splice(i, 0, old); if (TTD === date) ttChanged(-1); else persist(); } });
+  });
+  $$('[data-tbe]', box).forEach(b => b.onclick = async () => { const x = items()[+b.dataset.tbe]; const d = await breakModal(x); if (d) { Object.assign(x, d); ttChanged(); } });
+  $('#ttAddL', box).onclick = async () => {
+    if (!S.subj.length) { toast(tx('Tambahkan mata pelajaran dulu')); subjModal(); return; }
+    const d = await lessonModal(); if (!d) return;
+    ensure().items.push({ k: 'l', s: d.s, n: d.n }); ttChanged(-1); ttFlashLast();
+  };
+  $('#ttAddB', box).onclick = async () => { const d = await breakModal(); if (!d) return; ensure().items.push(Object.assign({ k: 'b' }, d)); ttChanged(-1); ttFlashLast(); };
+  if ($('#ttPrev', box)) $('#ttPrev', box).onclick = () => ttCopyDay(addDays(TTD, -7));
+  $('#ttMore', box).onclick = e => ttMoreMenu(e.currentTarget);
+}
+function ttFlashLast() { const r = $$('#ttBody .tt-row').pop(); if (r && motionOn()) r.animate([{ opacity: 0, transform: 'translateY(14px) scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: SP.d, easing: SP.e }); }
+function ttCopyDay(src) { S.tt[TTD] = { start: S.tt[src].start, items: clone(S.tt[src].items), c: Date.now() }; TT_OPEN = -1; persist(); ttDayDraw(1); ttDots(); toast(T`Disalin dari ${fd(ymdMs(src))}`); }
+
+/* Menu ⋯ : salin & kosongkan */
+function ttMoreMenu(anchor) {
+  if (POP && POP.anchor === anchor) { closePop(); return; }
+  const el = openPop(anchor, 'pop-list', 240);
+  const has = ttHas(TTD);
+  el.innerHTML = `<button type="button" class="opt" data-m="day"><span>${tx('Salin dari hari lain…')}</span>${I('copy')}</button>
+    <button type="button" class="opt" data-m="week"><span>${tx('Salin minggu lalu ke hari kosong')}</span>${I('refresh')}</button>
+    ${has ? `<button type="button" class="opt" data-m="clr" style="color:var(--danger)"><span>${tx('Kosongkan hari ini')}</span>${I('trash')}</button>` : ''}`;
+  popIn(el);
+  $$('.opt', el).forEach(o => o.onclick = async () => {
+    closePop();
+    if (o.dataset.m === 'day') ttCopyModal();
+    else if (o.dataset.m === 'week') {
+      let n = 0;
+      weekOf(TTD).forEach(d => { const s = addDays(d, -7); if (ttHas(s) && !ttHas(d)) { S.tt[d] = { start: S.tt[s].start, items: clone(S.tt[s].items), c: Date.now() }; n++; } });
+      if (n) { persist(); ttDayDraw(0); ttDots(); }
+      toast(n ? T`${n} hari disalin dari minggu lalu` : tx('Tidak ada hari kosong yang bisa diisi'));
+    } else if (o.dataset.m === 'clr') {
+      if (!await ask(tx('Kosongkan jadwal hari ini?'), tx('Semua pelajaran dan istirahat di hari ini dihapus.'), 'Kosongkan', 'danger solid')) return;
+      delete S.tt[TTD]; persist(); ttDayDraw(0); ttDots();
+    }
+  });
+}
+function ttCopyModal() {
+  const days = Object.keys(S.tt).filter(d => d !== TTD && ttHas(d)).sort().reverse().slice(0, 21);
+  if (!days.length) { toast(tx('Belum ada hari lain yang sudah diisi')); return; }
+  const p = modal({ title: tx('Salin dari hari lain'), wide: true,
+    html: `<div class="tt-src">${days.map(d => `<button type="button" class="opt" data-src="${d}"><span><b>${fd(ymdMs(d))}</b><small>${S.tt[d].items.filter(x => x.k !== 'b').map(x => esc(subjName(x.s))).join(' · ')}</small></span>${I('chevr')}</button>`).join('')}</div>`,
+    actions: [{ label: 'Batal', cls: 'ghost', value: null }] });
+  const m = $('#modal');
+  $$('[data-src]', m).forEach(b => b.onclick = () => { m._src = b.dataset.src; $('.acts .btn', m).click(); });
+  p.then(() => { const s = m._src; m._src = null; if (s) ttCopyDay(s); });
+}
+
+/* Mata pelajaran & guru (lembar terpisah agar halaman tetap rapi) */
+function subjModal() {
+  const rows = () => S.subj.map((s, i) => `<div class="tt-sj" style="--h:${s.h}"><span class="tt-dot"></span><div class="tt-sf"><input class="input" data-sn="${i}" value="${esc(s.n)}" placeholder="Mata pelajaran"><input class="input" data-st="${i}" value="${esc(s.t)}" placeholder="Guru"></div><button type="button" class="icon-btn sm danger" data-sx="${i}" aria-label="Hapus">${I('x')}</button></div>`).join('') || `<p class="faint small">${tx('Belum ada.')}</p>`;
+  const p = modal({ title: tx('Mata pelajaran & guru'), wide: true,
+    html: `<div class="tt-sjs" id="sjRows">${rows()}</div><button type="button" class="btn soft sm" id="sjAdd" style="margin-top:12px">${I('plus')}Tambah</button>`,
+    actions: [{ label: 'Selesai', cls: 'grad', value: true }] });
+  const m = $('#modal');
+  setTimeout(() => { const f = document.activeElement; if (f && m.contains(f)) f.blur(); }, 90);
+  const bind = () => {
+    $$('[data-sn]', m).forEach(el => el.onchange = () => { S.subj[el.dataset.sn].n = el.value.trim() || tx('Tanpa nama'); persist(); });
+    $$('[data-st]', m).forEach(el => el.onchange = () => { S.subj[el.dataset.st].t = el.value.trim(); persist(); });
+    $$('[data-sx]', m).forEach(b => b.onclick = () => {
+      const i = +b.dataset.sx, s = S.subj[i];
+      S.subj.splice(i, 1); persist(); $('#sjRows', m).innerHTML = rows(); bind();
+      toast(T`${s.n} dihapus`, { label: 'Batalkan', fn: () => { S.subj.splice(i, 0, s); persist(); if (!m.hidden && $('#sjRows', m)) { $('#sjRows', m).innerHTML = rows(); bind(); } if (V === 'jadwal') ttDayDraw(0); } });
+    });
+  };
+  bind();
+  $('#sjAdd', m).onclick = () => {
+    S.subj.push({ id: uid(), n: tx('Mapel baru'), t: '', h: (S.subj.length * 47 + 15) % 360 }); persist();
+    $('#sjRows', m).innerHTML = rows(); bind();
+    const x = $$('[data-sn]', m).pop(); if (x) { x.scrollIntoView({ block: 'center', behavior: motionOn() ? 'smooth' : 'auto' }); x.focus(); x.select(); }
+  };
+  p.then(() => { if (V === 'jadwal') ttDayDraw(0); });
+}
+function ttSettingsModal() {
+  const p = modal({ title: tx('Pengaturan jadwal'),
+    html: `<div class="stack">
+      <label class="field"><span>${tx('Durasi 1 sesi (menit)')}</span><input class="input" type="number" inputmode="numeric" min="5" id="ttMin" value="${S.ttMin}"></label>
+      <label class="field"><span>${tx('Jam mulai biasanya')}</span><input class="input" type="time" id="ttSt" value="${esc(S.ttStart || '07:00')}"></label>
+      <label class="field"><span>${tx('Ingatkan sebelum pelajaran')}</span><select class="input" id="ttLead">${[0, 5, 10, 15].map(m => `<option value="${m}" ${S.remind.ttLead === m ? 'selected' : ''}>${m ? T`${m} menit sebelum` : tx('Mati')}</option>`).join('')}</select></label>
+      <p class="faint small" style="margin:0">${tx('Muncul sebagai notifikasi biasa, tanpa alarm.')}</p></div>`,
+    actions: [{ label: 'Batal', cls: 'ghost', value: null }, { label: 'Simpan', cls: 'grad', get: m => ({ min: Math.max(5, Math.round(Number($('#ttMin', m).value) || 35)), st: $('#ttSt', m).value || '07:00', lead: Number($('#ttLead', m).value) || 0 }) }] });
+  p.then(d => {
+    if (!d) return;
+    S.ttMin = d.min; S.ttStart = d.st;
+    if (S.remind.ttLead !== d.lead) { S.remind.ttLead = d.lead; S.remind.ttAt = Date.now(); }
+    persist(); ttDayDraw(0); toast(tx('Pengaturan jadwal disimpan'));
+  });
+}
 
 /* Pilih mata pelajaran untuk ditambahkan */
 function lessonModal() {
