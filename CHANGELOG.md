@@ -2,6 +2,10 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## Android build 3 — 18 Oktober 2026
+### Widget di layar kunci
+- Widget **Jadwal berikutnya** kini juga boleh dipasang di layar kunci, di perangkat yang mendukung widget layar kunci dari aplikasi lain.
+
 ## 3.1.1 — 18 Oktober 2026
 ### Animasi lebih lancar di aplikasi Android
 - **Mode lancar** (default di aplikasi Android): latar aurora dibuat diam dan efek kaca diringankan, karena latar yang bergerak membuat kaca buram digambar ulang terus-menerus.
