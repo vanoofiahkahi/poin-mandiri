@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '2.11.0';
+const VERSION = '2.11.1';
 
 /* ================= Ikon ================= */
 const P = {
@@ -2527,7 +2527,20 @@ addEventListener('offline', () => { if (USER && !USER.local) setSync('warn', 'Of
 
 /* ================= Service worker ================= */
 async function regPeriodic() { try { const r = await navigator.serviceWorker.ready; if (r.periodicSync) await r.periodicSync.register('pm-remind', { minInterval: 60 * 60 * 1000 }); } catch (e) {} }
-if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+if ('serviceWorker' in navigator) {
+  const hadSW = !!navigator.serviceWorker.controller;
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
+    /* Cek versi baru saat aplikasi dibuka lagi dan tiap 30 menit */
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
+    setInterval(() => reg.update().catch(() => {}), 30 * 6e4);
+  }).catch(() => {}));
+  /* Versi baru aktif → tawarkan muat ulang */
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadSW) return;
+    const show = () => toast(tx('Versi baru remind+ sudah siap'), { label: tx('Muat ulang'), fn: () => location.reload() });
+    show(); setTimeout(() => { if ($('#toast').hidden) show(); }, 6500);
+  });
+}
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
 if ('Notification' in window && Notification.permission === 'granted') regPeriodic();
 

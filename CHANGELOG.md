@@ -2,6 +2,11 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 2.11.1 — 18 Oktober 2026
+### Update lebih cepat masuk
+- Aplikasi selalu mengecek versi terbaru ke server, tidak lagi memakai salinan lama hingga 10 menit.
+- Saat versi baru siap, muncul tombol **Muat ulang** untuk langsung memakainya.
+
 ## 2.11.0 — 18 Oktober 2026
 ### Pengaturan dipisah per bagian
 - Halaman Atur kini berupa menu ringkas: kartu profil dan 5 bagian (Tampilan, Pengingat & alarm, Poin & level, Data & cadangan, Tentang).

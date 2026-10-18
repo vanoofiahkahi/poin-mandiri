@@ -1,5 +1,5 @@
 /* remind+ service worker: offline, cache, dan pengingat latar belakang */
-const CACHE = 'remindplus-v15';
+const CACHE = 'remindplus-v16';
 const FONTS = 'remindplus-fonts';
 const SHELL = ['./', './index.html', './css/app.css', './js/i18n.js', './js/config.js', './js/supa.js', './js/app.js', './manifest.webmanifest', './CHANGELOG.md',
   './logo.svg', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './badge-96.png'];
@@ -23,7 +23,8 @@ self.addEventListener('fetch', e => {
   }
   if (url.origin !== self.location.origin) return; // API akun selalu langsung ke server
   // File aplikasi: utamakan jaringan agar selalu terbaru, jatuh ke cache saat offline
-  e.respondWith(fetch(req).then(r => { if (r.ok) { const c = r.clone(); caches.open(CACHE).then(x => x.put(req, c)); } return r; })
+  // no-cache: selalu cek versi terbaru ke server (GitHub Pages menyimpan cache 10 menit)
+  e.respondWith(fetch(req, { cache: 'no-cache' }).then(r => { if (r.ok) { const c = r.clone(); caches.open(CACHE).then(x => x.put(req, c)); } return r; })
     .catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || (req.mode === 'navigate' ? caches.match('./index.html') : undefined))));
 });
 
