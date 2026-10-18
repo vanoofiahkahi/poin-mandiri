@@ -2,6 +2,14 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.1.0 — 18 Oktober 2026
+### Aplikasi Android dengan widget layar utama
+- remind+ kini tersedia sebagai aplikasi Android (APK) di halaman Releases GitHub.
+- Widget layar utama **Jadwal berikutnya**: pelajaran sekarang dengan progres dan sisa waktu; setelah lewat setengah jalan, pelajaran berikutnya ikut tampil.
+- Widget memperbarui dirinya sendiri di tiap pergantian pelajaran, walau aplikasi ditutup. Ketuk widget untuk membuka Jadwal.
+- Pengingat dan alarm dijadwalkan langsung oleh Android, jadi tetap berbunyi walau aplikasi ditutup atau tablet baru dinyalakan ulang.
+- Tombol unduh aplikasi Android di Atur → Tentang.
+
 ## 3.0.0 — 18 Oktober 2026
 ### Widget jadwal berikutnya
 - Kartu baru di paling atas Beranda: pelajaran yang sedang berlangsung, lengkap dengan guru, catatan, dan sisa waktunya.

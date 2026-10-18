@@ -14,7 +14,18 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.0.0';
+const VERSION = '3.1.0';
+
+/* ================= Aplikasi Android (WebView + jembatan native) ================= */
+const NATIVE = window.RemindNative || null;
+let NAT_T = null, NAT_SCHED = '', NAT_WID = '';
+if (NATIVE && !('Notification' in window)) {
+  const N = function () {};
+  Object.defineProperty(N, 'permission', { get: () => { try { return NATIVE.permission(); } catch (e) { return 'default'; } } });
+  N.requestPermission = () => new Promise(res => { window.__permCb = v => { window.__permCb = null; res(v); }; NATIVE.requestPermission(); });
+  window.Notification = N;
+}
+window.remindGo = v => { if (USER && typeof go === 'function') go(v); };
 
 /* ================= Ikon ================= */
 const P = {
@@ -272,7 +283,7 @@ const DEF = {
 };
 let S = clone(DEF);
 let USER = null;           // {id, email, name, local}
-let V = (() => { try { const v = sessionStorage.getItem('remindplus:back'); sessionStorage.removeItem('remindplus:back'); return v || 'home'; } catch (e) { return 'home'; } })();
+let V = (() => { try { const v = sessionStorage.getItem('remindplus:back'); sessionStorage.removeItem('remindplus:back'); return v || new URLSearchParams(location.search).get('go') || 'home'; } catch (e) { return 'home'; } })();
 const stateKey = id => 'remindplus:state:' + id;
 const LEGACY_KEY = 'poin-mandiri-v1';
 
@@ -299,6 +310,7 @@ const timeShort = d => new Date(d).toLocaleTimeString(LOC, { hour: '2-digit', mi
 
 let pushT = null, pushing = false, pushAgain = false;
 function persist() {
+  if (NATIVE) { clearTimeout(NAT_T); NAT_T = setTimeout(natSync, 600); }
   S.meta.modifiedAt = Date.now();
   if (!USER.local) S.meta.dirty = true;
   saveLocal();
@@ -2296,6 +2308,7 @@ function atur() {
       <h2>remind<b>+</b></h2>
       <div class="muted">${T`remind+ versi ${VERSION}`}</div>
       <button class="btn soft sm" id="clog" style="margin-top:14px">${I('history')}${tx('Lihat changelog')}</button>
+      ${NATIVE ? `<p class="faint small" style="margin:16px 0 0;max-width:420px">${tx('Aplikasi Android. Tambahkan widget: tekan lama layar utama → Widget → remind+.')}</p>` : `<a class="btn ghost sm" style="margin-top:10px" href="https://github.com/vanoofiahkahi/poin-mandiri/releases/latest" target="_blank" rel="noopener">${I('upload')}${tx('Unduh aplikasi Android (dengan widget)')}</a>`}
     </section>`
   };
 
@@ -2887,6 +2900,11 @@ const NKEY = 'remindplus:notified';
 const getN = () => lsGet(NKEY, {});
 const setN = n => lsSet(NKEY, n);
 async function notify(r) {
+  if (NATIVE) {
+    if (Notification.permission !== 'granted') return false;
+    if (r.id === 'test') NATIVE.notifyNow((r.soft ? '🔔 ' : '⏰ ') + r.title, r.body, !!r.soft);
+    return true; // pengingat terjadwal dibunyikan oleh aplikasi Android
+  }
   if (!('Notification' in window) || Notification.permission !== 'granted') return false;
   const opt = r.soft
     ? { body: r.body, tag: r.id, icon: 'icon-192.png', badge: 'badge-96.png', renotify: false, requireInteraction: false, silent: false, vibrate: [180, 90, 180] }
@@ -2900,7 +2918,7 @@ async function syncReminders() {
   if (!USER) return;
   const L = reminderList(), now = Date.now(), N = getN();
   try { const c = await caches.open('pm-data'), r = await c.match('./reminders.json'); if (r) { const d = await r.json(); Object.assign(N, d.notified || {}); } } catch (e) {}
-  for (const r of L) { if (r.at <= now && now - r.at < 12 * 36e5 && !N[r.id]) { await notify(r); N[r.id] = now; if (!r.soft) alarm(r); else softAlert(r); } }
+  for (const r of L) { if (r.at <= now && now - r.at < 12 * 36e5 && !N[r.id]) { N[r.id] = now; if (NATIVE) continue; await notify(r); if (!r.soft) alarm(r); else softAlert(r); } }
   for (const k in N) if (now - N[k] > 30 * DAY) delete N[k];
   setN(N);
   RT.forEach(clearTimeout); RT = [];
@@ -2909,6 +2927,39 @@ async function syncReminders() {
     await notify(r); n[r.id] = Date.now(); setN(n); if (!r.soft) alarm(r); else softAlert(r); alerts();
   }, r.at - now)));
   try { const c = await caches.open('pm-data'); await c.put('./reminders.json', new Response(JSON.stringify({ list: L, notified: getN() }), { headers: { 'Content-Type': 'application/json' } })); } catch (e) {}
+  natSync(L);
+}
+
+/* Kirim jadwal (untuk widget) & pengingat ke aplikasi Android */
+function hslHex(h, s = 72, l = 58) {
+  s /= 100; l /= 100;
+  const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l), f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return '#' + [f(0), f(8), f(4)].map(x => Math.round(x * 255).toString(16).padStart(2, '0')).join('');
+}
+function widgetData() {
+  const today = ymd(new Date()), days = [];
+  for (let k = 0; k <= 8; k++) {
+    const d = addDays(today, k); if (!ttHas(d)) continue;
+    days.push({ d, label: fd(ymdMs(d)), s: ttSlots(S.tt[d]).map(sl => sl.it.k === 'b'
+      ? { k: 'b', a: sl.a, b: sl.b, n: tx(sl.it.l) || tx('Istirahat') }
+      : { k: 'l', a: sl.a, b: sl.b, n: subjName(sl.it.s), t: (subjOf(sl.it.s) || {}).t || '', note: sl.it.note || '', c: hslHex(subjHue(sl.it.s)), x: ttExamFor(d, sl) ? 1 : 0 }) });
+  }
+  const P = '{0}', Q = '{1}';
+  return { v: 1, sep: TS, days, L: {
+    title: 'remind+', now: tx('Sekarang'), next: tx('Berikutnya'), first: tx('Pelajaran pertama'), brk: tx('Istirahat'),
+    until: T`sampai ${P}`, leftMin: T`sisa ${P} menit`, startsIn: T`Mulai dalam ${P}`, min: T`${P} menit`, hm: T`${P} jam ${Q} menit`,
+    leftOne: T`${1} pelajaran lagi hari ini`, leftMany: T`${P} pelajaran lagi hari ini`, lessonsOne: T`${1} pelajaran`, lessonsMany: T`${P} pelajaran`,
+    tomorrow: tx('Besok'), exam: T`Ujian${''}`, empty: tx('Isi jadwal pelajaran agar pelajaran berikutnya tampil di sini.') } };
+}
+function natSync(L) {
+  if (!NATIVE || !USER) return;
+  try {
+    const now = Date.now();
+    const sj = JSON.stringify((L || reminderList()).filter(r => r.at > now).map(r => ({ id: r.id, at: r.at, title: r.title, body: r.body, soft: !!r.soft })));
+    if (sj !== NAT_SCHED) { NAT_SCHED = sj; NATIVE.schedule(sj); }
+    const wj = JSON.stringify(widgetData());
+    if (wj !== NAT_WID) { NAT_WID = wj; NATIVE.setWidget(wj); }
+  } catch (e) {}
 }
 
 /* Pengingat lembut saat aplikasi terbuka: cukup toast, tanpa sirene */

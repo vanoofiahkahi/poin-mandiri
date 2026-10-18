@@ -5,6 +5,8 @@ Aplikasi web yang bisa dipasang di Android (PWA), dengan akun online yang tersin
 
 **Buka:** https://vanoofiahkahi.github.io/poin-mandiri/
 
+**Aplikasi Android (dengan widget layar utama):** unduh `remindplus.apk` dari [Releases](https://github.com/vanoofiahkahi/poin-mandiri/releases/latest). APK dibuat otomatis oleh GitHub Actions dari folder `android/`.
+
 ## Fitur
 - **Tugas** dengan tingkat kesulitan, deadline, dan poin
 - **Ujian** dengan pengingat belajar malam sebelumnya
@@ -17,4 +19,4 @@ Aplikasi web yang bisa dipasang di Android (PWA), dengan akun online yang tersin
 - Alarm darurat, Bahasa Indonesia & English, mode terang/gelap, liquid glass
 
 ## Changelog
-Versi terbaru: **3.0.0** — lihat semua perubahan di [CHANGELOG.md](CHANGELOG.md).
+Versi terbaru: **3.1.0** — lihat semua perubahan di [CHANGELOG.md](CHANGELOG.md).
