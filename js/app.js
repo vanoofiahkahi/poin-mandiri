@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '2.11.1';
+const VERSION = '2.12.0';
 
 /* ================= Ikon ================= */
 const P = {
@@ -2255,7 +2255,7 @@ function atur() {
     </section>`,
     tentang: `
     <section class="card set-about">
-      <img src="logo.svg" alt="" width="64" height="64">
+      <img src="logo.svg" alt="" width="64" height="64" id="eggLogo" class="egg-logo" draggable="false">
       <h2>remind<b>+</b></h2>
       <div class="muted">${T`remind+ versi ${VERSION}`}</div>
       <button class="btn soft sm" id="clog" style="margin-top:14px">${I('history')}${tx('Lihat changelog')}</button>
@@ -2324,6 +2324,7 @@ function atur() {
   c('toServer', () => { lsDel(LOCAL_MODE_KEY); USER = null; showAuth('server'); });
   c('logout', logout);
   c('clog', changelogModal);
+  if ($('#eggLogo')) eggBind($('#eggLogo'));
   c('avEdit', avatarModal);
   c('delAcc', deleteAccount);
   // pengingat
@@ -2383,6 +2384,72 @@ async function deleteAccount() {
     lsDel(stateKey(id)); USER = null;
     showAuth('login', { info: 'Akun Anda sudah dihapus.', error: '' });
   } catch (e) { toast(tr(e)); }
+}
+
+/* ================= Telur paskah: ketuk logo 5× di Atur → Tentang ================= */
+const EGG_KEY = 'remindplus:egg';
+const eggApply = () => document.documentElement.setAttribute('data-egg', lsGet(EGG_KEY) ? 'on' : 'off');
+eggApply();
+function eggBind(logo) {
+  let n = 0, t = null;
+  logo.onclick = () => {
+    n++; clearTimeout(t); t = setTimeout(() => { n = 0; }, 1600);
+    if (motionOn()) logo.animate([{ transform: `scale(.82) rotate(${n * -8}deg)` }, { transform: `scale(${1 + n * .06}) rotate(${n * 6}deg)` }, { transform: 'none' }], { duration: SP.d, easing: SP.e });
+    try { navigator.vibrate && navigator.vibrate(12 + n * 6); } catch (e) {}
+    if (n === 3) toast(tx('2 kali lagi…'));
+    if (n === 4) toast(tx('Sekali lagi…'));
+    if (n >= 5) { n = 0; clearTimeout(t); hideToast(); eggBurst(logo); }
+  };
+}
+function eggBurst(logo) {
+  const r = logo.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  try { navigator.vibrate && navigator.vibrate([30, 40, 60]); } catch (e) {}
+  if (motionOn()) {
+    logo.animate([{ transform: 'scale(1) rotate(0)', filter: 'none' }, { transform: 'scale(1.5) rotate(360deg)', filter: 'drop-shadow(0 0 24px #8C74FF)', offset: .55 }, { transform: 'scale(1) rotate(720deg)', filter: 'none' }], { duration: 1100, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    const cv = document.createElement('canvas'), dpr = Math.min(2, devicePixelRatio || 1);
+    cv.className = 'egg-cv'; cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; document.body.appendChild(cv);
+    const g = cv.getContext('2d'); g.scale(dpr, dpr);
+    const cols = ['#7B5CFF', '#4E6BFF', '#1FC9A2', '#FFB547', '#FF5C8A', '#FFFFFF'], emo = ['✨', '🎉', '⭐', '💜', '🥚'];
+    const P = Array.from({ length: 140 }, (_, i) => {
+      const a = Math.random() * Math.PI * 2, v = 5 + Math.random() * 9;
+      return { x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 5, r: 3 + Math.random() * 5, c: cols[i % cols.length], rot: Math.random() * 6, vr: (Math.random() - .5) * .4, e: i % 9 === 0 ? emo[i % emo.length] : null, life: 1 };
+    });
+    const t0 = performance.now();
+    const step = now => {
+      const k = (now - t0) / 2600; g.clearRect(0, 0, innerWidth, innerHeight);
+      for (const p of P) {
+        p.vy += .28; p.vx *= .985; p.vy *= .985; p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.life = Math.max(0, 1 - k);
+        g.save(); g.globalAlpha = p.life; g.translate(p.x, p.y); g.rotate(p.rot);
+        if (p.e) { g.font = '22px system-ui'; g.fillText(p.e, -11, 8); } else { g.fillStyle = p.c; g.fillRect(-p.r, -p.r / 2, p.r * 2, p.r); }
+        g.restore();
+      }
+      if (k < 1) requestAnimationFrame(step); else cv.remove();
+    };
+    requestAnimationFrame(step);
+  }
+  setTimeout(eggModal, motionOn() ? 900 : 0);
+}
+function eggModal() {
+  const done = S.tasks.filter(x => x.done).length;
+  const mins = S.log.filter(l => l.kind === 'belajar').reduce((a, l) => a + (l.min || 0), 0);
+  const first = S.log.length ? Math.min(...S.log.map(l => Date.parse(l.t))) : Date.now();
+  const days = Math.max(1, Math.round((sod(Date.now()) - sod(first)) / DAY) + 1);
+  const p = modal({ title: tx('🥚 Kamu menemukan rahasia!'),
+    html: `<div class="egg-box">
+      <img src="logo.svg" alt="" class="egg-float" width="88" height="88">
+      <p>${T`remind+ dibuat khusus oleh <b>${esc(displayName())}</b>, untuk belajar lebih mandiri.`}</p>
+      <div class="egg-stats">
+        <div><b class="num">${fmt(S.earned)}</b><span>${tx('poin total')}</span></div>
+        <div><b class="num">${done}</b><span>${tx('tugas selesai')}</span></div>
+        <div><b class="num">${hm(mins)}</b><span>${tx('waktu belajar')}</span></div>
+        <div><b class="num">${days}</b><span>${tx('hari bersama')}</span></div>
+      </div>
+      <label class="switch egg-sw"><input type="checkbox" id="eggSw" ${lsGet(EGG_KEY) ? 'checked' : ''}>${tx('Mode rahasia: aurora pelangi')}</label>
+    </div>`,
+    actions: [{ label: 'Tutup', cls: 'grad', value: true }] });
+  const sw = $('#eggSw');
+  sw.onchange = () => { lsSet(EGG_KEY, sw.checked); eggApply(); toast(tx(sw.checked ? 'Aurora pelangi aktif 🌈' : 'Aurora pelangi dimatikan')); };
+  return p;
 }
 
 /* ================= Peringatan & pengingat ================= */

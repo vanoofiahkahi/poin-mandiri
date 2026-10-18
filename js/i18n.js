@@ -229,6 +229,10 @@
     'Belajar jam {0} · tugas {1} jam sebelum': (a, b) => `Study at ${a} · tasks ${b} hour${s(b)} before`, '{0} tingkat kesulitan · {1} level': (a, b) => `${a} difficulty level${s(a)} · ${b} level${s(b)}`,
     'Hanya di perangkat ini': 'Only on this device', 'Tersimpan di akun': 'Saved to your account', 'Versi {0}': 'Version {0}',
     'Versi baru remind+ sudah siap': 'A new version of remind+ is ready', 'Muat ulang': 'Reload',
+    '2 kali lagi…': '2 more taps…', 'Sekali lagi…': 'One more…', '🥚 Kamu menemukan rahasia!': '🥚 You found a secret!',
+    'remind+ dibuat khusus oleh <b>{0}</b>, untuk belajar lebih mandiri.': 'remind+ was made especially by <b>{0}</b>, to study more independently.',
+    'poin total': 'total points', 'tugas selesai': 'tasks done', 'waktu belajar': 'study time', 'hari bersama': 'days together',
+    'Mode rahasia: aurora pelangi': 'Secret mode: rainbow aurora', 'Aurora pelangi aktif 🌈': 'Rainbow aurora on 🌈', 'Aurora pelangi dimatikan': 'Rainbow aurora off',
     /* ---------- data bawaan (nama awal) ---------- */
     'Mudah': 'Easy', 'Sedang': 'Medium', 'Sulit': 'Hard', 'Ekstrem': 'Extreme',
     'Pemula': 'Beginner', 'Rajin': 'Diligent', 'Tekun': 'Persistent', 'Disiplin': 'Disciplined', 'Mandiri': 'Independent',

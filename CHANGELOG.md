@@ -2,6 +2,10 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 2.12.0 — 18 Oktober 2026
+### 🥚 Rahasia
+- Ada kejutan tersembunyi di Atur → Tentang. Petunjuk: logonya suka disentuh.
+
 ## 2.11.1 — 18 Oktober 2026
 ### Update lebih cepat masuk
 - Aplikasi selalu mengecek versi terbaru ke server, tidak lagi memakai salinan lama hingga 10 menit.

@@ -803,3 +803,20 @@ body { background-image: none; }
 .set-about img { border-radius: 18px; box-shadow: 0 18px 40px -18px rgba(106,77,255,.8); margin-bottom: 12px; }
 .set-about h2 { margin: 0 0 4px; font-size: 24px; }
 .set-about h2 b { color: var(--brand); }
+
+/* ================= Telur paskah ================= */
+.egg-logo { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; }
+.egg-cv { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 200; pointer-events: none; }
+.egg-box { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; }
+.egg-box p { margin: 0; color: var(--text-2); }
+.egg-float { border-radius: 22px; box-shadow: 0 20px 50px -16px rgba(140,116,255,.9); animation: eggfloat 3.2s ease-in-out infinite; }
+@keyframes eggfloat { 50% { transform: translateY(-8px) rotate(-4deg); } }
+.egg-stats { width: 100%; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.egg-stats div { padding: 12px; border-radius: 16px; background: var(--glass-2); border: 1px solid var(--glass-line); display: flex; flex-direction: column; gap: 2px; }
+.egg-stats b { font-size: 22px; font-weight: 800; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.egg-stats span { color: var(--text-3); font-size: 12.5px; font-weight: 700; }
+.egg-sw { align-self: stretch; }
+[data-egg="on"] .aurora { animation: egghue 14s linear infinite; }
+[data-egg="on"] .aurora i { opacity: 1; }
+@keyframes egghue { to { filter: hue-rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { [data-egg="on"] .aurora { animation: none; filter: hue-rotate(140deg); } }
