@@ -1,0 +1,105 @@
+# Changelog remind+
+
+Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
+
+## 2.9.0 — 18 Oktober 2026
+### Foto profil
+- Foto profil sekarang bisa diganti dari Atur: ketuk foto di kartu paling atas.
+- Pilih foto dari galeri, lalu geser dan zoom untuk mengatur bagian yang dipakai.
+- Atau pilih salah satu dari 24 emoji dengan 8 pilihan warna latar.
+- "Pakai inisial" mengembalikan huruf depan nama seperti semula.
+- Foto disimpan kecil (256 piksel) dan ikut tersinkron di akun.
+
+## 2.8.1 — 18 Oktober 2026
+### Jadwal: liquid glass & tampilan ringkas
+- Sorotan kaca meluncur dan memantul saat pindah tanggal, seperti menu bawah.
+- Isi hari bergeser masuk dengan efek buram, tanpa memuat ulang halaman.
+- Geser jari ke kiri/kanan di area jadwal untuk pindah hari.
+- Baris pelajaran lebih bersih; ketuk satu pelajaran untuk membuka tombol ubah.
+- Istirahat tampil sebagai garis tipis, bukan kotak.
+- Mata pelajaran & guru serta pengaturan jadwal pindah ke ikon di pojok kanan atas.
+- Menu ⋯ berisi salin dari hari lain, salin minggu lalu, dan kosongkan hari.
+
+## 2.8.0 — 18 Oktober 2026
+### Jadwal pelajaran
+- Menu baru **Jadwal**: jadwal diisi per tanggal karena berubah tiap minggu.
+- Mata pelajaran dan guru Year 9 sudah terisi dari jadwal sekolah.
+- Jam mulai berbeda tiap hari; 1 sesi = 35 menit, jam pelajaran dihitung otomatis.
+- Istirahat dengan durasi bebas.
+- Salin jadwal dari hari yang sama minggu lalu atau dari hari mana pun.
+- Kartu jadwal hari ini (sekarang & berikutnya) di Beranda.
+- Saran nama mata pelajaran di Ujian dan Belajar.
+- Pengingat sebelum pelajaran (opsional, notifikasi biasa).
+- Label "Jadwal" di Kas menjadi "Jadwal bayar".
+
+## 2.7.0 — 18 Oktober 2026
+### Sistem reward dihapus
+- Menu Reward, reward tetap, dan kurs poin ke Rupiah dihapus.
+- Poin, saldo, level, streak, riwayat, dan koreksi poin tetap utuh.
+- Tombol Beranda menjadi "Tambah tugas" dan "Mulai belajar".
+- Riwayat penukaran lama tetap tersimpan.
+
+## 2.6.0 — 18 Oktober 2026
+### Bahasa Inggris
+- Pilihan bahasa di Atur → Tampilan → Bahasa / Language.
+- Tombol EN / ID di layar masuk.
+- Semua layar, notifikasi, dan alarm ikut diterjemahkan; format tanggal & angka menyesuaikan.
+- Riwayat lama diterjemahkan saat ditampilkan.
+- Perbaikan: tulisan "Setiap Setiap hari" dan tombol tema yang tertutup kartu di layar masuk (HP).
+
+## 2.5.0 — 17 Oktober 2026
+### Menu Pengingat
+- Pengingat non-akademik: kategori Sekolah dan Pribadi.
+- Contoh siap pakai (bawa baju olahraga, piket, ulang tahun teman, dll.).
+- Berulang: sekali, harian, mingguan, bulanan, tahunan.
+- Hanya notifikasi biasa (getar), tanpa sirene, agar beda dari alarm akademik.
+
+## 2.4.0 — 17 Oktober 2026
+### Pemilih kaca
+- Dropdown, kalender, dan pemilih jam dibuat ulang dengan gaya kaca agar senada dengan desain.
+
+## 2.3.0 — 17 Oktober 2026
+### Dukungan iPhone/iPad
+- Tombol "Pengingat iPhone" menyimpan pengingat ke Kalender (file .ics), karena Safari tidak bisa membuat alarm.
+- Petunjuk memasang remind+ ke Layar Utama di iPhone/iPad.
+
+## 2.2.0 — 17 Oktober 2026
+### Liquid glass
+- Kartu, menu, dialog, dan notifikasi transparan dengan latar buram.
+- Latar aurora yang bergerak pelan.
+- Sorotan menu cair dan animasi pegas di seluruh aplikasi.
+- Angka +poin melayang, saldo menghitung naik, ganti tema dengan lingkaran meluas.
+- Efek kaca dan animasi bisa dimatikan di Atur.
+
+## 2.1.0 — 17 Oktober 2026
+### Menu Kas
+- Pengingat bayar uang kas: mingguan, harian (hari sekolah), atau bulanan.
+- Catat tunggakan, bayar semua sekaligus, dan bonus poin bayar tepat waktu.
+- Pengingat di hari bayar dan malam sebelumnya.
+
+## 2.0.0 — 17 Oktober 2026
+### Poin Mandiri menjadi remind+
+- Nama, logo, dan desain baru dengan mode terang/gelap.
+- Akun online (daftar, masuk, lupa password, hapus akun) lewat server Supabase.
+- Data tersinkron di semua perangkat; data lama Poin Mandiri bisa dipindahkan ke akun.
+- Mode tanpa akun tetap tersedia.
+
+## 1.2.0 — 17 Oktober 2026
+### Alarm darurat
+- Alarm layar penuh dengan sirene dan getar untuk pengingat penting.
+- Tombol "Alarm HP" untuk memasang alarm di aplikasi Jam Android.
+- Notifikasi prioritas tinggi.
+
+## 1.1.0 — 17 Oktober 2026
+### Ujian & deadline
+- Menu Ujian dengan pengingat belajar malam sebelum ujian dan bonus poin.
+- Deadline tugas, pengingat sebelum deadline, dan potongan poin jika terlambat.
+
+## 1.0.0 — 17 Oktober 2026
+### Poin Mandiri
+- Rilis pertama sebagai aplikasi web yang bisa dipasang di tablet.
+- Tugas dengan tingkat kesulitan sendiri, poin saat selesai.
+- Timer belajar dan catat belajar manual.
+- Level, riwayat poin, dan koreksi poin.
+- Reward tetap dan penukaran poin dengan kurs Rupiah.
+- Cadangan dan pulihkan data.

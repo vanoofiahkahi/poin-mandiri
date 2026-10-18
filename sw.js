@@ -1,7 +1,7 @@
 /* remind+ service worker: offline, cache, dan pengingat latar belakang */
-const CACHE = 'remindplus-v12';
+const CACHE = 'remindplus-v13';
 const FONTS = 'remindplus-fonts';
-const SHELL = ['./', './index.html', './css/app.css', './js/i18n.js', './js/config.js', './js/supa.js', './js/app.js', './manifest.webmanifest',
+const SHELL = ['./', './index.html', './css/app.css', './js/i18n.js', './js/config.js', './js/supa.js', './js/app.js', './manifest.webmanifest', './CHANGELOG.md',
   './logo.svg', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './badge-96.png'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });

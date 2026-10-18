@@ -750,3 +750,12 @@ body { background-image: none; }
 .av-hues { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .av-hues button { width: 30px; height: 30px; border-radius: 50%; border: 0; cursor: pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,.4); transition: transform .4s var(--spring); }
 .av-hues button.on { transform: scale(1.18); box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--brand); }
+
+/* ================= Changelog ================= */
+.cl { max-height: 62vh; overflow: auto; padding-right: 4px; }
+.cl-v { display: flex; align-items: center; gap: 10px; margin: 18px 0 2px; }
+.cl-v:first-child { margin-top: 0; }
+.cl-tag { font-weight: 800; font-size: 13px; padding: 3px 10px; border-radius: 99px; color: var(--brand); background: var(--brand-soft); box-shadow: inset 0 0 0 1px var(--brand-line, transparent); }
+.cl h4 { margin: 6px 0 4px; font-size: 15.5px; font-weight: 800; }
+.cl ul { margin: 0; padding-left: 18px; color: var(--text-2); font-size: 14px; line-height: 1.55; }
+.cl li + li { margin-top: 2px; }

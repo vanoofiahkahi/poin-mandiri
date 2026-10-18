@@ -2068,6 +2068,23 @@ function avatarModal() {
   });
 }
 
+/* Changelog (CHANGELOG.md) */
+async function changelogModal() {
+  let md = '';
+  try { const r = await fetch('CHANGELOG.md', { cache: 'no-cache' }); md = await r.text(); } catch (e) { try { const r = await caches.match('./CHANGELOG.md'); md = r ? await r.text() : ''; } catch (x) {} }
+  if (!md) { toast(tx('Changelog belum bisa dimuat. Coba lagi saat online.')); return; }
+  const inl = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  let html = '', open = false;
+  for (const ln of md.split('\n')) {
+    const l = ln.trim();
+    if (l.startsWith('- ')) { if (!open) { html += '<ul>'; open = true; } html += '<li>' + inl(l.slice(2)) + '</li>'; continue; }
+    if (open) { html += '</ul>'; open = false; }
+    if (l.startsWith('## ')) { const [v, d] = l.slice(3).split(' — '); html += `<div class="cl-v"><span class="cl-tag">v${esc(v)}</span><span class="faint small">${esc(d || '')}</span></div>`; }
+    else if (l.startsWith('### ')) html += '<h4>' + inl(l.slice(4)) + '</h4>';
+  }
+  if (open) html += '</ul>';
+  modal({ title: 'Changelog', wide: true, html: `<div class="cl">${html}</div>`, actions: [{ label: 'Tutup', cls: 'grad', value: true }] });
+}
 /* ---------- Pengaturan ---------- */
 function atur() {
   const local = USER.local;
@@ -2156,7 +2173,7 @@ function atur() {
         ${local ? '' : `<button class="btn danger" id="delAcc">${I('trash')}Hapus akun</button>`}
       </div>
       <div id="bxw" hidden style="margin-top:12px"><textarea class="input" id="bx" rows="4" placeholder="Tempel teks cadangan di sini"></textarea><button class="btn" id="bxgo" style="margin-top:10px">Pulihkan</button></div>
-      <p class="faint small" style="margin:16px 0 0">${T`remind+ versi ${VERSION}`}</p>
+      <button class="linkish small" id="clog" style="margin-top:16px">${T`remind+ versi ${VERSION}`} · ${tx('Lihat changelog')}</button>
     </section>
   </div>`;
   setSync(SYNC.st, SYNC.txt);
@@ -2196,6 +2213,7 @@ function atur() {
   if ($('#toAcc')) $('#toAcc').onclick = () => { lsDel(LOCAL_MODE_KEY); USER = null; showAuth('signup'); };
   if ($('#toServer')) $('#toServer').onclick = () => { lsDel(LOCAL_MODE_KEY); USER = null; showAuth('server'); };
   $('#logout').onclick = logout;
+  $('#clog').onclick = changelogModal;
   $('#avEdit').onclick = avatarModal;
   if ($('#delAcc')) $('#delAcc').onclick = deleteAccount;
   // pengingat
