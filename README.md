@@ -15,4 +15,4 @@ Aplikasi web yang bisa dipasang di Android (PWA), dengan akun online yang tersin
 - Alarm darurat, Bahasa Indonesia & English, mode terang/gelap, liquid glass
 
 ## Changelog
-Versi terbaru: **2.9.0** — lihat semua perubahan di [CHANGELOG.md](CHANGELOG.md) atau di halaman [Releases](https://github.com/vanoofiahkahi/poin-mandiri/releases).
+Versi terbaru: **2.9.0** — lihat semua perubahan di [CHANGELOG.md](CHANGELOG.md).
