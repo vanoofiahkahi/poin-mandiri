@@ -268,6 +268,7 @@
 
     'Ada PR dari pelajaran hari ini?': "Any homework from today's lessons?", 'Ketuk pelajaran yang ada PR-nya.': 'Tap the lessons that gave homework.', 'Tidak ada PR': 'No homework',
     'Aplikasi Android. Tambahkan widget: tekan lama layar utama → Widget → remind+.': 'Android app. To add the widget: long-press your home screen → Widgets → remind+.', 'Unduh aplikasi Android (dengan widget)': 'Download the Android app (with widget)',
+    'Mode lancar (latar diam, kaca lebih ringan)': 'Smooth mode (still background, lighter glass)', 'Mode lancar aktif': 'Smooth mode on', 'Mode lancar dimatikan': 'Smooth mode off',
     /* ---------- data bawaan (nama awal) ---------- */
     'Mudah': 'Easy', 'Sedang': 'Medium', 'Sulit': 'Hard', 'Ekstrem': 'Extreme',
     'Pemula': 'Beginner', 'Rajin': 'Diligent', 'Tekun': 'Persistent', 'Disiplin': 'Disciplined', 'Mandiri': 'Independent',

@@ -23,7 +23,8 @@ var d=p==='dark'||(p==='auto'&&matchMedia('(prefers-color-scheme: dark)').matche
 document.documentElement.setAttribute('data-theme',d?'dark':'light');
 var f={};try{f=JSON.parse(localStorage.getItem('remindplus:fx')||'{}')||{}}catch(e){}
 document.documentElement.setAttribute('data-glass',f.glass===false?'off':'on');
-document.documentElement.setAttribute('data-motion',f.motion===false?'off':'on');})();
+document.documentElement.setAttribute('data-motion',f.motion===false?'off':'on');
+var lite=f.lite===undefined?/remindplus-android/.test(navigator.userAgent):f.lite;document.documentElement.setAttribute('data-lite',lite?'on':'off');})();
 </script>
 <link rel="stylesheet" href="css/app.css">
 </head>

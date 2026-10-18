@@ -43,6 +43,7 @@ public class MainActivity extends Activity {
         s.setDatabaseEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setAllowFileAccess(false);
+        s.setOffscreenPreRaster(true);  // animasi & gulir lebih mulus (pakai sedikit lebih banyak memori)
         s.setUserAgentString(s.getUserAgentString() + " remindplus-android/1");
 
         web.addJavascriptInterface(new Bridge(this), "RemindNative");

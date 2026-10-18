@@ -921,3 +921,17 @@ body { background-image: none; }
 .hw-chip .ic { width: 13px; height: 13px; }
 .hw-chip:active { transform: scale(.93); }
 .w-head b { white-space: nowrap; } .w-head .faint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; text-align: right; flex: 1; }
+
+/* ================= Mode lancar (default di aplikasi Android) =================
+   Latar aurora yang bergerak memaksa kaca buram di atasnya digambar ulang tiap frame.
+   Di WebView itu berat, jadi latar dibuat diam dan blur dikurangi. */
+[data-lite="on"] .aurora i { animation: none !important; will-change: auto; }
+[data-lite="on"][data-egg="on"] .aurora { animation: none; filter: hue-rotate(140deg); }
+[data-lite="on"] .card, [data-lite="on"] .alert, [data-lite="on"] .modal .box, [data-lite="on"] .toast, [data-lite="on"] .auth-card {
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+[data-lite="on"] .side, [data-lite="on"] .bottom-nav { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+[data-lite="on"] .pop { -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+[data-lite="on"] .modal { -webkit-backdrop-filter: none; backdrop-filter: none; }
+[data-lite="on"] .hero .btn.glass { -webkit-backdrop-filter: none; backdrop-filter: none; }
+[data-lite="on"] .hero .liq { animation-duration: 0s !important; animation: none !important; }

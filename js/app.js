@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.1.0';
+const VERSION = '3.1.1';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -109,11 +109,13 @@ function quickToggleTheme(e) { themeTransition(() => setTheme(isDark() ? 'light'
 
 /* ================= Gerak & efek kaca ================= */
 const FX_KEY = 'remindplus:fx';
-let FX = Object.assign({ glass: true, motion: true }, lsGet(FX_KEY, {}) || {});
+const IS_APP = /remindplus-android/.test(navigator.userAgent);
+let FX = Object.assign({ glass: true, motion: true, lite: IS_APP }, lsGet(FX_KEY, {}) || {});
 function setFx(patch) {
   FX = Object.assign(FX, patch); lsSet(FX_KEY, FX);
   document.documentElement.setAttribute('data-glass', FX.glass ? 'on' : 'off');
   document.documentElement.setAttribute('data-motion', FX.motion ? 'on' : 'off');
+  document.documentElement.setAttribute('data-lite', FX.lite ? 'on' : 'off');
 }
 const rmq = matchMedia('(prefers-reduced-motion: reduce)');
 const motionOn = () => FX.motion && !rmq.matches;
@@ -2241,6 +2243,7 @@ function atur() {
       <div class="stack" style="gap:12px">
         <label class="switch"><input type="checkbox" id="fxg" ${FX.glass ? 'checked' : ''}>Efek kaca (liquid glass)</label>
         <label class="switch"><input type="checkbox" id="fxm" ${FX.motion ? 'checked' : ''}>Animasi halus</label>
+        <label class="switch"><input type="checkbox" id="fxl" ${FX.lite ? 'checked' : ''}>${tx('Mode lancar (latar diam, kaca lebih ringan)')}</label>
         <p class="faint small" style="margin:0">Matikan salah satunya jika tablet terasa lambat atau baterai cepat habis.</p>
       </div>
     </section>`,
@@ -2359,6 +2362,7 @@ function atur() {
   $$('#langPick button', view()).forEach(b => b.onclick = () => { if (b.dataset.l === LANG) return; try { sessionStorage.setItem('remindplus:back', 'atur'); sessionStorage.setItem('remindplus:asec', 'tampilan'); } catch (e) {} setLang(b.dataset.l); });
   c('fxg', e => { setFx({ glass: e.target.checked }); toast(e.target.checked ? 'Efek kaca aktif' : 'Efek kaca dimatikan'); }, 'onchange');
   c('fxm', e => { setFx({ motion: e.target.checked }); toast(e.target.checked ? 'Animasi aktif' : 'Animasi dimatikan'); }, 'onchange');
+  c('fxl', e => { setFx({ lite: e.target.checked }); toast(tx(e.target.checked ? 'Mode lancar aktif' : 'Mode lancar dimatikan')); }, 'onchange');
   // akun
   c('pnS', async () => {
     const n = $('#pn').value.trim(); if (!n) return;

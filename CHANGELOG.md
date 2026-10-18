@@ -2,6 +2,12 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.1.1 — 18 Oktober 2026
+### Animasi lebih lancar di aplikasi Android
+- **Mode lancar** (default di aplikasi Android): latar aurora dibuat diam dan efek kaca diringankan, karena latar yang bergerak membuat kaca buram digambar ulang terus-menerus.
+- Bisa dinyalakan/dimatikan di Atur → Tampilan.
+- Aplikasi Android memakai akselerasi GPU dan pra-render agar animasi dan gulir lebih mulus.
+
 ## 3.1.0 — 18 Oktober 2026
 ### Aplikasi Android dengan widget layar utama
 - remind+ kini tersedia sebagai aplikasi Android (APK) di halaman Releases GitHub.
