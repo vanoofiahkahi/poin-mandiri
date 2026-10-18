@@ -218,6 +218,9 @@
     'Salin dari hari lain…': 'Copy from another day…', 'Salin dari hari lain': 'Copy from another day', 'Salin minggu lalu ke hari kosong': "Copy last week into empty days",
     'Kosongkan hari ini': 'Clear this day', 'Tidak ada hari kosong yang bisa diisi': 'No empty days to fill', '{0} dihapus': '{0} deleted', 'Pengaturan jadwal disimpan': 'Timetable settings saved',
 
+    'Foto profil': 'Profile picture', 'Ubah foto profil': 'Change profile picture', 'Geser foto untuk mengatur posisi': 'Drag the photo to position it', 'Pilih foto': 'Choose photo',
+    'Pakai inisial': 'Use initial', 'Atau pilih emoji': 'Or pick an emoji', 'Warna': 'Colour', 'Foto tidak bisa dibuka': "This photo can't be opened", 'Foto profil disimpan': 'Profile picture saved',
+
     /* ---------- data bawaan (nama awal) ---------- */
     'Mudah': 'Easy', 'Sedang': 'Medium', 'Sulit': 'Hard', 'Ekstrem': 'Extreme',
     'Pemula': 'Beginner', 'Rajin': 'Diligent', 'Tekun': 'Persistent', 'Disiplin': 'Disciplined', 'Mandiri': 'Independent',

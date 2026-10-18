@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '2.8.1';
+const VERSION = '2.9.0';
 
 /* ================= Ikon ================= */
 const P = {
@@ -965,7 +965,7 @@ function shell() {
   setSync(SYNC.st, SYNC.txt);
 }
 function updateIdentity() {
-  $$('[data-av]').forEach(e => { e.textContent = initial(); });
+  $$('[data-av]').forEach(e => avPaint(e));
   $$('[data-name]').forEach(e => { e.textContent = displayName(); });
   $$('[data-mail]').forEach(e => { e.textContent = USER.local ? 'Mode tanpa akun' : USER.email; });
 }
@@ -1981,6 +1981,93 @@ function riwayat() {
   $$('#rf button').forEach(b => b.onclick = () => { RF = b.dataset.f; render(); });
 }
 
+/* ================= Foto profil ================= */
+const AV_EMO = ['🦊', '🐱', '🐼', '🐨', '🐯', '🦁', '🐸', '🐧', '🦉', '🐙', '🦄', '🐲', '🚀', '⚡', '🔥', '🌙', '⭐', '🎧', '🎮', '⚽', '🏀', '📚', '🎨', '😎'];
+const AV_HUE = [258, 220, 190, 160, 130, 40, 15, 330];
+const avBg = h => `linear-gradient(135deg, hsl(${h} 82% 64%), hsl(${(h + 38) % 360} 76% 46%))`;
+function avPaint(el, a) {
+  a = a === undefined ? S.profile.av : a;
+  el.classList.remove('av-img', 'av-emo'); el.style.background = '';
+  if (a && a.t === 'img' && a.d) { el.classList.add('av-img'); el.innerHTML = `<img src="${a.d}" alt="" draggable="false">`; }
+  else if (a && a.t === 'emo') { el.classList.add('av-emo'); el.textContent = a.e; el.style.background = avBg(a.c); }
+  else el.textContent = initial();
+}
+/* Potong foto menjadi persegi 256px (JPEG kecil, ikut tersinkron di akun) */
+function avatarModal() {
+  let cur = S.profile.av ? clone(S.profile.av) : null;
+  let crop = null; // { img, z, x, y }
+  const hue0 = cur && cur.t === 'emo' ? cur.c : AV_HUE[0];
+  const p = modal({ title: tx('Foto profil'), wide: true,
+    html: `<div class="av-ed">
+      <div class="av-stage" id="avStage"><div class="avatar av-prev" id="avPrev"></div><canvas id="avCv" width="520" height="520" hidden></canvas><div class="av-ring" hidden></div></div>
+      <div class="av-zoom" id="avZoomW" hidden><input type="range" id="avZoom" min="1" max="4" step="0.01" value="1" aria-label="Zoom"><span class="faint small">${tx('Geser foto untuk mengatur posisi')}</span></div>
+      <div class="av-btns">
+        <label class="btn grad sm av-file">${I('upload')}${tx('Pilih foto')}<input type="file" id="avFile" accept="image/*" hidden></label>
+        <button type="button" class="btn ghost sm" id="avInit">${tx('Pakai inisial')}</button>
+      </div>
+      <div class="field"><span>${tx('Atau pilih emoji')}</span><div class="av-emos">${AV_EMO.map(e => `<button type="button" data-e="${e}">${e}</button>`).join('')}</div></div>
+      <div class="av-hues">${AV_HUE.map(h => `<button type="button" data-h="${h}" style="background:${avBg(h)}" aria-label="Warna" class="${h === hue0 ? 'on' : ''}"></button>`).join('')}</div>
+    </div>`,
+    actions: [{ label: 'Batal', cls: 'ghost', value: null }, { label: 'Simpan', cls: 'grad', get: () => (crop ? { t: 'img', d: cropOut() } : cur) || { t: 'none' } }] });
+  const m = $('#modal'), prev = $('#avPrev', m), cv = $('#avCv', m), ctx = cv.getContext('2d');
+  let hue = hue0;
+  const showPrev = () => { crop = null; cv.hidden = true; $('.av-ring', m).hidden = true; $('#avZoomW', m).hidden = true; prev.hidden = false; avPaint(prev, cur); pulse(prev); };
+  const pulse = el => { if (motionOn()) el.animate([{ transform: 'scale(.86)' }, { transform: 'scale(1)' }], { duration: SP.d, easing: SP.e }); };
+  showPrev();
+  $$('.av-emos button', m).forEach(b => b.onclick = () => { cur = { t: 'emo', e: b.dataset.e, c: hue }; $$('.av-emos button', m).forEach(x => x.classList.toggle('on', x === b)); showPrev(); });
+  $$('.av-hues button', m).forEach(b => b.onclick = () => {
+    hue = +b.dataset.h; $$('.av-hues button', m).forEach(x => x.classList.toggle('on', x === b));
+    cur = { t: 'emo', e: cur && cur.t === 'emo' ? cur.e : AV_EMO[0], c: hue }; showPrev();
+  });
+  $('#avInit', m).onclick = () => { cur = null; $$('.av-emos button', m).forEach(x => x.classList.remove('on')); showPrev(); };
+  // ---- potong foto ----
+  const draw = () => {
+    const { img, z } = crop, W = cv.width, base = Math.max(W / img.width, W / img.height), s = base * z;
+    const w = img.width * s, h = img.height * s;
+    crop.x = Math.min(0, Math.max(W - w, crop.x)); crop.y = Math.min(0, Math.max(W - h, crop.y));
+    ctx.clearRect(0, 0, W, W); ctx.drawImage(img, crop.x, crop.y, w, h);
+  };
+  function cropOut() {
+    const o = document.createElement('canvas'); o.width = o.height = 256;
+    o.getContext('2d').drawImage(cv, 0, 0, 256, 256);
+    return o.toDataURL('image/jpeg', 0.86);
+  }
+  $('#avFile', m).onchange = e => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    const url = URL.createObjectURL(f), img = new Image();
+    img.onload = () => {
+      const W = cv.width, s = Math.max(W / img.width, W / img.height);
+      crop = { img, z: 1, x: (W - img.width * s) / 2, y: (W - img.height * s) / 2 };
+      prev.hidden = true; cv.hidden = false; $('.av-ring', m).hidden = false; $('#avZoomW', m).hidden = false; $('#avZoom', m).value = 1;
+      $$('.av-emos button', m).forEach(x => x.classList.remove('on'));
+      draw(); pulse(cv); URL.revokeObjectURL(url);
+    };
+    img.onerror = () => { toast(tx('Foto tidak bisa dibuka')); URL.revokeObjectURL(url); };
+    img.src = url;
+  };
+  $('#avZoom', m).oninput = e => {
+    if (!crop) return;
+    const W = cv.width, c = W / 2, oz = crop.z, nz = +e.target.value;
+    crop.x = c - (c - crop.x) * nz / oz; crop.y = c - (c - crop.y) * nz / oz; crop.z = nz; draw();
+  };
+  let drag = null;
+  cv.addEventListener('pointerdown', e => { if (!crop) return; cv.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY }; });
+  cv.addEventListener('pointermove', e => {
+    if (!drag || !crop) return;
+    const k = cv.width / cv.getBoundingClientRect().width;
+    crop.x += (e.clientX - drag.x) * k; crop.y += (e.clientY - drag.y) * k; drag = { x: e.clientX, y: e.clientY }; draw();
+  });
+  cv.addEventListener('pointerup', () => { drag = null; });
+  cv.addEventListener('wheel', e => { if (!crop) return; e.preventDefault(); const z = $('#avZoom', m); z.value = Math.min(4, Math.max(1, +z.value - e.deltaY * 0.002)); z.oninput({ target: z }); }, { passive: false });
+  setTimeout(() => { const f = document.activeElement; if (f && m.contains(f)) f.blur(); }, 90);
+  p.then(v => {
+    if (!v) return;
+    S.profile.av = v.t === 'none' ? null : v;
+    persist(); updateIdentity(); if (V === 'atur') render();
+    toast(tx('Foto profil disimpan'));
+  });
+}
+
 /* ---------- Pengaturan ---------- */
 function atur() {
   const local = USER.local;
@@ -1989,7 +2076,7 @@ function atur() {
   view().innerHTML = `
   <section class="card" style="margin-bottom:16px">
     <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
-      <div class="avatar lg">${esc(initial())}</div>
+      <button class="avatar lg av-edit" id="avEdit" data-av aria-label="Ubah foto profil"></button>
       <div style="flex:1;min-width:200px">
         <h2 style="margin:0">${esc(displayName())}</h2>
         <div class="muted">${local ? 'Mode tanpa akun · data hanya di perangkat ini' : esc(USER.email)}</div>
@@ -2109,6 +2196,7 @@ function atur() {
   if ($('#toAcc')) $('#toAcc').onclick = () => { lsDel(LOCAL_MODE_KEY); USER = null; showAuth('signup'); };
   if ($('#toServer')) $('#toServer').onclick = () => { lsDel(LOCAL_MODE_KEY); USER = null; showAuth('server'); };
   $('#logout').onclick = logout;
+  $('#avEdit').onclick = avatarModal;
   if ($('#delAcc')) $('#delAcc').onclick = deleteAccount;
   // pengingat
   $('#atest').onclick = () => { const v = S.remind.siren; S.remind.siren = true; alarm({ id: 'test', title: tx('Tes alarm'), body: tx('Beginilah bunyi pengingat ujian dan deadline.') }); S.remind.siren = v; };
