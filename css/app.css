@@ -602,7 +602,7 @@ body { background-image: none; }
 /* =====================================================================
    Pengingat non-akademik
    ===================================================================== */
-.cat-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.cat-pick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
 .cat-pick button {
   display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r); border: 1.5px solid var(--glass-line);
   background: var(--glass-2); color: var(--text); font: inherit; font-weight: 800; font-size: 15px; cursor: pointer; text-align: left;

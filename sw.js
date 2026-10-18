@@ -1,5 +1,5 @@
 /* remind+ service worker: offline, cache, dan pengingat latar belakang */
-const CACHE = 'remindplus-v21';
+const CACHE = 'remindplus-v22';
 const FONTS = 'remindplus-fonts';
 const SHELL = ['./', './index.html', './css/app.css', './js/i18n.js', './js/config.js', './js/supa.js', './js/app.js', './manifest.webmanifest', './CHANGELOG.md',
   './logo.svg', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './badge-96.png'];

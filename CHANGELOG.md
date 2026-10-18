@@ -2,6 +2,12 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.2.0 — 18 Oktober 2026
+### Acara sekolah di Pengingat
+- Kategori baru **Acara sekolah** di samping Sekolah dan Pribadi, lengkap dengan tab filternya.
+- Contoh siap pakai: upacara bendera, class meeting, pentas seni, study tour, lomba, rapat orang tua, pembagian rapor, peringatan hari besar, libur sekolah.
+- Acara satu kali bisa diberi tanggal **Sampai** untuk acara beberapa hari (mis. 22–24 Okt).
+
 ## 3.1.2 — 18 Oktober 2026
 ### Saran mata pelajaran ber-liquid glass
 - Daftar saran mata pelajaran di Ujian dan Belajar kini berupa popover kaca dengan titik warna mapel dan nama guru, menggantikan daftar abu-abu bawaan Android.

@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.1.2';
+const VERSION = '3.2.0';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -84,6 +84,7 @@ const P = {
   chevl: '<path d="m15 18-6-6 6-6"/>',
   chevr: '<path d="m9 18 6-6-6-6"/>',
   chevu: '<path d="m18 15-6-6-6 6"/>',
+  flag: '<path d="M4 22V4"/><path d="M4 4h12l-2 4 2 4H4"/>',
   more: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>'
 };
 const I = (n, c = 'ic') => `<svg class="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || ''}</svg>`;
@@ -1456,7 +1457,8 @@ function payKas(id, all) {
 /* ---------- Pengingat non-akademik (hanya notifikasi, tanpa alarm) ---------- */
 const REM_CAT = {
   sekolah: { n: 'Sekolah', sub: 'Non-akademik', ic: 'backpack', tone: 't-brand', chip: 'brand' },
-  pribadi: { n: 'Pribadi', sub: 'Di luar sekolah', ic: 'heart', tone: 't-mint', chip: 'mint' }
+  pribadi: { n: 'Pribadi', sub: 'Di luar sekolah', ic: 'heart', tone: 't-mint', chip: 'mint' },
+  acara: { n: 'Acara sekolah', sub: 'Upacara, lomba, rapat', ic: 'flag', tone: 't-warn', chip: 'warn' }
 };
 const REM_TPL = {
   sekolah: [
@@ -1478,6 +1480,17 @@ const REM_TPL = {
     ['Rapikan kamar', { rep: 'weekly', days: [0], jam: '09:00', lead: 0 }],
     ['Telepon keluarga', { rep: 'weekly', days: [0], jam: '19:00', lead: 0 }],
     ['Minum air putih', { rep: 'daily', jam: '10:00', lead: 0 }]
+  ],
+  acara: [
+    ['Upacara bendera', { rep: 'once', jam: '07:00', lead: 'eve' }],
+    ['Class meeting', { rep: 'once', jam: '07:30', lead: 'eve' }],
+    ['Pentas seni', { rep: 'once', jam: '08:00', lead: 'eve' }],
+    ['Study tour / field trip', { rep: 'once', jam: '06:30', lead: 'eve' }],
+    ['Lomba', { rep: 'once', jam: '08:00', lead: 'eve' }],
+    ['Rapat orang tua', { rep: 'once', jam: '09:00', lead: 'eve' }],
+    ['Pembagian rapor', { rep: 'once', jam: '08:00', lead: 'eve' }],
+    ['Peringatan hari besar', { rep: 'once', jam: '07:00', lead: 'eve' }],
+    ['Libur sekolah', { rep: 'once', jam: '07:00', lead: 'eve' }]
   ]
 };
 const LEAD = { 0: 'Tepat waktu', 15: '15 menit sebelum', 60: '1 jam sebelum', eve: 'Malam sebelumnya', both: 'Malam sebelumnya + tepat waktu' };
@@ -1511,7 +1524,7 @@ function remTimes(r, date) {
 }
 function remSched(r) {
   const jam = hhmm(r.jam || '');
-  if (r.rep === 'once') return fd(ymdMs(r.date)) + ' · ' + jam;
+  if (r.rep === 'once') return (r.end && r.end > r.date ? fd(ymdMs(r.date)) + ' – ' + fd(ymdMs(r.end)) : fd(ymdMs(r.date))) + ' · ' + jam;
   if (r.rep === 'daily') return tx('Setiap hari') + ' · ' + jam;
   if (r.rep === 'weekly') {
     const ds = [...(r.days || [])].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7));
@@ -1547,6 +1560,7 @@ function remForm(r) {
       </div>
       <div class="form-row">
         <label class="field" data-w="date"><span data-dl>Tanggal</span><input class="input" type="date" data-f="date" value="${esc(r.date || '')}"></label>
+        <label class="field" data-w="end"><span>Sampai (opsional)</span><input class="input" type="date" data-f="end" data-ph="Satu hari" value="${esc(r.end || '')}"></label>
         <div class="field" data-w="days"><span>Hari</span><div class="dchips">${dayOrder.map(d => `<button type="button" data-d="${d}" class="${(r.days || []).includes(d) ? 'on' : ''}">${HARI_S[d]}</button>`).join('')}</div></div>
         <label class="field"><span>Jam</span><input class="input" type="time" data-f="jam" value="${esc(r.jam)}"></label>
         <label class="field"><span>Ingatkan</span><select class="input" data-f="lead">${Object.entries(LEAD).map(([k, n]) => `<option value="${k}" ${String(r.lead) === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
@@ -1563,6 +1577,7 @@ function remFormBind(root) {
     const rep = q('rep').value;
     $('[data-w="date"]', f).hidden = rep === 'daily' || rep === 'weekly';
     $('[data-w="days"]', f).hidden = rep !== 'weekly';
+    $('[data-w="end"]', f).hidden = rep !== 'once';
     $('[data-dl]', f).textContent = rep === 'monthly' ? 'Mulai (tanggal tiap bulan)' : rep === 'yearly' ? 'Tanggal (tiap tahun)' : 'Tanggal';
   };
   const tpl = () => {
@@ -1592,8 +1607,8 @@ function remRead(root) {
   if (!t) { toast('Isi judul pengingat'); q('t').focus(); return null; }
   if (rep === 'weekly' && !days.length) { toast('Pilih minimal satu hari'); return null; }
   if ((rep === 'once' || rep === 'monthly' || rep === 'yearly') && !q('date').value) { toast('Pilih tanggal'); return null; }
-  const lead = q('lead').value;
-  return { cat: f.dataset.cat, t, rep, days, date: q('date').value || ymd(new Date()), jam: q('jam').value || '07:00', lead: lead === 'eve' || lead === 'both' ? lead : Number(lead), note: q('note').value.trim(), pts: Math.max(0, Math.round(Number(q('pts').value) || 0)) };
+  const lead = q('lead').value, end = rep === 'once' && q('end').value > q('date').value ? q('end').value : '';
+  return { cat: f.dataset.cat, t, rep, days, end, date: q('date').value || ymd(new Date()), jam: q('jam').value || '07:00', lead: lead === 'eve' || lead === 'both' ? lead : Number(lead), note: q('note').value.trim(), pts: Math.max(0, Math.round(Number(q('pts').value) || 0)) };
 }
 
 let RCAT = 'semua', RFORM_CAT = 'sekolah';
@@ -1635,7 +1650,7 @@ function ingat() {
     <div id="rform">${remForm()}</div>
     <div style="margin-top:14px"><button class="btn grad" id="radd">${I('plus')}Tambah pengingat</button></div>
   </section>
-  <div class="sec-title"><div class="seg" id="rcat">${[['semua', 'Semua'], ['sekolah', 'Sekolah'], ['pribadi', 'Pribadi']].map(([k, n]) => `<button class="${RCAT === k ? 'on' : ''}" data-c="${k}">${tx(n)} · ${k === 'semua' ? S.rem.length : S.rem.filter(r => r.cat === k).length}</button>`).join('')}</div></div>
+  <div class="sec-title"><div class="seg" id="rcat">${[['semua', 'Semua'], ['sekolah', 'Sekolah'], ['pribadi', 'Pribadi'], ['acara', 'Acara sekolah']].map(([k, n]) => `<button class="${RCAT === k ? 'on' : ''}" data-c="${k}">${tx(n)} · ${k === 'semua' ? S.rem.length : S.rem.filter(r => r.cat === k).length}</button>`).join('')}</div></div>
   ${list.length ? sec('Hari ini', groups.today, 'today') + sec('Terlewat', groups.missed, 'missed') + sec('Akan datang', groups.next, 'next') + sec('Selesai', groups.done.slice(0, 10), 'done')
       : emptyBox('bell', 'Belum ada pengingat', 'Tambahkan pengingat sekolah atau pribadi di atas.')}`;
   remFormBind($('#rform'));

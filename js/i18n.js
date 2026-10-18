@@ -269,6 +269,9 @@
     'Ada PR dari pelajaran hari ini?': "Any homework from today's lessons?", 'Ketuk pelajaran yang ada PR-nya.': 'Tap the lessons that gave homework.', 'Tidak ada PR': 'No homework',
     'Aplikasi Android. Tambahkan widget: tekan lama layar utama → Widget → remind+.': 'Android app. To add the widget: long-press your home screen → Widgets → remind+.', 'Unduh aplikasi Android (dengan widget)': 'Download the Android app (with widget)',
     'Mode lancar (latar diam, kaca lebih ringan)': 'Smooth mode (still background, lighter glass)', 'Mode lancar aktif': 'Smooth mode on', 'Mode lancar dimatikan': 'Smooth mode off',
+    'Acara sekolah': 'School events', 'Upacara, lomba, rapat': 'Ceremonies, contests, meetings', 'Sampai (opsional)': 'Until (optional)', 'Satu hari': 'One day',
+    'Upacara bendera': 'Flag ceremony', 'Class meeting': 'Class meeting', 'Pentas seni': 'Art performance', 'Study tour / field trip': 'Study tour / field trip', 'Lomba': 'Competition',
+    'Rapat orang tua': 'Parent meeting', 'Pembagian rapor': 'Report card day', 'Peringatan hari besar': 'Holiday commemoration', 'Libur sekolah': 'School holiday',
     /* ---------- data bawaan (nama awal) ---------- */
     'Mudah': 'Easy', 'Sedang': 'Medium', 'Sulit': 'Hard', 'Ekstrem': 'Extreme',
     'Pemula': 'Beginner', 'Rajin': 'Diligent', 'Tekun': 'Persistent', 'Disiplin': 'Disciplined', 'Mandiri': 'Independent',
