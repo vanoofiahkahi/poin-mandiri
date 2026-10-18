@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.1.1';
+const VERSION = '3.1.2';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -513,6 +513,7 @@ addEventListener('scroll', e => {
 function enhance(root) {
   if (!root) return;
   $$('select.input:not([data-enh])', root).forEach(enhSelect);
+  $$('input.input[data-suggest]:not([data-enh])', root).forEach(enhSuggest);
   $$('input.input[type=date]:not([data-enh]), input.input[type=time]:not([data-enh]), input.input[type=datetime-local]:not([data-enh])', root).forEach(enhDate);
 }
 function pickBtn(native, icon, role) {
@@ -524,6 +525,39 @@ function pickBtn(native, icon, role) {
   return b;
 }
 function setVal(inp, v) { inp.value = v; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); }
+
+/* Saran mata pelajaran dalam popover kaca (pengganti datalist bawaan browser) */
+function enhSuggest(inp) {
+  inp.dataset.enh = '1';
+  let items = [], idx = -1;
+  const show = () => {
+    const q = inp.value.trim().toLowerCase();
+    const list = S.subj.map(s => s.n).filter(n => !q || n.toLowerCase().includes(q)).filter(n => n.toLowerCase() !== q).slice(0, 8);
+    if (!list.length) { if (POP && POP.anchor === inp) closePop(); return; }
+    const fresh = !(POP && POP.anchor === inp);
+    const el = fresh ? openPop(inp, 'pop-list pop-sug', 220) : POP.el;
+    el.setAttribute('role', 'listbox');
+    el.innerHTML = list.map((n, i) => { const sj = S.subj.find(x => x.n === n); return `<button type="button" class="opt" data-i="${i}" role="option" tabindex="-1"><span class="sug-t"><i class="sug-dot" style="--h:${sj ? sj.h : 220}"></i>${esc(n)}</span>${sj && sj.t ? `<small class="faint">${esc(sj.t.split(' (')[0])}</small>` : ''}</button>`; }).join('');
+    items = $$('.opt', el); idx = -1;
+    items.forEach((o, i) => {
+      o.onpointerdown = e => e.preventDefault(); // jangan tutup keyboard
+      o.onclick = () => { inp.value = list[i]; inp.dispatchEvent(new Event('input', { bubbles: true })); closePop(); };
+    });
+    if (fresh) popIn(el); else POP.place();
+    if (fresh && motionOn()) items.forEach((o, i) => o.animate([{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }], { duration: 280, delay: i * 22, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' }));
+  };
+  inp.addEventListener('focus', show);
+  inp.addEventListener('input', e => { if (e.isTrusted) show(); });
+  inp.addEventListener('blur', () => setTimeout(() => { if (POP && POP.anchor === inp && document.activeElement !== inp) closePop(); }, 120));
+  inp.addEventListener('keydown', e => {
+    if (!(POP && POP.anchor === inp) || !items.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault(); idx = (idx + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      items.forEach((o, i) => o.classList.toggle('on', i === idx)); items[idx].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter' && idx >= 0) { e.preventDefault(); e.stopImmediatePropagation(); items[idx].click(); }
+    else if (e.key === 'Escape') closePop();
+  });
+}
 
 /* Dropdown */
 function enhSelect(sel) {
@@ -1197,7 +1231,7 @@ function ujian() {
   <section class="card">
     <h2>Tambah jadwal ujian</h2><p class="sub">${T`remind+ mengingatkan Anda belajar malam sebelumnya, jam <b>${esc(hhmm(S.remind.exam))}</b>. Bonus <b>+${S.remind.examBonus} poin</b> kalau sudah belajar.`}</p>
     <div class="form-row">
-      <label class="field grow2"><span>Mata pelajaran / materi</span><input class="input" id="em" list="subjDL" autocomplete="off" placeholder="Contoh: Matematika – Trigonometri">${subjDL()}</label>
+      <label class="field grow2"><span>Mata pelajaran / materi</span><input class="input" id="em" data-suggest autocomplete="off" placeholder="Contoh: Matematika – Trigonometri"></label>
       <label class="field"><span>Tanggal</span><input class="input" id="et" type="date" value="${tv}"></label>
       <label class="field"><span>Jam mulai</span><input class="input" id="ej" type="time" value="07:30"></label>
     </div>
@@ -1998,7 +2032,7 @@ function belajar() {
   <div class="grid g-study">
     <section class="card">
       <div class="card-head"><h2>Timer belajar</h2><span class="chip brand">${I('spark')}${T`${S.study.p} poin / ${S.study.m} mnt`}</span></div>
-      <label class="field"><span>Sedang belajar apa?</span><input class="input" id="bt" list="subjDL" autocomplete="off" placeholder="Contoh: Bahasa Inggris, coding, fisika" value="${esc(TM.topic)}">${subjDL()}</label>
+      <label class="field"><span>Sedang belajar apa?</span><input class="input" id="bt" data-suggest autocomplete="off" placeholder="Contoh: Bahasa Inggris, coding, fisika" value="${esc(TM.topic)}"></label>
       <div class="timer-wrap"><div class="timer-ring">
         <svg viewBox="0 0 300 300"><circle class="track" cx="150" cy="150" r="140" fill="none" stroke-width="12"/><circle class="val" id="tring" cx="150" cy="150" r="140" fill="none" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}"/></svg>
         <div class="center"><div><div class="t num" id="clk">00:00:00</div><div class="s" id="clkp"></div></div></div>
@@ -2012,7 +2046,7 @@ function belajar() {
     <section class="card">
       <h2>Catat manual</h2><p class="sub">Untuk sesi belajar yang tidak memakai timer.</p>
       <div class="stack">
-        <label class="field"><span>Topik</span><input class="input" id="mt" list="subjDL" autocomplete="off" placeholder="Topik"></label>
+        <label class="field"><span>Topik</span><input class="input" id="mt" data-suggest autocomplete="off" placeholder="Topik"></label>
         <label class="field"><span>Durasi (menit)</span><input class="input" id="mm" type="number" inputmode="numeric" min="1" placeholder="60"></label>
       </div>
       <div class="calc"><span class="muted">Poin yang didapat</span><b class="num" id="mp">0</b></div>

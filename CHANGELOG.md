@@ -2,6 +2,11 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.1.2 — 18 Oktober 2026
+### Saran mata pelajaran ber-liquid glass
+- Daftar saran mata pelajaran di Ujian dan Belajar kini berupa popover kaca dengan titik warna mapel dan nama guru, menggantikan daftar abu-abu bawaan Android.
+- Saran tersaring sambil mengetik dan keyboard tidak tertutup saat memilih.
+
 ## Android build 3 — 18 Oktober 2026
 ### Widget di layar kunci
 - Widget **Jadwal berikutnya** kini juga boleh dipasang di layar kunci, di perangkat yang mendukung widget layar kunci dari aplikasi lain.

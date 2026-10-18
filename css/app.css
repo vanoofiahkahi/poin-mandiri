@@ -935,3 +935,7 @@ body { background-image: none; }
 [data-lite="on"] .modal { -webkit-backdrop-filter: none; backdrop-filter: none; }
 [data-lite="on"] .hero .btn.glass { -webkit-backdrop-filter: none; backdrop-filter: none; }
 [data-lite="on"] .hero .liq { animation-duration: 0s !important; animation: none !important; }
+.pop-sug .opt { min-height: 44px; }
+.sug-t { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.sug-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: hsl(var(--h, 220) 72% 58%); box-shadow: 0 0 8px hsl(var(--h, 220) 72% 58% / .6); }
+.pop-sug small { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
