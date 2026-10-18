@@ -2,6 +2,39 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.0.0 — 18 Oktober 2026
+### Widget jadwal berikutnya
+- Kartu baru di paling atas Beranda: pelajaran yang sedang berlangsung, lengkap dengan guru, catatan, dan sisa waktunya.
+- Setelah pelajaran lewat setengah jalan, pelajaran berikutnya ikut tampil di bawahnya.
+- Saat istirahat tampil "sampai jam …" dan pelajaran berikutnya; sebelum sekolah tampil pelajaran pertama; setelah sekolah tampil hari sekolah berikutnya.
+
+### Rencana belajar ujian
+- Tombol **Rencana** di tiap ujian: tulis bab atau topik, lalu remind+ membaginya ke hari-hari sebelum ujian.
+- Hitung mundur H-n dan progres topik di daftar ujian.
+- Kartu **Rencana belajar hari ini** di Beranda; tiap topik selesai +5 poin.
+
+### PR dari jadwal
+- Setelah pelajaran selesai, remind+ bertanya "Ada PR?" dengan pilihan pelajaran hari itu.
+- Deadline PR otomatis diisi dengan pelajaran yang sama berikutnya di jadwal.
+
+### Catatan pelajaran
+- Tambahkan catatan di tiap pelajaran (mis. bawa kalkulator); tampil di jadwal dan di widget.
+
+### Ringkasan mingguan
+- Tiap Minggu sore dan Senin muncul ringkasan minggu: poin, waktu belajar, tugas, dan ujian minggu depan.
+- Ringkasan lengkap (belajar per mata pelajaran, hari terbaik) bisa dibuka kapan saja dari Riwayat.
+
+### Pencapaian
+- 19 lencana, dari "Langkah pertama" sampai "Sebulan konsisten", di Atur → Pencapaian dan di kartu level Beranda.
+
+### Pembeku streak
+- Lindungi streak dengan 50 poin di hari kamu tidak sempat belajar (maksimal 2 kali per minggu).
+
+### Pelacak nilai (opsional)
+- Aktifkan nilai per mata pelajaran lewat tombol **Nilai** di daftar mata pelajaran & guru.
+- Tab **Nilai** di menu Ujian: rata-rata, tren naik/turun, dan grafik kecil tiap mapel.
+- Ujian yang sudah lewat bisa langsung diisi nilainya.
+
 ## 2.12.0 — 18 Oktober 2026
 ### 🥚 Rahasia
 - Ada kejutan tersembunyi di Atur → Tentang. Petunjuk: logonya suka disentuh.

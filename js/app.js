@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '2.12.0';
+const VERSION = '3.0.0';
 
 /* ================= Ikon ================= */
 const P = {
@@ -265,7 +265,7 @@ const DEF = {
   tasks: [], exams: [], kas: [], kasPay: [], rem: [], log: [], earned: 0, balance: 0,
   /* Jadwal pelajaran: mapel & guru Year 9 (DHIS Lodaya), diisi per tanggal */
   subj: [{ id: 's1', n: 'Mathematics', t: 'Rizky (RZ)', h: 15 }, { id: 's2', n: 'Bahasa Indonesia', t: 'Ahmad (AD)', h: 62 }, { id: 's3', n: 'Biology', t: 'Dzihni Andiasari (DZ)', h: 109 }, { id: 's4', n: 'Chemistry', t: 'Vinna Octaviana (VO)', h: 156 }, { id: 's5', n: 'Physics', t: 'Dyantie (DY)', h: 203 }, { id: 's6', n: 'English Vocabulary', t: 'Yuni (YA)', h: 250 }, { id: 's7', n: 'English Reading & Writing', t: 'Nurul (NR)', h: 297 }, { id: 's8', n: 'English Listening & Speaking', t: 'Keith Langham (KT) / David (DV)', h: 344 }, { id: 's9', n: 'Islamic Studies', t: 'Anugrah Nurhakim (AG)', h: 31 }, { id: 's10', n: 'Tahsin & Tahfidz', t: 'Ari Fauzi (AF) / Hasan (HA)', h: 78 }, { id: 's11', n: 'Social Studies', t: 'Ananda Amalia (AN)', h: 125 }, { id: 's12', n: 'ICT / Computing', t: 'Erizka Yolanda (EY)', h: 172 }, { id: 's13', n: 'Physical Education', t: 'Irfan Fadhil (IF)', h: 219 }, { id: 's14', n: 'Entrepreneurship', t: 'Nunung Setiani (NS)', h: 266 }, { id: 's15', n: 'Civics / Art / Basa Sunda', t: 'M. Reza (MR) / Prega Panji (PR) / Sunda Teacher (SU)', h: 313 }, { id: 's16', n: 'Research', t: 'Salma (SA) & Ahmad (AD)', h: 0 }, { id: 's17', n: 'TKA Prep: Bahasa Indonesia', t: 'Hilwan Faruq (HF)', h: 47 }, { id: 's18', n: 'TKA Prep: Matematika', t: 'Maulana Fajar (MF)', h: 94 }, { id: 's19', n: 'Cambridge Checkpoint Try Out', t: 'Maulana Fajar (MF) / Dyantie (DY) / Febi (FS)', h: 141 }, { id: 's20', n: 'HRT Session', t: 'Dyantie (DY)', h: 188 }, { id: 's21', n: 'Extracurricular', t: '', h: 235 }],
-  tt: {}, ttMin: 35, ttStart: '07:00',
+  tt: {}, ttMin: 35, ttStart: '07:00', grades: [], freeze: [], hwAsk: {}, wkSeen: '',
   remind: { exam: '19:00', taskH: 24, latePct: 0, examBonus: 20, siren: true, ttLead: 0, ttAt: 0 },
   profile: { name: '' },
   meta: { modifiedAt: 0, syncedAt: null, dirty: false }
@@ -283,7 +283,8 @@ function merge(d) {
   S.profile = Object.assign({}, DEF.profile, d.profile || {});
   S.meta = Object.assign({}, DEF.meta, d.meta || {});
   if (!S.tt || typeof S.tt !== 'object' || Array.isArray(S.tt)) S.tt = {};
-  ['tasks', 'exams', 'kas', 'kasPay', 'rem', 'log', 'rewards', 'diff', 'levels', 'subj'].forEach(k => { if (!Array.isArray(S[k])) S[k] = clone(DEF[k]); });
+  if (!S.hwAsk || typeof S.hwAsk !== 'object') S.hwAsk = {};
+  ['tasks', 'exams', 'kas', 'kasPay', 'rem', 'log', 'rewards', 'diff', 'levels', 'subj', 'grades', 'freeze'].forEach(k => { if (!Array.isArray(S[k])) S[k] = clone(DEF[k]); });
 }
 function saveLocal() { if (USER) lsSet(stateKey(USER.id), S); }
 const isFresh = s => !(s.log && s.log.length) && !(s.tasks && s.tasks.length) && !(s.exams && s.exams.length);
@@ -728,7 +729,7 @@ function weekStats() {
   return { pts, mins, tasks };
 }
 function streak() {
-  const days = new Set(S.log.filter(l => l.p > 0).map(l => sod(Date.parse(l.t))));
+  const days = activeDays();
   let d = sod(Date.now()), n = 0;
   if (!days.has(d)) d -= DAY;
   while (days.has(d)) { n++; d -= DAY; }
@@ -992,6 +993,7 @@ function render() {
   alerts();
   badges();
   syncReminders();
+  achCheck();
 }
 function badges() {
   const now = Date.now();
@@ -1024,7 +1026,9 @@ function home() {
     ...S.rem.map(r => { const d = remNext(r); const c = REM_CAT[r.cat] || REM_CAT.sekolah; return d && ymdMs(d) - now < 4 * DAY ? { at: remAt(r, d), kind: 'ingat', t: r.t, ic: c.ic, tone: c.tone } : null; }).filter(Boolean)
   ].sort((a, b) => a.at - b.at).slice(0, 6);
   const recent = S.log.slice(0, 6);
+  const fz = freezeState(), achN = ACH.filter(a => S.ach && S.ach[a[0]]).length;
   view().innerHTML = `
+  ${ttWidget()}
   <div class="grid g-home">
     <section class="hero"><span class="liq" aria-hidden="true"></span>
       <div class="lbl">Saldo poin</div>
@@ -1041,7 +1045,9 @@ function home() {
       <div style="min-width:0">
         <h3>${esc(cur.n)}</h3>
         <div class="muted small" style="margin:2px 0 10px">${next ? T`${fmt(next.min - S.earned)} poin lagi menuju <b>${esc(tx(next.n))}</b>` : tx('Level tertinggi tercapai')}</div>
-        <span class="chip ${st ? 'danger' : ''}">${I('flame')}${st ? T`${st} hari beruntun` : tx('Mulai streak hari ini')}</span>
+        <div class="lv-chips"><span class="chip ${st ? 'danger' : ''}">${I('flame')}${st ? T`${st} hari beruntun` : tx('Mulai streak hari ini')}${fz.frozen ? ' ❄️' : ''}</span>
+        <button class="chip ach-chip" id="achGo">🏅 ${achN}/${ACH.length}</button>
+        ${fz.can ? `<button class="chip frz-chip" id="frzGo">❄️ ${T`Lindungi · ${FREEZE_COST} poin`}</button>` : ''}</div>
       </div>
     </section>
   </div>
@@ -1051,7 +1057,8 @@ function home() {
     <div class="card stat"><div class="ico t-warn">${I('checks')}</div><div class="v num">${w.tasks}</div><div class="l">Tugas selesai</div></div>
     <div class="card stat"><div class="ico t-danger">${I('trophy')}</div><div class="v num">${S.tasks.filter(t => !t.done).length}</div><div class="l">Tugas aktif</div></div>
   </div>
-  ${ttHomeCard()}
+  ${planHomeCard()}
+  ${weekCardHtml()}
   <div class="grid g2" style="margin-top:16px">
     <section class="card">
       <div class="card-head"><h2>Agenda terdekat</h2><button class="btn ghost sm" data-go2="ujian">${I('plus')}Ujian</button></div>
@@ -1066,13 +1073,18 @@ function home() {
     </section>
   </div>`;
   $$('[data-go2]', view()).forEach(b => b.onclick = () => go(b.dataset.go2));
+  $('#achGo').onclick = () => { go('atur'); aturGo('ach'); };
+  if ($('#frzGo')) $('#frzGo').onclick = freezeStreak;
+  if ($('#wkX')) $('#wkX').onclick = () => { const n = new Date(); S.wkSeen = n.getDay() === 0 ? weekKey(n) : addDays(weekKey(n), -7); persist(); render(); };
+  if ($('#wkO')) $('#wkO').onclick = () => { const n = new Date(); weekModal(n.getDay() === 0 ? weekKey(n) : addDays(weekKey(n), -7)); };
+  $$('[data-ht]', view()).forEach(b => b.onclick = () => { const [eid, tid] = b.dataset.ht.split(':'); const e = S.exams.find(x => x.id === eid), x = e && e.topics.find(y => y.id === tid); if (!x) return; b.classList.add('on'); topicToggle(e, x); toast(T`+${5} poin`); setTimeout(render, 350); });
   countUp($('#balNum'), S.balance);
   const ringV = $('.ring .val'); if (ringV) requestAnimationFrame(() => requestAnimationFrame(() => { ringV.style.strokeDashoffset = ringV.dataset.to; }));
   const hero = $('.hero');
   hero.addEventListener('pointermove', e => { const r = hero.getBoundingClientRect(); hero.style.setProperty('--mx', (e.clientX - r.left) + 'px'); hero.style.setProperty('--my', (e.clientY - r.top) + 'px'); });
 }
 function logItem(l) {
-  const ic = { tugas: 'checks', belajar: 'book', reward: 'gift', ujian: 'cap', kas: 'wallet', ingat: 'bell', koreksi: 'pencil' }[l.kind] || 'spark';
+  const ic = { tugas: 'checks', belajar: 'book', reward: 'gift', ujian: 'cap', kas: 'wallet', ingat: 'bell', koreksi: 'pencil', freeze: 'flame' }[l.kind] || 'spark';
   const tone = l.p > 0 ? 't-mint' : 't-danger';
   return `<div class="item"><div class="lead ${tone}">${I(ic)}</div><div class="body"><div class="ttl">${esc(logWhat(l.what))}</div><div class="faint small">${new Date(l.t).toLocaleString(LOC, { dateStyle: 'medium', timeStyle: 'short' })}</div></div><span class="pts num ${l.p > 0 ? 'plus' : 'minus'}">${l.p > 0 ? '+' : ''}${fmt(l.p)}</span></div>`;
 }
@@ -1157,13 +1169,17 @@ function completeTask(id) {
 }
 
 /* ---------- Ujian ---------- */
+let EXT = 'ujian';
 function ujian() {
+  const tabs = `<div class="sec-title" style="margin-top:0"><div class="seg" id="exTab"><button data-t="ujian" class="${EXT === 'ujian' ? 'on' : ''}">${I('cap')}Ujian</button><button data-t="nilai" class="${EXT === 'nilai' ? 'on' : ''}">${I('trophy')}${tx('Nilai')}</button></div></div>`;
+  const bindTabs = () => $$('#exTab button', view()).forEach(b => b.onclick = () => { if (EXT === b.dataset.t) return; EXT = b.dataset.t; ENTER = true; render(); });
+  if (EXT === 'nilai') { view().innerHTML = tabs + gradesView(); bindTabs(); gradesBind(view()); return; }
   const now = Date.now();
   const up = S.exams.filter(e => !e.done).sort((a, b) => examAt(a) - examAt(b));
   const past = S.exams.filter(e => e.done).sort((a, b) => examAt(b) - examAt(a)).slice(0, 20);
   const tm = new Date(now + DAY);
   const tv = tm.getFullYear() + '-' + String(tm.getMonth() + 1).padStart(2, '0') + '-' + String(tm.getDate()).padStart(2, '0');
-  view().innerHTML = `
+  view().innerHTML = tabs + `
   <section class="card">
     <h2>Tambah jadwal ujian</h2><p class="sub">${T`remind+ mengingatkan Anda belajar malam sebelumnya, jam <b>${esc(hhmm(S.remind.exam))}</b>. Bonus <b>+${S.remind.examBonus} poin</b> kalau sudah belajar.`}</p>
     <div class="form-row">
@@ -1183,10 +1199,11 @@ function ujian() {
     return `<div class="item"><div class="lead t-warn">${I('cap')}</div>
       <div class="body"><div class="ttl">${esc(e.mapel)}</div>
         <div class="faint small" style="margin-top:2px">${fd(at)} · ${esc(e.jam)}${e.catatan ? ' · ' + esc(e.catatan) : ''}</div>
-        <div class="meta">${passed ? '<span class="chip">Sudah lewat</span>' : dueChip(at)}${e.studied ? `<span class="chip mint">${I('check')}Sudah belajar</span>` : `<span class="chip">${I('bell')}${T`Belajar ${fdt(nt)}`}</span>`}</div></div>
+        <div class="meta">${!passed && examCount(e) ? `<span class="chip warn">${examCount(e)}</span>` : ''}${e.topics && e.topics.length ? `<span class="chip ${e.topics.every(x => x.done) ? 'mint' : ''}">${I('book')}${T`${e.topics.filter(x => x.done).length}/${e.topics.length} topik`}</span>` : ''}${passed ? '<span class="chip">Sudah lewat</span>' : dueChip(at)}${e.studied ? `<span class="chip mint">${I('check')}Sudah belajar</span>` : `<span class="chip">${I('bell')}${T`Belajar ${fdt(nt)}`}</span>`}</div></div>
       <div class="acts">
         ${!passed ? alarmBtn(nt, T`Belajar ujian ${e.mapel}`) : ''}
         ${!passed && nt > now ? calBtn('📚 ' + T`Belajar untuk ujian ${e.mapel}`, nt, nt + 2 * 36e5, T`Ujian ${e.mapel} ${fdt(at)}` + (e.catatan ? '. ' + e.catatan : '')) : ''}
+        ${!passed ? `<button class="btn soft sm" data-epl="${e.id}">${I('book')}${tx('Rencana')}</button>` : ''}
         ${!passed ? `<button class="btn soft sm" data-est="${e.id}">${I('play')}Belajar</button>` : ''}
         ${!e.studied && !passed ? `<button class="btn mint sm" data-esd="${e.id}">${I('check')}Sudah belajar</button>` : ''}
         ${passed ? `<button class="btn mint sm" data-edn="${e.id}">${I('check')}Selesai</button>` : ''}
@@ -1196,7 +1213,10 @@ function ujian() {
   }).join('') : emptyBox('cap', 'Belum ada jadwal ujian', 'Tambahkan ujian agar remind+ bisa mengingatkan Anda belajar.')}</div>
   ${past.length ? `<div class="sec-title"><h3>Selesai</h3></div><div class="list">${past.map(e => `
     <div class="item done"><div class="lead t-mint">${I('check')}</div><div class="body"><div class="ttl">${esc(e.mapel)}</div><div class="faint small">${fd(examAt(e))}</div></div>
-    ${e.studied ? `<span class="chip mint">Belajar ✓</span>` : ''}<button class="icon-btn sm danger" data-edel="${e.id}" aria-label="Hapus">${I('trash')}</button></div>`).join('')}</div>` : ''}`;
+    ${e.studied ? `<span class="chip mint">Belajar ✓</span>` : ''}${gradeSubjFor(e.mapel) ? `<button class="btn ghost sm" data-egr="${e.id}">${I('trophy')}${tx('Isi nilai')}</button>` : ''}<button class="icon-btn sm danger" data-edel="${e.id}" aria-label="Hapus">${I('trash')}</button></div>`).join('')}</div>` : ''}`;
+  bindTabs();
+  $$('[data-epl]', view()).forEach(b => b.onclick = () => planModal(S.exams.find(x => x.id === b.dataset.epl)));
+  $$('[data-egr]', view()).forEach(b => b.onclick = () => { const e = S.exams.find(x => x.id === b.dataset.egr), sj = gradeSubjFor(e.mapel); gradeModal({ s: sj && sj.id, n: e.mapel, d: e.tgl }); });
   const addE = () => {
     const m = $('#em').value.trim(), t = $('#et').value, j = $('#ej').value || '07:00';
     if (!m) { $('#em').focus(); return; } if (!t) { $('#et').focus(); return; }
@@ -1622,7 +1642,16 @@ const exLabel = m => /^(ujian|exam)\b/i.test(m) ? m : T`Ujian ${m}`;
 const rawMin = m => p2(Math.floor(m / 60) % 24) + ':' + p2(m % 60);
 const ttExams = d => S.exams.filter(e => e.tgl === d && !e.done);
 /* Ujian yang jamnya jatuh di dalam satu pelajaran ditempel ke pelajaran itu */
-const ttExamFor = (d, sl) => sl.it.k === 'b' ? null : ttExams(d).find(e => toMin(e.jam) >= sl.a && toMin(e.jam) < sl.b) || null;
+const ttExamFor = (d, sl) => {
+  if (sl.it.k === 'b') return null;
+  const names = ttHas(d) ? S.tt[d].items.filter(x => x.k !== 'b').map(x => subjName(x.s).toLowerCase()) : [];
+  const me = subjName(sl.it.s).toLowerCase();
+  return ttExams(d).find(e => {
+    if (toMin(e.jam) < sl.a || toMin(e.jam) >= sl.b) return false;
+    const n = String(e.mapel).toLowerCase();
+    return n.includes(me) || !names.some(x => x !== me && n.includes(x));
+  }) || null;
+};
 const ttDotCls = d => ttExams(d).length ? 'ex' : ttHas(d) ? 'has' : '';
 function ttDefaultDate() { const d = new Date(); if (d.getDay() === 0) d.setDate(d.getDate() + 1); return ymd(d); }
 function weekOf(date) {
@@ -1704,7 +1733,8 @@ function ttRowHtml(s, ex) {
   const ctl = open ? `<div class="tt-ctl">
       ${it.k === 'b' ? `<button class="btn ghost sm" data-tbe="${i}">${I('pencil')}Ubah</button>`
         : `<div class="tt-step"><button class="icon-btn sm" data-tm="${i}" aria-label="Kurangi sesi">−</button><b class="num">${T`${it.n} sesi`}</b><button class="icon-btn sm" data-tp="${i}" aria-label="Tambah sesi">+</button></div>`
-          + (ex ? `<button class="btn ghost sm" data-tgo="ujian">${I('cap')}${tx('Lihat ujian')}</button>` : `<button class="btn ghost sm" data-txm="${i}" data-a="${a}">${I('cap')}${tx('Jadikan ujian')}</button>`)}
+          + (ex ? `<button class="btn ghost sm" data-tgo="ujian">${I('cap')}${tx('Lihat ujian')}</button>` : `<button class="btn ghost sm" data-txm="${i}" data-a="${a}">${I('cap')}${tx('Jadikan ujian')}</button>`)
+          + `<button class="btn ghost sm" data-tnt="${i}">${I('pencil')}${tx('Catatan')}</button>`}
       <span style="flex:1"></span>
       <button class="icon-btn sm" data-tu="${i}" aria-label="Naikkan" ${i ? '' : 'disabled'}>${I('chevu')}</button>
       <button class="icon-btn sm" data-td="${i}" aria-label="Turunkan" ${i < S.tt[TTD].items.length - 1 ? '' : 'disabled'}>${I('chev')}</button>
@@ -1715,7 +1745,7 @@ function ttRowHtml(s, ex) {
   const sub = subjOf(it.s);
   return `<div class="tt-row ${open ? 'open' : ''} ${live ? 'now' : ''} ${ex ? 'exam' : ''}" data-i="${i}" style="--h:${subjHue(it.s)}">
       <div class="tt-main"><div class="tt-time"><b>${fromMin(a)}</b><span>${fromMin(b)}</span></div>
-      <div class="tt-txt"><div class="ttl">${esc(subjName(it.s))}</div><div class="tt-sub">${ex ? esc(exLabel(ex.mapel) + ' · ' + fromMin(toMin(ex.jam))) : sub && sub.t ? esc(sub.t) : ''}</div></div>
+      <div class="tt-txt"><div class="ttl">${esc(subjName(it.s))}</div><div class="tt-sub">${ex ? esc(exLabel(ex.mapel) + ' · ' + fromMin(toMin(ex.jam))) : sub && sub.t ? esc(sub.t) : ''}</div>${it.note ? `<div class="tt-note">${I('pencil')}${esc(it.note)}</div>` : ''}</div>
       ${ex ? `<span class="tt-exam">${I('cap')}${T`Ujian${''}`}</span>` : live ? `<span class="tt-now">${tx('Sekarang')}</span>` : `<span class="tt-n">${it.n}×</span>`}</div>${ctl}</div>`;
 }
 /* Ujian yang tidak menempel ke pelajaran tampil sebagai baris sendiri */
@@ -1788,6 +1818,7 @@ function ttBindDay(box) {
     S.exams.push(e); persist(); TT_OPEN = -1; ttDayDraw(0); ttDots(); badges();
     toast(examNight(e) > Date.now() ? T`Ujian ditambah · pengingat ${fdt(examNight(e))}` : tx('Ujian ditambah'), { label: 'Lihat', fn: () => go('ujian') });
   });
+  $$('[data-tnt]', box).forEach(b => b.onclick = async () => { const x = items()[+b.dataset.tnt]; const v = await ttNoteModal(x); if (!v) return; if (v.v) x.note = v.v; else delete x.note; ttChanged(); });
   $$('[data-tbe]', box).forEach(b => b.onclick = async () => { const x = items()[+b.dataset.tbe]; const d = await breakModal(x); if (d) { Object.assign(x, d); ttChanged(); } });
   $('#ttAddL', box).onclick = async () => {
     if (!S.subj.length) { toast(tx('Tambahkan mata pelajaran dulu')); subjModal(); return; }
@@ -1799,7 +1830,7 @@ function ttBindDay(box) {
   $('#ttMore', box).onclick = e => ttMoreMenu(e.currentTarget);
 }
 function ttFlashLast() { const r = $$('#ttBody .tt-row').pop(); if (r && motionOn()) r.animate([{ opacity: 0, transform: 'translateY(14px) scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: SP.d, easing: SP.e }); }
-function ttCopyDay(src) { S.tt[TTD] = { start: S.tt[src].start, items: clone(S.tt[src].items), c: Date.now() }; TT_OPEN = -1; persist(); ttDayDraw(1); ttDots(); toast(T`Disalin dari ${fd(ymdMs(src))}`); }
+function ttCopyDay(src) { S.tt[TTD] = { start: S.tt[src].start, items: stripNotes(S.tt[src].items), c: Date.now() }; TT_OPEN = -1; persist(); ttDayDraw(1); ttDots(); toast(T`Disalin dari ${fd(ymdMs(src))}`); }
 
 /* Menu ⋯ : salin & kosongkan */
 function ttMoreMenu(anchor) {
@@ -1815,7 +1846,7 @@ function ttMoreMenu(anchor) {
     if (o.dataset.m === 'day') ttCopyModal();
     else if (o.dataset.m === 'week') {
       let n = 0;
-      weekOf(TTD).forEach(d => { const s = addDays(d, -7); if (ttHas(s) && !ttHas(d)) { S.tt[d] = { start: S.tt[s].start, items: clone(S.tt[s].items), c: Date.now() }; n++; } });
+      weekOf(TTD).forEach(d => { const s = addDays(d, -7); if (ttHas(s) && !ttHas(d)) { S.tt[d] = { start: S.tt[s].start, items: stripNotes(S.tt[s].items), c: Date.now() }; n++; } });
       if (n) { persist(); ttDayDraw(0); ttDots(); }
       toast(n ? T`${n} hari disalin dari minggu lalu` : tx('Tidak ada hari kosong yang bisa diisi'));
     } else if (o.dataset.m === 'clr') {
@@ -1837,7 +1868,7 @@ function ttCopyModal() {
 
 /* Mata pelajaran & guru (lembar terpisah agar halaman tetap rapi) */
 function subjModal() {
-  const rows = () => S.subj.map((s, i) => `<div class="tt-sj" style="--h:${s.h}"><span class="tt-dot"></span><div class="tt-sf"><input class="input" data-sn="${i}" value="${esc(s.n)}" placeholder="Mata pelajaran"><input class="input" data-st="${i}" value="${esc(s.t)}" placeholder="Guru"></div><button type="button" class="icon-btn sm danger" data-sx="${i}" aria-label="Hapus">${I('x')}</button></div>`).join('') || `<p class="faint small">${tx('Belum ada.')}</p>`;
+  const rows = () => S.subj.map((s, i) => `<div class="tt-sj" style="--h:${s.h}"><span class="tt-dot"></span><div class="tt-sf"><input class="input" data-sn="${i}" value="${esc(s.n)}" placeholder="Mata pelajaran"><input class="input" data-st="${i}" value="${esc(s.t)}" placeholder="Guru"></div><button type="button" class="sj-g ${s.g ? 'on' : ''}" data-sg="${i}" title="Lacak nilai" aria-label="Lacak nilai">${I('trophy')}<span>Nilai</span></button><button type="button" class="icon-btn sm danger" data-sx="${i}" aria-label="Hapus">${I('x')}</button></div>`).join('') || `<p class="faint small">${tx('Belum ada.')}</p>`;
   const p = modal({ title: tx('Mata pelajaran & guru'), wide: true,
     html: `<div class="tt-sjs" id="sjRows">${rows()}</div><button type="button" class="btn soft sm" id="sjAdd" style="margin-top:12px">${I('plus')}Tambah</button>`,
     actions: [{ label: 'Selesai', cls: 'grad', value: true }] });
@@ -1846,6 +1877,7 @@ function subjModal() {
   const bind = () => {
     $$('[data-sn]', m).forEach(el => el.onchange = () => { S.subj[el.dataset.sn].n = el.value.trim() || tx('Tanpa nama'); persist(); });
     $$('[data-st]', m).forEach(el => el.onchange = () => { S.subj[el.dataset.st].t = el.value.trim(); persist(); });
+    $$('[data-sg]', m).forEach(b => b.onclick = () => { const x = S.subj[+b.dataset.sg]; x.g = !x.g; if (!x.g) delete x.g; b.classList.toggle('on', !!x.g); persist(); if (motionOn()) b.animate([{ transform: 'scale(.85)' }, { transform: 'scale(1)' }], { duration: SP.d, easing: SP.e }); });
     $$('[data-sx]', m).forEach(b => b.onclick = () => {
       const i = +b.dataset.sx, s = S.subj[i];
       S.subj.splice(i, 1); persist(); $('#sjRows', m).innerHTML = rows(); bind();
@@ -1858,7 +1890,7 @@ function subjModal() {
     $('#sjRows', m).innerHTML = rows(); bind();
     const x = $$('[data-sn]', m).pop(); if (x) { x.scrollIntoView({ block: 'center', behavior: motionOn() ? 'smooth' : 'auto' }); x.focus(); x.select(); }
   };
-  p.then(() => { if (V === 'jadwal') ttDayDraw(0); });
+  p.then(() => { if (V === 'jadwal') ttDayDraw(0); else if (V === 'ujian') render(); });
 }
 function ttSettingsModal() {
   const p = modal({ title: tx('Pengaturan jadwal'),
@@ -2019,9 +2051,11 @@ function riwayat() {
     <div class="card stat"><div class="ico t-danger">${I('down')}</div><div class="v num minus">−${fmt(outT)}</div><div class="l">Dipakai hari ini</div></div>
     <div class="card stat"><div class="ico t-brand">${I('trophy')}</div><div class="v num">${fmt(S.earned)}</div><div class="l">Total sepanjang waktu</div></div>
   </div>
+  <button class="btn soft sm" id="wkH" style="margin-top:16px">${I('history')}${tx('Ringkasan mingguan')}</button>
   <div class="sec-title"><div class="seg" id="rf">${[['semua', 'Semua'], ['tugas', 'Tugas'], ['belajar', 'Belajar'], ['ujian', 'Ujian'], ['kas', 'Kas'], ['ingat', 'Pengingat'], ...(S.log.some(l => l.kind === 'reward') ? [['reward', 'Reward']] : []), ['koreksi', 'Koreksi']].map(([k, n]) => `<button class="${k === RF ? 'on' : ''}" data-f="${k}">${n}</button>`).join('')}</div></div>
   <div class="list">${L.length ? L.slice(0, 250).map(logItem).join('') : emptyBox('history', 'Belum ada catatan', 'Riwayat poin akan muncul di sini.')}</div>`;
   $$('#rf button').forEach(b => b.onclick = () => { RF = b.dataset.f; render(); });
+  $('#wkH').onclick = () => weekModal();
 }
 
 /* ================= Foto profil ================= */
@@ -2135,6 +2169,7 @@ const ASECS = [
   ['tampilan', 'Tampilan', 'sun', 't-warn'],
   ['ingat', 'Pengingat & alarm', 'bell', 't-danger'],
   ['poin', 'Poin & level', 'trophy', 't-mint'],
+  ['ach', 'Pencapaian', 'spark', 't-warn'],
   ['data', 'Data & cadangan', 'server', 't-brand'],
   ['tentang', 'Tentang', 'info', 't-mint']
 ];
@@ -2153,7 +2188,8 @@ function atur() {
     ingat: T`Belajar jam ${hhmm(S.remind.exam)} · tugas ${S.remind.taskH} jam sebelum`,
     poin: T`${S.diff.length} tingkat kesulitan · ${S.levels.length} level`,
     data: tx(local ? 'Hanya di perangkat ini' : 'Tersimpan di akun'),
-    tentang: T`Versi ${VERSION}`
+    tentang: T`Versi ${VERSION}`,
+    ach: T`${ACH.filter(a => S.ach && S.ach[a[0]]).length} dari ${ACH.length} terbuka`
   };
   const secs = {
     akun: `
@@ -2253,6 +2289,7 @@ function atur() {
       <h2>Reset</h2><p class="sub">Poin, tugas, ujian, riwayat, dan pengaturan kembali ke awal. Tidak bisa dibatalkan.</p>
       <button class="btn danger" id="rs">${I('reset')}Reset data</button>
     </section>`,
+    ach: achSection(),
     tentang: `
     <section class="card set-about">
       <img src="logo.svg" alt="" width="64" height="64" id="eggLogo" class="egg-logo" draggable="false">
@@ -2386,6 +2423,330 @@ async function deleteAccount() {
   } catch (e) { toast(tr(e)); }
 }
 
+/* ================= Widget jadwal berikutnya (Beranda) ================= */
+/* Tampilkan pelajaran sekarang; setelah lewat setengah jalan, tampilkan juga pelajaran berikutnya */
+function ttWidget() {
+  const today = ymd(new Date()), nm = nowMin();
+  const lessonCard = (s, d, kind) => {
+    const sub = subjOf(s.it.s), ex = ttExamFor(d, s), note = s.it.note;
+    const isNow = kind === 'now', p = isNow ? Math.min(1, Math.max(0, (nm - s.a) / (s.b - s.a))) : 0;
+    return `<div class="w-les ${kind}" style="--h:${subjHue(s.it.s)}">
+      <div class="w-lbl">${kind === 'now' ? `<i class="w-live"></i>${tx('Sekarang')}` : kind === 'next' ? tx('Berikutnya') : kind === 'first' ? tx('Pelajaran pertama') : esc(kind)}<span>${fromMin(s.a)}–${fromMin(s.b)}</span></div>
+      <div class="w-subj">${esc(subjName(s.it.s))}${ex ? ` <span class="tt-exam">${I('cap')}${T`Ujian${''}`}</span>` : ''}</div>
+      <div class="w-meta">${sub && sub.t ? esc(sub.t) : ''}${note ? `<span class="w-note">${I('pencil')}${esc(note)}</span>` : ''}</div>
+      ${isNow ? `<div class="w-bar"><i style="width:${(p * 100).toFixed(1)}%"></i></div><div class="w-left">${T`sisa ${s.b - nm} menit`}</div>` : ''}
+    </div>`;
+  };
+  const wrap = (body, sub) => `<section class="card w-card" data-go2="jadwal"><div class="w-head"><span class="w-ico">${I('cal')}</span><b>${tx('Jadwal berikutnya')}</b><span class="faint small">${sub || ''}</span>${I('chevr', 'ic set-chev')}</div>${body}</section>`;
+  const slots = ttHas(today) ? ttSlots(S.tt[today]) : [];
+  const les = slots.filter(s => s.it.k !== 'b');
+  if (les.length && nm < les[les.length - 1].b) {
+    const cur = slots.find(s => nm >= s.a && nm < s.b);
+    const nextL = les.find(s => s.a >= (cur ? cur.b : nm));
+    const left = les.filter(s => s.b > nm).length;
+    let body = '';
+    if (!cur && nm < slots[0].a) body = lessonCard(les[0], today, 'first') + `<div class="w-soon">${T`Mulai dalam ${fmtDur(les[0].a - nm)}`}</div>`;
+    else if (cur && cur.it.k === 'b') body = `<div class="w-brk"><i class="w-live"></i>${esc(tx(cur.it.l) || tx('Istirahat'))}<span>${T`sampai ${fromMin(cur.b)}`}</span></div>` + (nextL ? lessonCard(nextL, today, 'next') : '');
+    else if (cur) body = lessonCard(cur, today, 'now') + ((nm - cur.a) / (cur.b - cur.a) >= .5 && nextL ? lessonCard(nextL, today, 'next') : '');
+    else if (nextL) body = lessonCard(nextL, today, 'next');
+    return wrap(body, T`${left} pelajaran lagi hari ini`);
+  }
+  for (let k = 1; k <= 7; k++) {
+    const d = addDays(today, k);
+    if (!ttHas(d)) continue;
+    const l2 = ttSlots(S.tt[d]).filter(s => s.it.k !== 'b');
+    if (!l2.length) continue;
+    return wrap(lessonCard(l2[0], d, k === 1 ? tx('Besok') : fd(ymdMs(d))), T`${l2.length} pelajaran`);
+  }
+  return wrap(`<p class="muted small" style="margin:6px 0 0">${tx('Isi jadwal pelajaran agar pelajaran berikutnya tampil di sini.')}</p>`, '');
+}
+const fmtDur = m => m >= 60 ? T`${Math.floor(m / 60)} jam ${m % 60} menit` : T`${m} menit`;
+
+/* ================= Catatan per pelajaran ================= */
+async function ttNoteModal(it) {
+  const v = await modal({ title: tx('Catatan pelajaran'),
+    html: `<p class="muted small" style="margin:0 0 10px">${esc(subjName(it.s))}</p><textarea class="input" id="tnN" rows="3" placeholder="${esc(tx('Contoh: bawa kalkulator, hal. 45–50'))}">${esc(it.note || '')}</textarea>`,
+    actions: [{ label: 'Batal', cls: 'ghost', value: null }, { label: 'Simpan', cls: 'grad', get: m => ({ v: $('#tnN', m).value.trim() }) }] });
+  return v;
+}
+const stripNotes = items => clone(items).map(x => { delete x.note; return x; });
+
+/* ================= PR setelah pelajaran ================= */
+function hwPending() {
+  const today = ymd(new Date()), nm = nowMin();
+  if (!ttHas(today)) return [];
+  const asked = (S.hwAsk && S.hwAsk[today]) || [];
+  return ttSlots(S.tt[today]).filter(s => s.it.k !== 'b' && s.b <= nm && nm - s.b < 10 * 60 && !asked.includes(s.i + ':' + s.it.s));
+}
+function hwMark(s) {
+  const today = ymd(new Date());
+  S.hwAsk = S.hwAsk || {};
+  for (const k in S.hwAsk) if (k < addDays(today, -3)) delete S.hwAsk[k];
+  (S.hwAsk[today] = S.hwAsk[today] || []).push(s.i + ':' + s.it.s);
+  persist();
+}
+/* Deadline otomatis: pelajaran yang sama berikutnya di jadwal, atau besok pagi */
+function hwDeadline(sid) {
+  const today = ymd(new Date());
+  for (let k = 1; k <= 21; k++) {
+    const d = addDays(today, k); if (!ttHas(d)) continue;
+    const s = ttSlots(S.tt[d]).find(x => x.it.k !== 'b' && x.it.s === sid);
+    if (s) return d + 'T' + rawMin(s.a);
+  }
+  return addDays(today, 1) + 'T07:00';
+}
+async function hwModal(s) {
+  const name = subjName(s.it.s);
+  const v = await modal({ title: T`PR ${name}`,
+    html: `<div class="stack">
+      <label class="field"><span>${tx('Nama tugas')}</span><input class="input" id="hwN" value="${esc(T`PR ${name}`)}"></label>
+      <label class="field"><span>${tx('Kesulitan')}</span><select class="input" id="hwD">${S.diff.map((d, i) => `<option value="${i}" ${i === 1 ? 'selected' : ''}>${T`${esc(tx(d.n))} · ${d.p} poin`}</option>`).join('')}</select></label>
+      <label class="field"><span>${tx('Deadline')}</span><input class="input" id="hwL" type="datetime-local" value="${hwDeadline(s.it.s)}"></label>
+      <p class="faint small" style="margin:0">${tx('Deadline otomatis diisi dengan pelajaran yang sama berikutnya di jadwal.')}</p></div>`,
+    actions: [{ label: 'Batal', cls: 'ghost', value: null }, { label: 'Tambah', cls: 'grad', get: m => ({ n: $('#hwN', m).value.trim() || T`PR ${name}`, d: S.diff[+$('#hwD', m).value] || S.diff[0], dl: $('#hwL', m).value || '' }) }] });
+  if (!v) return false;
+  S.tasks.unshift({ id: uid(), n: v.n, d: v.d.n, p: v.d.p, done: false, dl: v.dl, c: Date.now(), hw: 1 });
+  hwMark(s); toast(tx('PR ditambahkan ke Tugas'), { label: 'Lihat', fn: () => go('tugas') });
+  return true;
+}
+
+/* ================= Rencana belajar ujian ================= */
+const examDaysLeft = e => dayDiff(examAt(e));
+const examCount = e => { const n = examDaysLeft(e); return n > 0 ? T`H-${n}` : n === 0 ? tx('Hari H') : ''; };
+function planSpread(e) {
+  const t = e.topics || [], open = t.filter(x => !x.done);
+  if (!open.length) return;
+  const today = ymd(new Date()), last = addDays(e.tgl, -1);
+  const days = []; for (let d = today; d <= last && days.length < 60; d = addDays(d, 1)) days.push(d);
+  if (!days.length) days.push(today);
+  open.forEach((x, i) => { x.d = days[Math.min(days.length - 1, Math.floor(i * days.length / open.length))]; });
+}
+function topicToggle(e, x) {
+  x.done = !x.done;
+  if (x.done) x.lg = add(5, 'Topik ujian: ' + x.n + ' (' + e.mapel + ')', 'ujian');
+  else { if (x.lg) undoLog(x.lg); x.lg = null; }
+  persist();
+}
+async function planModal(e) {
+  e.topics = e.topics || [];
+  const list = () => {
+    const t = e.topics, dn = t.filter(x => x.done).length;
+    return `<div class="pl-top"><span class="chip warn">${I('cap')}${examCount(e) || fd(examAt(e))}</span><span class="faint small">${T`${dn}/${t.length} topik selesai`}</span></div>
+      ${t.length ? `<div class="w-bar" style="margin:10px 0 14px"><i style="width:${t.length ? dn / t.length * 100 : 0}%"></i></div>` : ''}
+      <div class="pl-list">${t.map((x, i) => `<div class="pl-row ${x.done ? 'done' : ''}"><button type="button" class="check ${x.done ? 'on' : ''}" data-pt="${i}" aria-label="Tandai selesai">${I('check')}</button><div class="pl-t"><b>${esc(x.n)}</b><span>${x.d ? fd(ymdMs(x.d)) : tx('Belum dijadwalkan')}</span></div><button type="button" class="icon-btn sm danger" data-px="${i}" aria-label="Hapus">${I('x')}</button></div>`).join('') || `<p class="faint small">${tx('Tulis bab atau materi yang perlu dipelajari, lalu remind+ membaginya ke hari-hari sebelum ujian.')}</p>`}</div>`;
+  };
+  const p = modal({ title: T`Rencana belajar: ${e.mapel}`, wide: true,
+    html: `<div class="form-row"><label class="field grow2"><span>${tx('Topik / bab')}</span><input class="input" id="plN" placeholder="${esc(tx('Contoh: Bab 3 – Sel'))}"></label><button type="button" class="btn soft" id="plA">${I('plus')}Tambah</button></div>
+      <div id="plL" style="margin-top:14px">${list()}</div>
+      <button type="button" class="btn ghost sm" id="plS" style="margin-top:12px">${I('refresh')}${tx('Bagi ulang ke hari-hari')}</button>`,
+    actions: [{ label: 'Selesai', cls: 'grad', value: true }] });
+  const m = $('#modal');
+  const redraw = () => { $('#plL', m).innerHTML = list(); bind(); };
+  const bind = () => {
+    $$('[data-pt]', m).forEach(b => b.onclick = () => { const x = e.topics[+b.dataset.pt]; topicToggle(e, x); redraw(); if (x.done) toast(T`+${5} poin`); });
+    $$('[data-px]', m).forEach(b => b.onclick = () => { e.topics.splice(+b.dataset.px, 1); planSpread(e); persist(); redraw(); });
+  };
+  const addT = () => { const v = $('#plN', m).value.trim(); if (!v) return; e.topics.push({ id: uid(), n: v, d: '', done: false }); planSpread(e); persist(); $('#plN', m).value = ''; redraw(); $('#plN', m).focus(); };
+  $('#plA', m).onclick = addT; $('#plN', m).onkeydown = ev => { if (ev.key === 'Enter') addT(); };
+  $('#plS', m).onclick = () => { planSpread(e); persist(); redraw(); toast(tx('Topik dibagi ulang')); };
+  bind();
+  await p; render();
+}
+function todayTopics() {
+  const today = ymd(new Date()), out = [];
+  S.exams.filter(e => !e.done && e.topics).forEach(e => e.topics.forEach(x => { if (!x.done && x.d && x.d <= today) out.push({ e, x }); }));
+  return out;
+}
+function planHomeCard() {
+  const tt = todayTopics(); if (!tt.length) return '';
+  return `<section class="card" style="margin-top:16px"><div class="card-head"><h2>${tx('Rencana belajar hari ini')}</h2><span class="faint small">${T`${tt.length} topik`}</span></div>
+    <div class="pl-list">${tt.slice(0, 6).map(({ e, x }) => `<div class="pl-row"><button type="button" class="check" data-ht="${e.id}:${x.id}" aria-label="Tandai selesai">${I('check')}</button><div class="pl-t"><b>${esc(x.n)}</b><span>${esc(exLabel(e.mapel))} · ${examCount(e)}${x.d < ymd(new Date()) ? ' · ' + tx('tertunda') : ''}</span></div></div>`).join('')}</div></section>`;
+}
+
+/* ================= Streak & pembeku streak ================= */
+const FREEZE_COST = 50;
+function activeDays() {
+  const s = new Set(S.log.filter(l => l.p > 0).map(l => sod(Date.parse(l.t))));
+  (S.freeze || []).forEach(d => s.add(ymdMs(d)));
+  return s;
+}
+function bestStreak() {
+  const ds = [...activeDays()].sort((a, b) => a - b); let best = 0, run = 0, prev = null;
+  for (const d of ds) { run = prev !== null && Math.round((d - prev) / DAY) === 1 ? run + 1 : 1; best = Math.max(best, run); prev = d; }
+  return best;
+}
+function freezeState() {
+  const today = ymd(new Date()), act = activeDays(), st = streak();
+  const frozen = (S.freeze || []).includes(today), activeToday = act.has(ymdMs(today));
+  const recent = (S.freeze || []).filter(d => d > addDays(today, -7)).length;
+  return { st, frozen, can: st > 0 && !activeToday && !frozen && recent < 2, recent };
+}
+async function freezeStreak() {
+  if (S.balance < FREEZE_COST) { toast(T`Butuh ${FREEZE_COST} poin`); return; }
+  if (!await ask(tx('Lindungi streak hari ini?'), T`${FREEZE_COST} poin dipakai agar streak ${streak()} hari tetap aman walau hari ini tidak belajar. Maksimal 2 kali per minggu.`, 'Lindungi', 'grad')) return;
+  S.freeze = S.freeze || []; S.freeze.push(ymd(new Date())); if (S.freeze.length > 60) S.freeze = S.freeze.slice(-60);
+  add(-FREEZE_COST, 'Pembeku streak', 'freeze'); render(); toast(tx('❄️ Streak aman hari ini'));
+}
+
+/* ================= Ringkasan mingguan ================= */
+function weekKey(d) { return weekOf(ymd(d))[0]; }
+function weekReport(monday) {
+  const start = ymdMs(monday), end = start + 7 * DAY;
+  const L = S.log.filter(l => { const t = Date.parse(l.t); return t >= start && t < end; });
+  const pts = L.filter(l => l.p > 0).reduce((a, l) => a + l.p, 0);
+  const study = L.filter(l => l.kind === 'belajar');
+  const mins = study.reduce((a, l) => a + (l.min || 0), 0);
+  const per = {};
+  study.forEach(l => {
+    const topic = String(l.what || '').replace(/^Belajar \d+ menit:?\s*/, '').toLowerCase();
+    const s = S.subj.find(x => topic && topic.includes(x.n.toLowerCase()));
+    const k = s ? s.n : tx('Lainnya'); per[k] = (per[k] || 0) + (l.min || 0);
+  });
+  const tasks = S.tasks.filter(t => t.done && t.at && Date.parse(t.at) >= start && Date.parse(t.at) < end);
+  const late = tasks.filter(t => t.late).length;
+  const days = {}; L.filter(l => l.p > 0).forEach(l => { const d = ymd(new Date(l.t)); days[d] = (days[d] || 0) + l.p; });
+  const best = Object.entries(days).sort((a, b) => b[1] - a[1])[0];
+  const nStart = addDays(monday, 7), nEnd = addDays(monday, 14);
+  const exams = S.exams.filter(e => !e.done && e.tgl >= nStart && e.tgl < nEnd).sort((a, b) => examAt(a) - examAt(b));
+  return { pts, mins, per, tasks: tasks.length, late, best, exams, monday };
+}
+function weekCardHtml() {
+  const now = new Date(), dow = now.getDay();
+  const show = (dow === 0 && now.getHours() >= 15) || dow === 1;
+  if (!show) return '';
+  const mon = dow === 0 ? weekKey(now) : addDays(weekKey(now), -7);
+  if (S.wkSeen === mon) return '';
+  const r = weekReport(mon);
+  return `<section class="card wk-card" style="margin-top:16px"><div class="card-head"><div><h2>${tx('Ringkasan minggu ini')}</h2><div class="muted small">${fd(ymdMs(mon))} – ${fd(ymdMs(addDays(mon, 6)))}</div></div><button class="icon-btn sm" id="wkX" aria-label="Tutup">${I('x')}</button></div>
+    <div class="egg-stats wk-stats"><div><b class="num">+${fmt(r.pts)}</b><span>${tx('poin')}</span></div><div><b class="num">${hm(r.mins)}</b><span>${tx('waktu belajar')}</span></div><div><b class="num">${r.tasks}</b><span>${tx('tugas selesai')}</span></div><div><b class="num">${r.exams.length}</b><span>${tx('ujian minggu depan')}</span></div></div>
+    <button class="btn soft sm" id="wkO" style="margin-top:12px">${I('history')}${tx('Lihat ringkasan lengkap')}</button></section>`;
+}
+function weekModal(mon) {
+  mon = mon || weekKey(new Date());
+  const r = weekReport(mon), mx = Math.max(1, ...Object.values(r.per));
+  const prevM = addDays(mon, -7), nextM = addDays(mon, 7), canNext = nextM <= weekKey(new Date());
+  const p = modal({ title: tx('Ringkasan mingguan'), wide: true,
+    html: `<div class="wk-nav"><button type="button" class="icon-btn sm" data-wm="${prevM}" aria-label="Minggu sebelumnya">${I('chevl')}</button><b>${fd(ymdMs(mon))} – ${fd(ymdMs(addDays(mon, 6)))}</b><button type="button" class="icon-btn sm" data-wm="${nextM}" ${canNext ? '' : 'disabled'} aria-label="Minggu berikutnya">${I('chevr')}</button></div>
+      <div class="egg-stats wk-stats"><div><b class="num">+${fmt(r.pts)}</b><span>${tx('poin')}</span></div><div><b class="num">${hm(r.mins)}</b><span>${tx('waktu belajar')}</span></div><div><b class="num">${r.tasks}</b><span>${T`tugas selesai · ${r.late} terlambat`}</span></div><div><b class="num">${r.best ? fmt(r.best[1]) : 0}</b><span>${r.best ? T`hari terbaik: ${fd(ymdMs(r.best[0]))}` : tx('hari terbaik')}</span></div></div>
+      <h4 class="wk-h">${tx('Belajar per mata pelajaran')}</h4>
+      ${Object.keys(r.per).length ? `<div class="wk-bars">${Object.entries(r.per).sort((a, b) => b[1] - a[1]).map(([k, v]) => { const s = S.subj.find(x => x.n === k); return `<div class="wk-bar" style="--h:${s ? s.h : 220}"><span>${esc(k)}</span><div><i style="width:${v / mx * 100}%"></i></div><b>${hm(v)}</b></div>`; }).join('')}</div>` : `<p class="faint small">${tx('Belum ada sesi belajar minggu ini.')}</p>`}
+      <h4 class="wk-h">${tx('Ujian minggu depan')}</h4>
+      ${r.exams.length ? `<div class="pl-list">${r.exams.map(e => `<div class="pl-row"><span class="w-ico">${I('cap')}</span><div class="pl-t"><b>${esc(e.mapel)}</b><span>${fd(examAt(e))} · ${hhmm(e.jam)}</span></div></div>`).join('')}</div>` : `<p class="faint small">${tx('Tidak ada ujian minggu depan.')}</p>`}`,
+    actions: [{ label: 'Tutup', cls: 'grad', value: true }] });
+  const m = $('#modal');
+  $$('[data-wm]', m).forEach(b => b.onclick = () => { m._wm = b.dataset.wm; $('.acts .btn', m).click(); });
+  p.then(() => { const w = m._wm; m._wm = null; if (w) setTimeout(() => weekModal(w), 220); });
+}
+
+/* ================= Pencapaian ================= */
+function achStats() {
+  const done = S.tasks.filter(t => t.done);
+  return {
+    tasks: done.length, ontime: done.filter(t => t.dl && !t.late).length,
+    mins: S.log.filter(l => l.kind === 'belajar').reduce((a, l) => a + (l.min || 0), 0),
+    best: bestStreak(), lvl: levelOf(S.earned).i + 1, earned: S.earned,
+    studied: S.exams.filter(e => e.studied).length,
+    plan: S.exams.some(e => e.topics && e.topics.length >= 2 && e.topics.every(x => x.done)),
+    kas: S.kasPay.filter(p => p.ontime).length,
+    ttWeek: Object.keys(S.tt).reduce((a, d) => { if (ttHas(d)) { const k = weekKey(new Date(d + 'T00:00')); a[k] = (a[k] || 0) + 1; } return a; }, {}),
+    hw: S.tasks.filter(t => t.hw).length,
+    grade: (S.grades || []).some(g => g.max && g.v / g.max >= .9),
+    egg: !!S.eggFound
+  };
+}
+const ACH = [
+  ['task1', '✅', 'Langkah pertama', 'Selesaikan 1 tugas', s => s.tasks, 1],
+  ['task10', '📝', 'Rajin mengerjakan', 'Selesaikan 10 tugas', s => s.tasks, 10],
+  ['task50', '🚀', 'Mesin tugas', 'Selesaikan 50 tugas', s => s.tasks, 50],
+  ['ontime10', '⏱️', 'Tepat waktu', '10 tugas selesai sebelum deadline', s => s.ontime, 10],
+  ['study60', '📖', 'Satu jam fokus', 'Total belajar 1 jam', s => s.mins, 60],
+  ['study600', '🧠', 'Kutu buku', 'Total belajar 10 jam', s => s.mins, 600],
+  ['study3000', '🎓', 'Profesor muda', 'Total belajar 50 jam', s => s.mins, 3000],
+  ['streak3', '🔥', 'Mulai panas', 'Streak 3 hari', s => s.best, 3],
+  ['streak7', '🌟', 'Seminggu penuh', 'Streak 7 hari', s => s.best, 7],
+  ['streak30', '👑', 'Sebulan konsisten', 'Streak 30 hari', s => s.best, 30],
+  ['exam1', '🎯', 'Siap ujian', 'Belajar sebelum ujian', s => s.studied, 1],
+  ['plan', '🗺️', 'Rencana tuntas', 'Selesaikan semua topik rencana belajar satu ujian', s => s.plan ? 1 : 0, 1],
+  ['hw5', '🎒', 'Tidak ada PR terlewat', 'Catat 5 PR dari jadwal', s => s.hw, 5],
+  ['kas5', '💰', 'Bendahara teladan', 'Bayar kas tepat waktu 5 kali', s => s.kas, 5],
+  ['ttweek', '📅', 'Jadwal lengkap', 'Isi jadwal 6 hari dalam satu minggu', s => Math.max(0, ...Object.values(s.ttWeek)), 6],
+  ['lvl3', '⬆️', 'Naik kelas', 'Capai level 3', s => s.lvl, 3],
+  ['pts1000', '💎', 'Seribu poin', 'Kumpulkan 1.000 poin', s => s.earned, 1000],
+  ['grade90', '🏆', 'Nilai gemilang', 'Dapat nilai 90 atau lebih', s => s.grade ? 1 : 0, 1],
+  ['egg', '🥚', 'Penjelajah', 'Temukan rahasia remind+', s => s.egg ? 1 : 0, 1]
+];
+function achCheck() {
+  if (!USER) return;
+  const st = achStats(), got = ACH.filter(a => a[4](st) >= a[5]).map(a => a[0]);
+  if (!S.ach || typeof S.ach !== 'object') { S.ach = {}; got.forEach(id => S.ach[id] = nowIso()); saveLocal(); return; }
+  const fresh = got.filter(id => !S.ach[id]);
+  if (!fresh.length) return;
+  fresh.forEach(id => S.ach[id] = nowIso()); persist();
+  const a = ACH.find(x => x[0] === fresh[0]);
+  setTimeout(() => toast(T`🏅 Pencapaian baru: ${a[1]} ${tx(a[2])}` + (fresh.length > 1 ? ' ' + T`+${fresh.length - 1} lagi` : ''), { label: 'Lihat', fn: () => { go('atur'); aturGo('ach'); } }), 900);
+}
+function achSection() {
+  const st = achStats(), n = ACH.filter(a => S.ach && S.ach[a[0]]).length;
+  return `<section class="card"><div class="card-head"><h2>${T`${n} dari ${ACH.length} terbuka`}</h2></div>
+    <div class="w-bar" style="margin-bottom:16px"><i style="width:${n / ACH.length * 100}%"></i></div>
+    <div class="ach-grid">${ACH.map(([id, e, name, desc, f, goal]) => {
+      const on = S.ach && S.ach[id], v = Math.min(goal, f(st));
+      return `<div class="ach ${on ? 'on' : ''}"><span class="ach-e">${on ? e : '🔒'}</span><b>${tx(name)}</b><span>${tx(desc)}</span>${on ? `<small>${new Date(S.ach[id]).toLocaleDateString(LOC, { day: 'numeric', month: 'short', year: 'numeric' })}</small>` : goal > 1 ? `<div class="w-bar sm"><i style="width:${v / goal * 100}%"></i></div><small>${fmt(v)} / ${fmt(goal)}</small>` : ''}</div>`;
+    }).join('')}</div></section>`;
+}
+
+/* ================= Nilai (opsional per mata pelajaran) ================= */
+const gradeSubj = () => S.subj.filter(s => s.g);
+const pct = g => g.max ? g.v / g.max * 100 : 0;
+async function gradeModal(pre) {
+  const subs = gradeSubj(); if (!subs.length) { toast(tx('Aktifkan nilai di mata pelajaran dulu')); return; }
+  pre = pre || {};
+  const v = await modal({ title: tx('Tambah nilai'),
+    html: `<div class="stack">
+      <label class="field"><span>${tx('Mata pelajaran')}</span><select class="input" id="gS">${subs.map(s => `<option value="${s.id}" ${pre.s === s.id ? 'selected' : ''}>${esc(s.n)}</option>`).join('')}</select></label>
+      <label class="field"><span>${tx('Nama penilaian')}</span><input class="input" id="gN" value="${esc(pre.n || '')}" placeholder="${esc(tx('Contoh: Ulangan Bab 3'))}"></label>
+      <div class="form-row"><label class="field"><span>${tx('Nilai yang didapat')}</span><input class="input" id="gV" type="number" inputmode="decimal" min="0" step="0.5" placeholder="85"></label><label class="field"><span>${tx('Nilai maksimal')}</span><input class="input" id="gM" type="number" inputmode="decimal" min="1" value="100"></label></div>
+      <label class="field"><span>${tx('Tanggal')}</span><input class="input" id="gD" type="date" value="${pre.d || ymd(new Date())}"></label></div>`,
+    actions: [{ label: 'Batal', cls: 'ghost', value: null }, { label: 'Simpan', cls: 'grad', validate: m => $('#gV', m).value !== '' && Number($('#gM', m).value) > 0, get: m => ({ s: $('#gS', m).value, n: $('#gN', m).value.trim() || tx('Penilaian'), v: Number($('#gV', m).value), max: Number($('#gM', m).value) || 100, d: $('#gD', m).value || ymd(new Date()) }) }] });
+  if (!v) return;
+  S.grades = S.grades || []; S.grades.push(Object.assign({ id: uid() }, v)); persist(); render(); toast(tx('Nilai disimpan'));
+}
+function spark(arr) {
+  if (arr.length < 2) return '';
+  const w = 120, h = 34, mn = Math.min(...arr, 60), mx = Math.max(...arr, 100), k = mx - mn || 1;
+  const pts = arr.map((v, i) => `${(i / (arr.length - 1) * w).toFixed(1)},${(h - 3 - (v - mn) / k * (h - 6)).toFixed(1)}`).join(' ');
+  return `<svg class="g-spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+function gradesView() {
+  const subs = gradeSubj();
+  if (!subs.length) return `<section class="card"><div class="empty">${I('trophy')}<b>${tx('Pelacak nilai belum aktif')}</b>${tx('Pilih mata pelajaran yang nilainya ingin kamu catat. Mapel lain tidak ikut tampil.')}<div style="margin-top:14px"><button class="btn grad sm" id="gEn">${I('book')}${tx('Pilih mata pelajaran')}</button></div></div></section>`;
+  const G = S.grades || [];
+  const all = G.filter(g => subs.some(s => s.id === g.s));
+  const avg = all.length ? all.reduce((a, g) => a + pct(g), 0) / all.length : 0;
+  return `<section class="card"><div class="card-head"><div><h2>${tx('Nilai')}</h2><div class="muted small">${all.length ? T`Rata-rata semua: ${avg.toFixed(1)}` : tx('Belum ada nilai')}</div></div><div style="display:flex;gap:6px"><button class="icon-btn sm" id="gEn" aria-label="Pilih mata pelajaran">${I('book')}</button><button class="btn grad sm" id="gAdd">${I('plus')}${tx('Nilai')}</button></div></div></section>
+  <div class="g-grid">${subs.map(s => {
+    const g = G.filter(x => x.s === s.id).sort((a, b) => a.d.localeCompare(b.d));
+    const a = g.length ? g.reduce((t, x) => t + pct(x), 0) / g.length : null;
+    const trend = g.length >= 2 ? pct(g[g.length - 1]) - pct(g[g.length - 2]) : 0;
+    return `<section class="card g-card" style="--h:${s.h}"><div class="g-head"><div style="min-width:0"><b>${esc(s.n)}</b><span class="faint small">${T`${g.length} nilai`}</span></div><div class="g-avg">${a === null ? '–' : a.toFixed(1)}${g.length >= 2 ? `<small class="${trend >= 0 ? 'plus' : 'minus'}">${trend >= 0 ? '▲' : '▼'} ${Math.abs(trend).toFixed(1)}</small>` : ''}</div></div>
+      ${spark(g.slice(-10).map(pct))}
+      <div class="g-list">${g.slice(-5).reverse().map(x => `<div class="g-row"><span>${esc(x.n)}<small>${new Date(x.d + 'T00:00').toLocaleDateString(LOC, { day: 'numeric', month: 'short' })}</small></span><b class="num">${fmt(x.v)}<small>/${fmt(x.max)}</small></b><button class="icon-btn sm danger" data-gx="${x.id}" aria-label="Hapus">${I('x')}</button></div>`).join('') || `<p class="faint small" style="margin:6px 0 0">${tx('Belum ada nilai')}</p>`}</div>
+      <button class="btn ghost sm" data-ga="${s.id}" style="margin-top:10px">${I('plus')}${tx('Tambah nilai')}</button></section>`;
+  }).join('')}</div>`;
+}
+function gradesBind(root) {
+  const en = $('#gEn', root); if (en) en.onclick = subjModal;
+  const ad = $('#gAdd', root); if (ad) ad.onclick = () => gradeModal();
+  $$('[data-ga]', root).forEach(b => b.onclick = () => gradeModal({ s: b.dataset.ga }));
+  $$('[data-gx]', root).forEach(b => b.onclick = () => {
+    const i = S.grades.findIndex(x => x.id === b.dataset.gx); if (i < 0) return;
+    const old = S.grades.splice(i, 1)[0]; persist(); render();
+    toast(tx('Nilai dihapus'), { label: 'Batalkan', fn: () => { S.grades.splice(i, 0, old); persist(); render(); } });
+  });
+}
+/* Cocokkan nama ujian dengan mapel yang nilainya aktif */
+const gradeSubjFor = name => gradeSubj().find(s => String(name).toLowerCase().includes(s.n.toLowerCase()));
+
 /* ================= Telur paskah: ketuk logo 5× di Atur → Tentang ================= */
 const EGG_KEY = 'remindplus:egg';
 const eggApply = () => document.documentElement.setAttribute('data-egg', lsGet(EGG_KEY) ? 'on' : 'off');
@@ -2430,6 +2791,7 @@ function eggBurst(logo) {
   setTimeout(eggModal, motionOn() ? 900 : 0);
 }
 function eggModal() {
+  if (!S.eggFound) { S.eggFound = true; persist(); }
   const done = S.tasks.filter(x => x.done).length;
   const mins = S.log.filter(l => l.kind === 'belajar').reduce((a, l) => a + (l.min || 0), 0);
   const first = S.log.length ? Math.min(...S.log.map(l => Date.parse(l.t))) : Date.now();
@@ -2477,6 +2839,10 @@ function alerts() {
     const td = S.rem.map(r => ({ r, d: remOcc(r, now, now)[0] })).filter(x => x.d && !x.r.done.includes(x.d)).sort((a, b) => remAt(a.r, a.d) - remAt(b.r, b.d));
     if (td.length) out.push(`<div class="alert info"><div class="ico">${I('bell')}</div><div class="body"><b>${T`${td.length} pengingat hari ini`}</b><span class="small muted">${td.slice(0, 3).map(x => esc(x.r.t) + ' ' + hhmm(x.r.jam)).join(' · ')}${td.length > 3 ? '…' : ''}</span></div><div class="acts"><button class="btn ghost sm" data-ago="ingat">Lihat</button></div></div>`);
   }
+  const hw = hwPending();
+  if (hw.length) out.unshift(`<div class="alert info hw-alert"><div class="ico">${I('backpack')}</div><div class="body"><b>${hw.length === 1 ? T`Ada PR dari ${esc(subjName(hw[0].it.s))}?` : tx('Ada PR dari pelajaran hari ini?')}</b><span class="small muted">${tx('Ketuk pelajaran yang ada PR-nya.')}</span>
+    <div class="hw-chips">${hw.map((s, k) => `<button class="hw-chip" data-hwy="${k}" style="--h:${subjHue(s.it.s)}">${I('plus')}${esc(subjName(s.it.s))}</button>`).join('')}</div></div>
+    <div class="acts"><button class="btn ghost sm" data-hwn>${tx(hw.length > 1 ? 'Tidak ada PR' : 'Tidak ada')}</button></div></div>`);
   if (IS_IOS && !IS_STANDALONE && !lsGet('remindplus:ios-hint')) out.unshift(`<div class="alert info"><div class="ico">${I('upload')}</div><div class="body"><b>Pasang remind+ di iPhone/iPad</b><span class="small muted">${T`Di Safari, ketuk tombol Bagikan (kotak dengan panah ke atas), lalu pilih <strong>Tambahkan ke Layar Utama</strong>. Notifikasi baru bisa aktif setelah dipasang.`}</span></div><div class="acts"><button class="btn ghost sm" data-iosok>Mengerti</button></div></div>`);
   box.innerHTML = out.join('');
   const iosOk = $('[data-iosok]', box); if (iosOk) iosOk.onclick = () => { lsSet('remindplus:ios-hint', true); alerts(); };
@@ -2485,6 +2851,8 @@ function alerts() {
   $$('[data-asd]', box).forEach(b => b.onclick = () => examStudied(b.dataset.asd));
   $$('[data-ak]', box).forEach(b => b.onclick = () => payKas(b.dataset.ak, false));
   $$('[data-akall]', box).forEach(b => b.onclick = () => payKas(b.dataset.akall, true));
+  $$('[data-hwy]', box).forEach(b => b.onclick = async () => { if (await hwModal(hw[+b.dataset.hwy])) render(); });
+  const hn = $('[data-hwn]', box); if (hn) hn.onclick = () => { hw.forEach(hwMark); alerts(); };
 }
 
 function reminderList() {

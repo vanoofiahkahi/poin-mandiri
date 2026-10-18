@@ -12,7 +12,9 @@ Aplikasi web yang bisa dipasang di Android (PWA), dengan akun online yang tersin
 - **Kas** — pengingat bayar uang kas
 - **Pengingat** sekolah & pribadi
 - **Timer belajar**, level, streak, dan riwayat poin
+- Widget jadwal berikutnya, rencana belajar ujian, PR dari jadwal
+- Ringkasan mingguan, pencapaian, pembeku streak, pelacak nilai (opsional)
 - Alarm darurat, Bahasa Indonesia & English, mode terang/gelap, liquid glass
 
 ## Changelog
-Versi terbaru: **2.12.0** — lihat semua perubahan di [CHANGELOG.md](CHANGELOG.md).
+Versi terbaru: **3.0.0** — lihat semua perubahan di [CHANGELOG.md](CHANGELOG.md).
