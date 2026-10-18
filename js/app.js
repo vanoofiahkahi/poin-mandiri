@@ -984,6 +984,7 @@ function render() {
   const pages = { home, tugas, ujian, jadwal, kas, ingat, belajar, riwayat, atur };
   if (V === 'home') { $('#hello').textContent = greeting() + ' 👋'; $('#title').textContent = displayName(); }
   else { $('#hello').textContent = new Date().toLocaleDateString(LOC, { weekday: 'long', day: 'numeric', month: 'long' }); $('#title').textContent = TITLES[V]; }
+  RDAY = sod(Date.now());
   pages[V]();
   enhance(view());
   if (ENTER) { ENTER = false; enterAnim(view()); }
@@ -1008,21 +1009,53 @@ function badges() {
   });
 }
 const view = () => $('#view');
+/* Pembaruan per menit: hanya bagian yang bergantung waktu (hitung mundur, agenda, jadwal) yang diganti,
+   dan hanya jika HTML-nya berubah. Formulir, popup, dan animasi lain tidak tersentuh. */
+let RDAY = 0;
+const within = (root, s) => root.matches(s) ? [root, ...$$(s, root)] : $$(s, root);
+function patch(el, html, bind) {
+  if (!el || el._h === html || (POP && el.contains(POP.anchor)) || $('.inline-edit', el) || $('.pop', el)) return;
+  const t = document.createElement('template'); t.innerHTML = html.trim();
+  const n = t.content.firstElementChild; n._h = html;
+  el.replaceWith(n); if (bind) bind(n);
+}
+function live() {
+  if (!USER || !$('#view')) return;
+  if (sod(Date.now()) !== RDAY) { render(); return; }
+  const now = Date.now();
+  if (V === 'home') {
+    $('#hello').textContent = greeting() + ' 👋';
+    patch($('#agList'), agendaList(now), bindGo2);
+    patch($('#ttHome'), ttHomeCard(), bindGo2);
+  } else if (V === 'tugas') {
+    $$('.item[data-id]:not(.done)', view()).forEach(el => { const t = S.tasks.find(x => x.id === el.dataset.id); if (t && !t.done) patch(el, taskRow(t, now), bindTasks); });
+  } else if (V === 'ujian') {
+    $$('.item[data-eid]', view()).forEach(el => { const e = S.exams.find(x => x.id === el.dataset.eid); if (e && !e.done) patch(el, examRow(e, now), bindExams); });
+  }
+}
+const bindGo2 = root => within(root, '[data-go2]').forEach(b => b.onclick = () => go(b.dataset.go2));
 const emptyBox = (ic, t, s) => `<div class="empty">${I(ic)}<b>${t}</b>${s}</div>`;
 
 /* ---------- Beranda ---------- */
-function home() {
-  const { cur, next } = levelOf(S.earned);
-  const pct = next ? Math.min(1, (S.earned - cur.min) / (next.min - cur.min)) : 1;
-  const C = 2 * Math.PI * 40;
-  const w = weekStats(), st = streak(), now = Date.now();
+function agendaList(now) {
   const agenda = [
     ...S.tasks.filter(t => !t.done && t.dl).map(t => ({ at: dlMs(t), kind: 'tugas', t: t.n, sub: esc(t.d), ic: 'checks', tone: 't-brand' })),
     ...S.exams.filter(e => !e.done && examAt(e) > now - 3 * 36e5).map(e => ({ at: examAt(e), kind: 'ujian', t: T`Ujian ${e.mapel}`, sub: esc(e.jam), ic: 'cap', tone: 't-warn' })),
     ...S.kas.map(k => { const d = kasUnpaid(k)[0] || kasNext(k); return d && ymdMs(d) - now < 8 * DAY ? { at: kasAt(k, d), kind: 'kas', t: k.n + ' · ' + rp(k.amt), ic: 'wallet', tone: 't-mint' } : null; }).filter(Boolean),
     ...S.rem.map(r => { const d = remNext(r); const c = REM_CAT[r.cat] || REM_CAT.sekolah; return d && ymdMs(d) - now < 4 * DAY ? { at: remAt(r, d), kind: 'ingat', t: r.t, ic: c.ic, tone: c.tone } : null; }).filter(Boolean)
   ].sort((a, b) => a.at - b.at).slice(0, 6);
+  return `<div class="list" id="agList">${agenda.length ? agenda.map(a => `
+        <div class="item" data-go2="${a.kind}" style="cursor:pointer"><div class="lead ${a.tone}">${I(a.ic)}</div>
+          <div class="body"><div class="ttl">${esc(a.t)}</div><div class="meta">${dueChip(a.at)}<span class="faint small">${fdt(a.at)}</span></div></div></div>`).join('')
+        : emptyBox('cal', 'Tidak ada agenda', 'Tambahkan deadline tugas atau jadwal ujian.')}</div>`;
+}
+function home() {
+  const { cur, next } = levelOf(S.earned);
+  const pct = next ? Math.min(1, (S.earned - cur.min) / (next.min - cur.min)) : 1;
+  const C = 2 * Math.PI * 40;
+  const w = weekStats(), st = streak(), now = Date.now();
   const recent = S.log.slice(0, 6);
+  const agHtml = agendaList(now), ttHtml = ttHomeCard();
   view().innerHTML = `
   <div class="grid g-home">
     <section class="hero"><span class="liq" aria-hidden="true"></span>
@@ -1050,21 +1083,19 @@ function home() {
     <div class="card stat"><div class="ico t-warn">${I('checks')}</div><div class="v num">${w.tasks}</div><div class="l">Tugas selesai</div></div>
     <div class="card stat"><div class="ico t-danger">${I('trophy')}</div><div class="v num">${S.tasks.filter(t => !t.done).length}</div><div class="l">Tugas aktif</div></div>
   </div>
-  ${ttHomeCard()}
+  ${ttHtml}
   <div class="grid g2" style="margin-top:16px">
     <section class="card">
       <div class="card-head"><h2>Agenda terdekat</h2><button class="btn ghost sm" data-go2="ujian">${I('plus')}Ujian</button></div>
-      <div class="list">${agenda.length ? agenda.map(a => `
-        <div class="item" data-go2="${a.kind}" style="cursor:pointer"><div class="lead ${a.tone}">${I(a.ic)}</div>
-          <div class="body"><div class="ttl">${esc(a.t)}</div><div class="meta">${dueChip(a.at)}<span class="faint small">${fdt(a.at)}</span></div></div></div>`).join('')
-        : emptyBox('cal', 'Tidak ada agenda', 'Tambahkan deadline tugas atau jadwal ujian.')}</div>
+      ${agHtml}
     </section>
     <section class="card">
       <div class="card-head"><h2>Aktivitas terbaru</h2><button class="btn ghost sm" data-go2="riwayat">Semua</button></div>
       <div class="list">${recent.length ? recent.map(logItem).join('') : emptyBox('history', 'Belum ada aktivitas', 'Selesaikan tugas atau mulai belajar untuk dapat poin.')}</div>
     </section>
   </div>`;
-  $$('[data-go2]', view()).forEach(b => b.onclick = () => go(b.dataset.go2));
+  bindGo2(view());
+  $('#agList')._h = agHtml; $('#ttHome')._h = ttHtml;
   countUp($('#balNum'), S.balance);
   const ringV = $('.ring .val'); if (ringV) requestAnimationFrame(() => requestAnimationFrame(() => { ringV.style.strokeDashoffset = ringV.dataset.to; }));
   const hero = $('.hero');
@@ -1078,11 +1109,26 @@ function logItem(l) {
 
 /* ---------- Tugas ---------- */
 let TF = 'aktif';
+function taskRow(t, nw) {
+  const d = dlMs(t), late = d && d < nw;
+  const p = !t.done && late && S.remind.latePct ? Math.round(t.p * (1 - S.remind.latePct / 100)) : (t.done ? (t.got ?? t.p) : t.p);
+  const rAt = d ? Math.max(nw + 6e4, d - S.remind.taskH * 36e5) : 0;
+  return `<div class="item ${t.done ? 'done' : ''}" data-id="${t.id}">
+    <button class="check ${t.done ? 'on' : ''}" data-done="${t.id}" aria-label="Tandai selesai" ${t.done ? 'disabled' : ''}>${I('check')}</button>
+    <div class="body"><div class="ttl">${esc(t.n)}</div>
+      <div class="meta"><span class="chip brand">${esc(t.d)}</span>${t.done ? (t.late ? '<span class="chip danger">Terlambat</span>' : '<span class="chip mint">Selesai</span>') : (d ? dueChip(d) + `<span class="faint small">${fdt(d)}</span>` : '<span class="faint small">Tanpa deadline</span>')}</div></div>
+    <span class="pts num plus">+${p}</span>
+    ${t.done ? `<div class="acts"><button class="icon-btn sm danger" data-del="${t.id}" aria-label="Hapus">${I('trash')}</button></div>` : `<div class="acts">
+      ${d && !late ? alarmBtn(rAt, T`Deadline: ${t.n}`) + calBtn('⏰ ' + T`Deadline: ${t.n}`, rAt, rAt + 18e5, T`Tugas "${t.n}" jatuh tempo ${fdt(d)}.`) : ''}
+      <button class="btn ghost sm" data-edl="${t.id}">${I('cal')}${d ? 'Ubah' : 'Deadline'}</button>
+      <button class="icon-btn sm danger" data-del="${t.id}" aria-label="Hapus">${I('trash')}</button></div>`}
+  </div>`;
+}
 function tugas() {
   const nw = Date.now();
   const open = S.tasks.filter(t => !t.done).sort((a, b) => (dlMs(a) ?? 9e15) - (dlMs(b) ?? 9e15));
   const done = S.tasks.filter(t => t.done).slice(0, 30);
-  const list = TF === 'aktif' ? open : done;
+  const list = TF === 'aktif' ? open : done, rows = list.map(t => taskRow(t, nw));
   view().innerHTML = `
   <section class="card">
     <h2>Tambah tugas</h2><p class="sub">Tentukan sendiri tingkat kesulitannya. Makin sulit, makin banyak poin.</p>
@@ -1095,21 +1141,7 @@ function tugas() {
     ${S.remind.latePct ? `<p class="faint small" style="margin:12px 0 0">${T`Tugas yang selesai lewat deadline hanya mendapat ${100 - S.remind.latePct}% poin.`}</p>` : ''}
   </section>
   <div class="sec-title"><div class="seg" id="tf"><button data-f="aktif" class="${TF === 'aktif' ? 'on' : ''}">${T`Aktif · ${open.length}`}</button><button data-f="selesai" class="${TF === 'selesai' ? 'on' : ''}">Selesai</button></div></div>
-  <div class="list">${list.length ? list.map(t => {
-    const d = dlMs(t), late = d && d < nw;
-    const p = !t.done && late && S.remind.latePct ? Math.round(t.p * (1 - S.remind.latePct / 100)) : (t.done ? (t.got ?? t.p) : t.p);
-    const rAt = d ? Math.max(nw + 6e4, d - S.remind.taskH * 36e5) : 0;
-    return `<div class="item ${t.done ? 'done' : ''}" data-id="${t.id}">
-      <button class="check ${t.done ? 'on' : ''}" data-done="${t.id}" aria-label="Tandai selesai" ${t.done ? 'disabled' : ''}>${I('check')}</button>
-      <div class="body"><div class="ttl">${esc(t.n)}</div>
-        <div class="meta"><span class="chip brand">${esc(t.d)}</span>${t.done ? (t.late ? '<span class="chip danger">Terlambat</span>' : '<span class="chip mint">Selesai</span>') : (d ? dueChip(d) + `<span class="faint small">${fdt(d)}</span>` : '<span class="faint small">Tanpa deadline</span>')}</div></div>
-      <span class="pts num plus">+${p}</span>
-      ${t.done ? `<div class="acts"><button class="icon-btn sm danger" data-del="${t.id}" aria-label="Hapus">${I('trash')}</button></div>` : `<div class="acts">
-        ${d && !late ? alarmBtn(rAt, T`Deadline: ${t.n}`) + calBtn('⏰ ' + T`Deadline: ${t.n}`, rAt, rAt + 18e5, T`Tugas "${t.n}" jatuh tempo ${fdt(d)}.`) : ''}
-        <button class="btn ghost sm" data-edl="${t.id}">${I('cal')}${d ? 'Ubah' : 'Deadline'}</button>
-        <button class="icon-btn sm danger" data-del="${t.id}" aria-label="Hapus">${I('trash')}</button></div>`}
-    </div>`;
-  }).join('') : TF === 'aktif' ? emptyBox('checks', 'Belum ada tugas aktif', 'Tambahkan tugas di atas, lalu centang saat selesai.') : emptyBox('trophy', 'Belum ada yang selesai', 'Tugas yang dicentang akan muncul di sini.')}</div>`;
+  <div class="list">${rows.length ? rows.join('') : TF === 'aktif' ? emptyBox('checks', 'Belum ada tugas aktif', 'Tambahkan tugas di atas, lalu centang saat selesai.') : emptyBox('trophy', 'Belum ada yang selesai', 'Tugas yang dicentang akan muncul di sini.')}</div>`;
   const addT = () => {
     const n = $('#tn').value.trim(); if (!n) { $('#tn').focus(); return; }
     const d = S.diff[$('#td').value], dl = $('#tdl').value || '';
@@ -1119,17 +1151,21 @@ function tugas() {
   };
   $('#ta').onclick = addT; $('#tn').onkeydown = e => { if (e.key === 'Enter') addT(); };
   $$('#tf button').forEach(b => b.onclick = () => { TF = b.dataset.f; render(); });
-  $$('[data-done]', view()).forEach(b => b.onclick = () => {
+  $$('.item[data-id]', view()).forEach((el, i) => el._h = rows[i]);
+  bindTasks(view());
+}
+function bindTasks(root) {
+  within(root, '[data-done]').forEach(b => b.onclick = () => {
     const r = b.getBoundingClientRect(), id = b.dataset.done;
     if (!motionOn()) { completeTask(id); return; }
     b.classList.add('on', 'pop'); b.disabled = true;
     setTimeout(() => { const p = completeTask(id); if (p) floatPoints(r.left + r.width / 2, r.top - 6, '+' + p); }, 300);
   });
-  $$('[data-del]', view()).forEach(b => b.onclick = async () => {
+  within(root, '[data-del]').forEach(b => b.onclick = async () => {
     if (!await ask('Hapus tugas?', 'Tugas ini akan dihapus. Poin yang sudah didapat tidak berubah.', 'Hapus', 'danger solid')) return;
     S.tasks = S.tasks.filter(x => x.id !== b.dataset.del); persist(); render();
   });
-  $$('[data-edl]', view()).forEach(b => b.onclick = () => {
+  within(root, '[data-edl]').forEach(b => b.onclick = () => {
     const t = S.tasks.find(x => x.id === b.dataset.edl), item = b.closest('.item');
     if ($('.inline-edit', item)) return;
     const box = document.createElement('div'); box.className = 'inline-edit';
@@ -1156,10 +1192,25 @@ function completeTask(id) {
 }
 
 /* ---------- Ujian ---------- */
+function examRow(e, now) {
+  const at = examAt(e), nt = examNight(e), passed = at < now;
+  return `<div class="item" data-eid="${e.id}"><div class="lead t-warn">${I('cap')}</div>
+    <div class="body"><div class="ttl">${esc(e.mapel)}</div>
+      <div class="faint small" style="margin-top:2px">${fd(at)} · ${esc(e.jam)}${e.catatan ? ' · ' + esc(e.catatan) : ''}</div>
+      <div class="meta">${passed ? '<span class="chip">Sudah lewat</span>' : dueChip(at)}${e.studied ? `<span class="chip mint">${I('check')}Sudah belajar</span>` : `<span class="chip">${I('bell')}${T`Belajar ${fdt(nt)}`}</span>`}</div></div>
+    <div class="acts">
+      ${!passed ? alarmBtn(nt, T`Belajar ujian ${e.mapel}`) : ''}
+      ${!passed && nt > now ? calBtn('📚 ' + T`Belajar untuk ujian ${e.mapel}`, nt, nt + 2 * 36e5, T`Ujian ${e.mapel} ${fdt(at)}` + (e.catatan ? '. ' + e.catatan : '')) : ''}
+      ${!passed ? `<button class="btn soft sm" data-est="${e.id}">${I('play')}Belajar</button>` : ''}
+      ${!e.studied && !passed ? `<button class="btn mint sm" data-esd="${e.id}">${I('check')}Sudah belajar</button>` : ''}
+      ${passed ? `<button class="btn mint sm" data-edn="${e.id}">${I('check')}Selesai</button>` : ''}
+      <button class="icon-btn sm danger" data-edel="${e.id}" aria-label="Hapus">${I('trash')}</button>
+    </div></div>`;
+}
 function ujian() {
   const now = Date.now();
   const up = S.exams.filter(e => !e.done).sort((a, b) => examAt(a) - examAt(b));
-  const past = S.exams.filter(e => e.done).sort((a, b) => examAt(b) - examAt(a)).slice(0, 20);
+  const past = S.exams.filter(e => e.done).sort((a, b) => examAt(b) - examAt(a)).slice(0, 20), rows = up.map(e => examRow(e, now));
   const tm = new Date(now + DAY);
   const tv = tm.getFullYear() + '-' + String(tm.getMonth() + 1).padStart(2, '0') + '-' + String(tm.getDate()).padStart(2, '0');
   view().innerHTML = `
@@ -1176,21 +1227,7 @@ function ujian() {
     </div>
   </section>
   <div class="sec-title"><h3>Ujian mendatang <span class="count">${up.length}</span></h3></div>
-  <div class="list">${up.length ? up.map(e => {
-    const at = examAt(e), nt = examNight(e), passed = at < now;
-    return `<div class="item"><div class="lead t-warn">${I('cap')}</div>
-      <div class="body"><div class="ttl">${esc(e.mapel)}</div>
-        <div class="faint small" style="margin-top:2px">${fd(at)} · ${esc(e.jam)}${e.catatan ? ' · ' + esc(e.catatan) : ''}</div>
-        <div class="meta">${passed ? '<span class="chip">Sudah lewat</span>' : dueChip(at)}${e.studied ? `<span class="chip mint">${I('check')}Sudah belajar</span>` : `<span class="chip">${I('bell')}${T`Belajar ${fdt(nt)}`}</span>`}</div></div>
-      <div class="acts">
-        ${!passed ? alarmBtn(nt, T`Belajar ujian ${e.mapel}`) : ''}
-        ${!passed && nt > now ? calBtn('📚 ' + T`Belajar untuk ujian ${e.mapel}`, nt, nt + 2 * 36e5, T`Ujian ${e.mapel} ${fdt(at)}` + (e.catatan ? '. ' + e.catatan : '')) : ''}
-        ${!passed ? `<button class="btn soft sm" data-est="${e.id}">${I('play')}Belajar</button>` : ''}
-        ${!e.studied && !passed ? `<button class="btn mint sm" data-esd="${e.id}">${I('check')}Sudah belajar</button>` : ''}
-        ${passed ? `<button class="btn mint sm" data-edn="${e.id}">${I('check')}Selesai</button>` : ''}
-        <button class="icon-btn sm danger" data-edel="${e.id}" aria-label="Hapus">${I('trash')}</button>
-      </div></div>`;
-  }).join('') : emptyBox('cap', 'Belum ada jadwal ujian', 'Tambahkan ujian agar remind+ bisa mengingatkan Anda belajar.')}</div>
+  <div class="list">${rows.length ? rows.join('') : emptyBox('cap', 'Belum ada jadwal ujian', 'Tambahkan ujian agar remind+ bisa mengingatkan Anda belajar.')}</div>
   ${past.length ? `<div class="sec-title"><h3>Selesai</h3></div><div class="list">${past.map(e => `
     <div class="item done"><div class="lead t-mint">${I('check')}</div><div class="body"><div class="ttl">${esc(e.mapel)}</div><div class="faint small">${fd(examAt(e))}</div></div>
     ${e.studied ? `<span class="chip mint">Belajar ✓</span>` : ''}<button class="icon-btn sm danger" data-edel="${e.id}" aria-label="Hapus">${I('trash')}</button></div>`).join('')}</div>` : ''}`;
@@ -1202,10 +1239,14 @@ function ujian() {
     toast(examNight(e) > Date.now() ? T`Ujian ditambah · pengingat ${fdt(examNight(e))}` : tx('Ujian ditambah'));
   };
   $('#ea').onclick = addE; $('#em').onkeydown = e => { if (e.key === 'Enter') addE(); };
-  $$('[data-est]', view()).forEach(b => b.onclick = () => startExamStudy(b.dataset.est));
-  $$('[data-esd]', view()).forEach(b => b.onclick = () => examStudied(b.dataset.esd));
-  $$('[data-edn]', view()).forEach(b => b.onclick = () => { const e = S.exams.find(x => x.id === b.dataset.edn); e.done = true; persist(); render(); });
-  $$('[data-edel]', view()).forEach(b => b.onclick = async () => {
+  $$('.item[data-eid]', view()).forEach((el, i) => el._h = rows[i]);
+  bindExams(view());
+}
+function bindExams(root) {
+  within(root, '[data-est]').forEach(b => b.onclick = () => startExamStudy(b.dataset.est));
+  within(root, '[data-esd]').forEach(b => b.onclick = () => examStudied(b.dataset.esd));
+  within(root, '[data-edn]').forEach(b => b.onclick = () => { const e = S.exams.find(x => x.id === b.dataset.edn); e.done = true; persist(); render(); });
+  within(root, '[data-edel]').forEach(b => b.onclick = async () => {
     if (!await ask('Hapus jadwal ujian?', 'Pengingat untuk ujian ini juga dihapus.', 'Hapus', 'danger solid')) return;
     S.exams = S.exams.filter(x => x.id !== b.dataset.edel); persist(); render();
   });
@@ -1868,14 +1909,14 @@ function ttHomeCard() {
   if (!tSlots.length || nowMin() >= tSlots[tSlots.length - 1].b) {
     const tm = addDays(today, 1);
     if (ttHas(tm)) { date = tm; label = tx('Jadwal besok'); }
-    else if (!tSlots.length) return `<section class="card" style="margin-top:16px"><div class="card-head"><h2>${tx('Jadwal hari ini')}</h2><button class="btn ghost sm" data-go2="jadwal">${I('plus')}Isi jadwal</button></div><p class="muted small" style="margin:0">${tx('Belum ada pelajaran untuk hari ini.')}</p></section>`;
+    else if (!tSlots.length) return `<section class="card" id="ttHome" style="margin-top:16px"><div class="card-head"><h2>${tx('Jadwal hari ini')}</h2><button class="btn ghost sm" data-go2="jadwal">${I('plus')}Isi jadwal</button></div><p class="muted small" style="margin:0">${tx('Belum ada pelajaran untuk hari ini.')}</p></section>`;
   }
   const slots = ttSlots(S.tt[date]), nm = nowMin(), isT = date === today;
   const next = isT ? slots.find(s => s.it.k !== 'b' && s.a > nm) : null;
   const cur = isT ? slots.find(s => nm >= s.a && nm < s.b) : null;
   const sub = cur && cur.it.k !== 'b' ? T`Sekarang: ${subjName(cur.it.s)}` + (next ? ' · ' + T`berikutnya ${subjName(next.it.s)} jam ${fromMin(next.a)}` : '')
     : next ? T`Berikutnya: ${subjName(next.it.s)} jam ${fromMin(next.a)}` : isT ? tx('Pelajaran hari ini sudah selesai') : fd(ymdMs(date));
-  return `<section class="card" style="margin-top:16px">
+  return `<section class="card" id="ttHome" style="margin-top:16px">
     <div class="card-head"><div><h2>${label}</h2><div class="muted small" style="margin-top:4px">${esc(sub)}</div></div><button class="btn ghost sm" data-go2="jadwal">${tx('Lihat')}</button></div>
     <div class="tt-strip">${slots.filter(s => s.it.k !== 'b').map(s => `<div class="tt-chip ${isT && nm >= s.a && nm < s.b ? 'now' : ''} ${isT && nm >= s.b ? 'past' : ''}" style="--h:${subjHue(s.it.s)}"><b>${esc(subjName(s.it.s))}</b><span>${fromMin(s.a)}–${fromMin(s.b)}</span></div>`).join('')}</div>
   </section>`;
@@ -2301,7 +2342,8 @@ function alerts() {
     if (td.length) out.push(`<div class="alert info"><div class="ico">${I('bell')}</div><div class="body"><b>${T`${td.length} pengingat hari ini`}</b><span class="small muted">${td.slice(0, 3).map(x => esc(x.r.t) + ' ' + hhmm(x.r.jam)).join(' · ')}${td.length > 3 ? '…' : ''}</span></div><div class="acts"><button class="btn ghost sm" data-ago="ingat">Lihat</button></div></div>`);
   }
   if (IS_IOS && !IS_STANDALONE && !lsGet('remindplus:ios-hint')) out.unshift(`<div class="alert info"><div class="ico">${I('upload')}</div><div class="body"><b>Pasang remind+ di iPhone/iPad</b><span class="small muted">${T`Di Safari, ketuk tombol Bagikan (kotak dengan panah ke atas), lalu pilih <strong>Tambahkan ke Layar Utama</strong>. Notifikasi baru bisa aktif setelah dipasang.`}</span></div><div class="acts"><button class="btn ghost sm" data-iosok>Mengerti</button></div></div>`);
-  box.innerHTML = out.join('');
+  const h = out.join(''); if (box._h === h) return;
+  box._h = h; box.innerHTML = h;
   const iosOk = $('[data-iosok]', box); if (iosOk) iosOk.onclick = () => { lsSet('remindplus:ios-hint', true); alerts(); };
   $$('[data-ago]', box).forEach(b => b.onclick = () => go(b.dataset.ago));
   $$('[data-ast]', box).forEach(b => b.onclick = () => startExamStudy(b.dataset.ast));
@@ -2402,7 +2444,8 @@ $('#alSn').onclick = () => { const r = AL && AL.r; closeAlarm(); if (!r) return;
 let LOOP = null, PULL_LOOP = null, LOGGING_OUT = false;
 function startLoops() {
   stopLoops();
-  LOOP = setInterval(() => { if (!USER) return; alerts(); badges(); if (V === 'tugas' || V === 'ujian' || V === 'home') render(); }, 60000);
+  let n = 0;
+  LOOP = setInterval(() => { if (!USER) return; alerts(); badges(); live(); if (++n % 15 === 0) syncReminders(); }, 60000);
   PULL_LOOP = setInterval(() => { if (USER && !USER.local && !document.hidden) { if (S.meta.dirty) push(); else pull(); } }, 5 * 60000);
 }
 function stopLoops() { clearInterval(LOOP); clearInterval(PULL_LOOP); clearInterval(tick); RT.forEach(clearTimeout); RT = []; }
