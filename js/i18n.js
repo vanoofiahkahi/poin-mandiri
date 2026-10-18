@@ -97,7 +97,7 @@
 
     /* ---------- uang kas ---------- */
     'Setiap {0}': 'Every {0}', 'Setiap hari sekolah (Sen–Jum)': 'Every school day (Mon–Fri)', 'Setiap tanggal {0}': 'Every month on day {0}', 'Uang kas kelas': 'Class dues',
-    'Nama': 'Name', 'Nominal (Rp)': 'Amount (Rp)', 'Jadwal': 'Schedule', 'Mingguan': 'Weekly', 'Harian (hari sekolah)': 'Daily (school days)', 'Bulanan': 'Monthly',
+    'Nama': 'Name', 'Nominal (Rp)': 'Amount (Rp)', 'Jadwal bayar': 'Payment schedule', 'Mingguan': 'Weekly', 'Harian (hari sekolah)': 'Daily (school days)', 'Bulanan': 'Monthly',
     'Hari bayar': 'Payment day', 'Tanggal bayar': 'Payment date', 'Jam pengingat': 'Reminder time', 'Bonus poin bayar tepat waktu': 'Bonus points for paying on time',
     'Ingatkan juga malam sebelumnya': 'Also remind me the night before', 'Isi nama kas': 'Enter a name', 'Isi nominal': 'Enter an amount', 'Dibayar bulan ini': 'Paid this month',
     'Tunggakan': 'Overdue', 'Bayar tepat waktu': 'Paid on time', 'Tambah pengingat kas': 'Add a dues reminder',
@@ -192,6 +192,26 @@
     'Belajar malam ini: {0}': 'Study tonight: {0}', 'Ujian {0} besok, {1}. Ayo belajar sekarang!': '{0} exam tomorrow, {1}. Time to study!', 'Deadline mendekat: {0}': 'Deadline coming up: {0}',
     'Jatuh tempo {0}.': 'Due {0}.', 'Deadline sekarang: {0}': 'Deadline now: {0}', 'Waktunya habis. Selesaikan secepatnya.': "Time's up. Finish it as soon as you can.",
     'Bayar {0} hari ini': 'Pay {0} today', 'Besok bayar {0}': 'Pay {0} tomorrow', 'Siapkan {0} malam ini.': 'Get {0} ready tonight.',
+
+    /* ---------- jadwal pelajaran ---------- */
+    'Jadwal': 'Timetable', 'Jadwal Pelajaran': 'Timetable', 'Mapel dihapus': 'Deleted subject', 'Istirahat': 'Break', '{0} menit': '{0} min', 'Sekarang': 'Now',
+    '{0} sesi': n => `${n} session${s(n)}`, 'Naikkan': 'Move up', 'Kurangi sesi': 'Fewer sessions', 'Tambah sesi': 'More sessions',
+    'Minggu sebelumnya': 'Previous week', 'Minggu berikutnya': 'Next week',
+    '{0} pelajaran · {1} sesi · selesai {2}': (a, b, c) => `${a} lesson${s(a)} · ${b} session${s(b)} · ends ${c}`, 'Belum diisi': 'Not filled in yet',
+    'Jadwal hari ini masih kosong': "This day's timetable is empty", 'Tambah pelajaran di bawah, atau salin dari hari lain.': 'Add lessons below, or copy from another day.',
+    'Salin dari {0}': 'Copy from {0}', 'Pelajaran': 'Lesson', 'Salin dari…': 'Copy from…', 'Kosongkan': 'Clear',
+    'Mata pelajaran & guru': 'Subjects & teachers', 'Mata pelajaran': 'Subject', 'Guru': 'Teacher', 'Pengaturan jadwal': 'Timetable settings', 'Berlaku untuk semua hari.': 'Applies to every day.',
+    'Durasi 1 sesi (menit)': 'Session length (minutes)', 'Jam mulai biasanya': 'Usual start time', 'Ingatkan sebelum pelajaran': 'Remind me before lessons', '{0} menit sebelum': '{0} minutes before', 'Mati': 'Off',
+    'Muncul sebagai notifikasi biasa, tanpa alarm.': 'Shows up as a regular notification, with no alarm.', 'Dihapus dari jadwal': 'Removed from the timetable', 'Tambahkan mata pelajaran dulu': 'Add a subject first',
+    'Disalin dari {0}': 'Copied from {0}', 'Belum ada hari lain yang sudah diisi': 'No other days are filled in yet', 'Salin jadwal': 'Copy timetable',
+    'Salin seluruh minggu lalu ke minggu ini': 'Copy all of last week into this week', 'Hanya mengisi hari yang masih kosong.': 'Only fills days that are still empty.', 'Atau salin ke hari ini dari:': 'Or copy into this day from:',
+    'Kosongkan jadwal hari ini?': "Clear this day's timetable?", 'Semua pelajaran dan istirahat di hari ini dihapus.': 'All lessons and breaks on this day will be removed.', 'Hapus {0}?': 'Delete {0}?',
+    'Mata pelajaran ini masih ada di jadwal. Di sana akan tampil sebagai "Mapel dihapus".': 'This subject is still in your timetable. It will show there as "Deleted subject".', 'Mapel baru': 'New subject',
+    '{0} hari disalin dari minggu lalu': n => `${n} day${s(n)} copied from last week`, 'Semua hari minggu ini sudah terisi': 'Every day this week is already filled in',
+    'Tambah pelajaran': 'Add a lesson', 'Jumlah sesi': 'Sessions', '1 sesi = {0} menit. Ketuk mata pelajaran untuk menambahkannya.': '1 session = {0} minutes. Tap a subject to add it.',
+    'Sholat & makan siang': 'Prayer & lunch', 'Kegiatan pagi': 'Morning activity', 'Sholat Dhuha': 'Dhuha prayer', 'Ubah istirahat': 'Edit break', 'Tambah istirahat': 'Add a break',
+    'Jadwal hari ini': "Today's timetable", 'Jadwal besok': "Tomorrow's timetable", 'Isi jadwal': 'Fill in', 'Belum ada pelajaran untuk hari ini.': 'No lessons for today yet.',
+    'Sekarang: {0}': 'Now: {0}', 'berikutnya {0} jam {1}': 'next {0} at {1}', 'Berikutnya: {0} jam {1}': 'Next: {0} at {1}', 'Pelajaran hari ini sudah selesai': "Today's lessons are over", 'Mulai {0}': 'Starts {0}',
 
     /* ---------- data bawaan (nama awal) ---------- */
     'Mudah': 'Easy', 'Sedang': 'Medium', 'Sulit': 'Hard', 'Ekstrem': 'Extreme',

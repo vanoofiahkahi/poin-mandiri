@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '2.7.0';
+const VERSION = '2.8.0';
 
 /* ================= Ikon ================= */
 const P = {
@@ -71,7 +71,8 @@ const P = {
   backpack: '<path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M8 10h8M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M8 22v-6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v6"/>',
   heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
   chevl: '<path d="m15 18-6-6 6-6"/>',
-  chevr: '<path d="m9 18 6-6-6-6"/>'
+  chevr: '<path d="m9 18 6-6-6-6"/>',
+  chevu: '<path d="m18 15-6-6-6 6"/>'
 };
 const I = (n, c = 'ic') => `<svg class="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || ''}</svg>`;
 
@@ -261,7 +262,10 @@ const DEF = {
   levels: [{ n: 'Pemula', min: 0 }, { n: 'Rajin', min: 500 }, { n: 'Tekun', min: 1500 }, { n: 'Disiplin', min: 4000 }, { n: 'Mandiri', min: 10000 }],
   rewards: [{ id: 'r1', n: 'Main game 1 jam', p: 60 }, { id: 'r2', n: 'Nonton 1 film', p: 120 }, { id: 'r3', n: 'Jajan favorit', p: 80 }],
   tasks: [], exams: [], kas: [], kasPay: [], rem: [], log: [], earned: 0, balance: 0,
-  remind: { exam: '19:00', taskH: 24, latePct: 0, examBonus: 20, siren: true },
+  /* Jadwal pelajaran: mapel & guru Year 9 (DHIS Lodaya), diisi per tanggal */
+  subj: [{ id: 's1', n: 'Mathematics', t: 'Rizky (RZ)', h: 15 }, { id: 's2', n: 'Bahasa Indonesia', t: 'Ahmad (AD)', h: 62 }, { id: 's3', n: 'Biology', t: 'Dzihni Andiasari (DZ)', h: 109 }, { id: 's4', n: 'Chemistry', t: 'Vinna Octaviana (VO)', h: 156 }, { id: 's5', n: 'Physics', t: 'Dyantie (DY)', h: 203 }, { id: 's6', n: 'English Vocabulary', t: 'Yuni (YA)', h: 250 }, { id: 's7', n: 'English Reading & Writing', t: 'Nurul (NR)', h: 297 }, { id: 's8', n: 'English Listening & Speaking', t: 'Keith Langham (KT) / David (DV)', h: 344 }, { id: 's9', n: 'Islamic Studies', t: 'Anugrah Nurhakim (AG)', h: 31 }, { id: 's10', n: 'Tahsin & Tahfidz', t: 'Ari Fauzi (AF) / Hasan (HA)', h: 78 }, { id: 's11', n: 'Social Studies', t: 'Ananda Amalia (AN)', h: 125 }, { id: 's12', n: 'ICT / Computing', t: 'Erizka Yolanda (EY)', h: 172 }, { id: 's13', n: 'Physical Education', t: 'Irfan Fadhil (IF)', h: 219 }, { id: 's14', n: 'Entrepreneurship', t: 'Nunung Setiani (NS)', h: 266 }, { id: 's15', n: 'Civics / Art / Basa Sunda', t: 'M. Reza (MR) / Prega Panji (PR) / Sunda Teacher (SU)', h: 313 }, { id: 's16', n: 'Research', t: 'Salma (SA) & Ahmad (AD)', h: 0 }, { id: 's17', n: 'TKA Prep: Bahasa Indonesia', t: 'Hilwan Faruq (HF)', h: 47 }, { id: 's18', n: 'TKA Prep: Matematika', t: 'Maulana Fajar (MF)', h: 94 }, { id: 's19', n: 'Cambridge Checkpoint Try Out', t: 'Maulana Fajar (MF) / Dyantie (DY) / Febi (FS)', h: 141 }, { id: 's20', n: 'HRT Session', t: 'Dyantie (DY)', h: 188 }, { id: 's21', n: 'Extracurricular', t: '', h: 235 }],
+  tt: {}, ttMin: 35, ttStart: '07:00',
+  remind: { exam: '19:00', taskH: 24, latePct: 0, examBonus: 20, siren: true, ttLead: 0, ttAt: 0 },
   profile: { name: '' },
   meta: { modifiedAt: 0, syncedAt: null, dirty: false }
 };
@@ -277,7 +281,8 @@ function merge(d) {
   S.remind = Object.assign({}, DEF.remind, d.remind || {});
   S.profile = Object.assign({}, DEF.profile, d.profile || {});
   S.meta = Object.assign({}, DEF.meta, d.meta || {});
-  ['tasks', 'exams', 'kas', 'kasPay', 'rem', 'log', 'rewards', 'diff', 'levels'].forEach(k => { if (!Array.isArray(S[k])) S[k] = clone(DEF[k]); });
+  if (!S.tt || typeof S.tt !== 'object' || Array.isArray(S.tt)) S.tt = {};
+  ['tasks', 'exams', 'kas', 'kasPay', 'rem', 'log', 'rewards', 'diff', 'levels', 'subj'].forEach(k => { if (!Array.isArray(S[k])) S[k] = clone(DEF[k]); });
 }
 function saveLocal() { if (USER) lsSet(stateKey(USER.id), S); }
 const isFresh = s => !(s.log && s.log.length) && !(s.tasks && s.tasks.length) && !(s.exams && s.exams.length);
@@ -902,10 +907,10 @@ function startLocal() {
 
 /* ================= Aplikasi ================= */
 const NAV = [
-  ['home', 'Beranda', 'home'], ['tugas', 'Tugas', 'checks'], ['ujian', 'Ujian', 'cap'], ['kas', 'Kas', 'wallet'], ['ingat', 'Pengingat', 'bell'], ['belajar', 'Belajar', 'timer'],
+  ['home', 'Beranda', 'home'], ['tugas', 'Tugas', 'checks'], ['ujian', 'Ujian', 'cap'], ['jadwal', 'Jadwal', 'cal'], ['kas', 'Kas', 'wallet'], ['ingat', 'Pengingat', 'bell'], ['belajar', 'Belajar', 'timer'],
   ['riwayat', 'Riwayat', 'history'], ['atur', 'Pengaturan', 'sliders']
 ];
-const TITLES = { tugas: 'Tugas', ujian: 'Ujian', kas: 'Uang Kas', ingat: 'Pengingat', belajar: 'Belajar', riwayat: 'Riwayat', atur: 'Pengaturan' };
+const TITLES = { tugas: 'Tugas', ujian: 'Ujian', jadwal: 'Jadwal Pelajaran', kas: 'Uang Kas', ingat: 'Pengingat', belajar: 'Belajar', riwayat: 'Riwayat', atur: 'Pengaturan' };
 const displayName = () => (USER && (USER.local ? S.profile.name : USER.name)) || (USER && USER.email ? USER.email.split('@')[0] : '') || tx('Kamu');
 const initial = () => (displayName().trim()[0] || 'R').toUpperCase();
 
@@ -975,7 +980,7 @@ function go(v) {
 function render() {
   if (!USER || !$('#view')) return;
   closePop(true);
-  const pages = { home, tugas, ujian, kas, ingat, belajar, riwayat, atur };
+  const pages = { home, tugas, ujian, jadwal, kas, ingat, belajar, riwayat, atur };
   if (V === 'home') { $('#hello').textContent = greeting() + ' 👋'; $('#title').textContent = displayName(); }
   else { $('#hello').textContent = new Date().toLocaleDateString(LOC, { weekday: 'long', day: 'numeric', month: 'long' }); $('#title').textContent = TITLES[V]; }
   pages[V]();
@@ -1044,6 +1049,7 @@ function home() {
     <div class="card stat"><div class="ico t-warn">${I('checks')}</div><div class="v num">${w.tasks}</div><div class="l">Tugas selesai</div></div>
     <div class="card stat"><div class="ico t-danger">${I('trophy')}</div><div class="v num">${S.tasks.filter(t => !t.done).length}</div><div class="l">Tugas aktif</div></div>
   </div>
+  ${ttHomeCard()}
   <div class="grid g2" style="margin-top:16px">
     <section class="card">
       <div class="card-head"><h2>Agenda terdekat</h2><button class="btn ghost sm" data-go2="ujian">${I('plus')}Ujian</button></div>
@@ -1159,7 +1165,7 @@ function ujian() {
   <section class="card">
     <h2>Tambah jadwal ujian</h2><p class="sub">${T`remind+ mengingatkan Anda belajar malam sebelumnya, jam <b>${esc(hhmm(S.remind.exam))}</b>. Bonus <b>+${S.remind.examBonus} poin</b> kalau sudah belajar.`}</p>
     <div class="form-row">
-      <label class="field grow2"><span>Mata pelajaran / materi</span><input class="input" id="em" placeholder="Contoh: Matematika – Trigonometri"></label>
+      <label class="field grow2"><span>Mata pelajaran / materi</span><input class="input" id="em" list="subjDL" autocomplete="off" placeholder="Contoh: Matematika – Trigonometri">${subjDL()}</label>
       <label class="field"><span>Tanggal</span><input class="input" id="et" type="date" value="${tv}"></label>
       <label class="field"><span>Jam mulai</span><input class="input" id="ej" type="time" value="07:30"></label>
     </div>
@@ -1244,7 +1250,7 @@ function kasForm(k) {
         <label class="field"><span>Nominal (Rp)</span><input class="input" id="ka2" type="number" inputmode="numeric" min="0" value="${k.amt}"></label>
       </div>
       <div class="form-row">
-        <label class="field"><span>Jadwal</span><select class="input" id="kf">
+        <label class="field"><span>Jadwal bayar</span><select class="input" id="kf">
           <option value="w" ${k.f === 'w' ? 'selected' : ''}>Mingguan</option>
           <option value="s" ${k.f === 's' ? 'selected' : ''}>Harian (hari sekolah)</option>
           <option value="m" ${k.f === 'm' ? 'selected' : ''}>Bulanan</option></select></label>
@@ -1579,6 +1585,228 @@ function remDone(id, date) {
   });
 }
 
+/* ---------- Jadwal pelajaran (diisi per tanggal, karena jadwal berubah tiap minggu) ---------- */
+const toMin = s => { const [h, m] = String(s || '07:00').split(':'); return (+h || 0) * 60 + (+m || 0); };
+const fromMin = m => hhmm(p2(Math.floor(m / 60) % 24) + ':' + p2(m % 60));
+const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
+const subjOf = id => S.subj.find(x => x.id === id);
+const subjName = id => { const s = subjOf(id); return s ? s.n : tx('Mapel dihapus'); };
+const subjHue = id => { const s = subjOf(id); return s ? s.h : 220; };
+function ttSlots(day) {
+  let m = toMin(day.start);
+  return (day.items || []).map((it, i) => {
+    const len = it.k === 'b' ? Math.max(0, Number(it.min) || 0) : Math.max(1, Number(it.n) || 1) * S.ttMin;
+    const r = { it, i, a: m, b: m + len }; m += len; return r;
+  });
+}
+const ttHas = d => !!(S.tt[d] && S.tt[d].items && S.tt[d].items.length);
+function ttDefaultDate() { const d = new Date(); if (d.getDay() === 0) d.setDate(d.getDate() + 1); return ymd(d); }
+function weekOf(date) {
+  const d = new Date(date + 'T00:00'); d.setDate(d.getDate() - (d.getDay() + 6) % 7);
+  return Array.from({ length: 6 }, (_, i) => { const x = new Date(d); x.setDate(d.getDate() + i); return ymd(x); });
+}
+const addDays = (date, n) => { const d = new Date(date + 'T00:00'); d.setDate(d.getDate() + n); return ymd(d); };
+function ttTouch(date) { const d = S.tt[date]; if (d) d.c = Date.now(); persist(); }
+function ttPrune() { const lim = ymd(new Date(Date.now() - 200 * DAY)); for (const k in S.tt) if (k < lim || (!ttHas(k) && k !== TTD)) delete S.tt[k]; }
+const subjDL = () => `<datalist id="subjDL">${S.subj.map(s => `<option value="${esc(s.n)}"></option>`).join('')}</datalist>`;
+
+/* Satu baris jadwal */
+function ttRow(s, opts = {}) {
+  const { it, i, a, b } = s, live = opts.today && nowMin() >= a && nowMin() < b;
+  if (it.k === 'b') return `<div class="item tt-item tt-break ${live ? 'now' : ''}">
+      <div class="tt-time"><b>${fromMin(a)}</b><span>${fromMin(b)}</span></div>
+      <div class="body"><div class="ttl">${esc(tx(it.l) || tx('Istirahat'))}</div><div class="faint small">${T`${it.min} menit`}</div></div>
+      ${opts.edit ? `<div class="acts"><button class="icon-btn sm" data-tbe="${i}" aria-label="Ubah">${I('pencil')}</button>${i ? `<button class="icon-btn sm" data-tu="${i}" aria-label="Naikkan">${I('chevu')}</button>` : ''}<button class="icon-btn sm danger" data-tx="${i}" aria-label="Hapus">${I('trash')}</button></div>` : ''}
+    </div>`;
+  const sub = subjOf(it.s);
+  return `<div class="item tt-item ${live ? 'now' : ''}" style="--h:${subjHue(it.s)}">
+      <div class="tt-time"><b>${fromMin(a)}</b><span>${fromMin(b)}</span></div>
+      <div class="body"><div class="ttl">${esc(subjName(it.s))}${live ? ` <span class="chip mint">${tx('Sekarang')}</span>` : ''}</div>
+        <div class="faint small">${sub && sub.t ? esc(sub.t) + ' · ' : ''}${T`${it.n} sesi`}</div></div>
+      ${opts.edit ? `<div class="acts">
+        <div class="tt-step"><button class="icon-btn sm" data-tm="${i}" aria-label="Kurangi sesi">−</button><b class="num">${it.n}</b><button class="icon-btn sm" data-tp="${i}" aria-label="Tambah sesi">+</button></div>
+        ${i ? `<button class="icon-btn sm" data-tu="${i}" aria-label="Naikkan">${I('chevu')}</button>` : ''}
+        <button class="icon-btn sm danger" data-tx="${i}" aria-label="Hapus">${I('trash')}</button></div>` : ''}
+    </div>`;
+}
+
+let TTD = null;
+function jadwal() {
+  if (!TTD) TTD = ttDefaultDate();
+  ttPrune();
+  const wk = weekOf(TTD), today = ymd(new Date()), day = S.tt[TTD];
+  const slots = day ? ttSlots(day) : [];
+  const lessons = slots.filter(x => x.it.k !== 'b');
+  const sess = lessons.reduce((a, x) => a + x.it.n, 0);
+  const prevSame = addDays(TTD, -7);
+  view().innerHTML = `
+  <section class="card">
+    <div class="tt-week">
+      <button class="icon-btn sm" data-wk="-7" aria-label="Minggu sebelumnya">${I('chevl')}</button>
+      <div class="tt-days">${wk.map(d => { const x = new Date(d + 'T00:00'); return `<button class="tt-day ${d === TTD ? 'on' : ''} ${d === today ? 'today' : ''}" data-d="${d}"><small>${HARI_S[x.getDay()]}</small><b>${x.getDate()}</b><i class="${ttHas(d) ? 'has' : ''}"></i></button>`; }).join('')}</div>
+      <button class="icon-btn sm" data-wk="7" aria-label="Minggu berikutnya">${I('chevr')}</button>
+    </div>
+    <div class="tt-head">
+      <div style="min-width:0"><h2>${fd(ymdMs(TTD))}</h2><div class="muted small">${slots.length ? T`${lessons.length} pelajaran · ${sess} sesi · selesai ${fromMin(slots[slots.length - 1].b)}` : tx('Belum diisi')}</div></div>
+      <label class="field tt-start"><span>Jam mulai</span><input class="input" type="time" id="tts" value="${esc(day ? day.start : (S.ttStart || '07:00'))}"></label>
+    </div>
+    <div class="list">${slots.length ? slots.map(s => ttRow(s, { edit: true, today: TTD === today })).join('')
+      : `<div class="empty">${I('cal')}<b>${tx('Jadwal hari ini masih kosong')}</b>${tx('Tambah pelajaran di bawah, atau salin dari hari lain.')}${ttHas(prevSame) ? `<div style="margin-top:14px"><button class="btn soft sm" id="ttPrev">${I('copy')}${T`Salin dari ${fd(ymdMs(prevSame))}`}</button></div>` : ''}</div>`}</div>
+    <div class="tt-acts">
+      <button class="btn grad sm" id="ttAddL">${I('plus')}Pelajaran</button>
+      <button class="btn ghost sm" id="ttAddB">${I('clock')}Istirahat</button>
+      <button class="btn ghost sm" id="ttCopy">${I('copy')}Salin dari…</button>
+      ${slots.length ? `<button class="btn danger sm" id="ttClr">${I('trash')}Kosongkan</button>` : ''}
+    </div>
+  </section>
+  <div class="grid g2" style="margin-top:16px">
+    <section class="card">
+      <div class="card-head"><h2>Mata pelajaran & guru</h2><button class="btn soft sm" id="sjAdd">${I('plus')}Tambah</button></div>
+      <div class="rows">${S.subj.map((s, i) => `<div class="r"><span class="tt-dot" style="--h:${s.h}"></span><div class="tt-sf"><input class="input" data-sn="${i}" value="${esc(s.n)}" placeholder="Mata pelajaran"><input class="input" data-st="${i}" value="${esc(s.t)}" placeholder="Guru"></div><button class="icon-btn sm danger" data-sx="${i}" aria-label="Hapus">${I('x')}</button></div>`).join('') || `<p class="faint small">${tx('Belum ada.')}</p>`}</div>
+    </section>
+    <section class="card">
+      <h2>Pengaturan jadwal</h2><p class="sub">Berlaku untuk semua hari.</p>
+      <div class="stack">
+        <div class="form-row">
+          <label class="field"><span>Durasi 1 sesi (menit)</span><input class="input" type="number" inputmode="numeric" min="5" id="ttMin" value="${S.ttMin}"></label>
+          <label class="field"><span>Jam mulai biasanya</span><input class="input" type="time" id="ttSt" value="${esc(S.ttStart || '07:00')}"></label>
+        </div>
+        <label class="field"><span>Ingatkan sebelum pelajaran</span><select class="input" id="ttLead">${[0, 5, 10, 15].map(m => `<option value="${m}" ${S.remind.ttLead === m ? 'selected' : ''}>${m ? T`${m} menit sebelum` : tx('Mati')}</option>`).join('')}</select></label>
+        <p class="faint small" style="margin:0">${tx('Muncul sebagai notifikasi biasa, tanpa alarm.')}</p>
+      </div>
+    </section>
+  </div>`;
+  const reDay = () => { ENTER = false; render(); };
+  const ensure = () => { if (!S.tt[TTD]) S.tt[TTD] = { start: $('#tts').value || S.ttStart || '07:00', items: [], c: Date.now() }; return S.tt[TTD]; };
+  $$('.tt-day', view()).forEach(b => b.onclick = () => { TTD = b.dataset.d; reDay(); });
+  $$('[data-wk]', view()).forEach(b => b.onclick = () => { TTD = addDays(TTD, +b.dataset.wk); reDay(); });
+  $('#tts').onchange = e => { if (!e.target.value) return; ensure().start = e.target.value; ttTouch(TTD); reDay(); };
+  const it = i => S.tt[TTD].items[+i];
+  $$('[data-tp]', view()).forEach(b => b.onclick = () => { const x = it(b.dataset.tp); x.n = Math.min(8, x.n + 1); ttTouch(TTD); reDay(); });
+  $$('[data-tm]', view()).forEach(b => b.onclick = () => { const x = it(b.dataset.tm); if (x.n > 1) { x.n--; ttTouch(TTD); reDay(); } });
+  $$('[data-tu]', view()).forEach(b => b.onclick = () => { const a = S.tt[TTD].items, i = +b.dataset.tu; [a[i - 1], a[i]] = [a[i], a[i - 1]]; ttTouch(TTD); reDay(); });
+  $$('[data-tx]', view()).forEach(b => b.onclick = () => {
+    const a = S.tt[TTD].items, i = +b.dataset.tx, old = a[i]; a.splice(i, 1); ttTouch(TTD); reDay();
+    toast(tx('Dihapus dari jadwal'), { label: 'Batalkan', fn: () => { (S.tt[TTD] || ensure()).items.splice(i, 0, old); ttTouch(TTD); reDay(); } });
+  });
+  $$('[data-tbe]', view()).forEach(b => b.onclick = async () => { const x = it(b.dataset.tbe); const d = await breakModal(x); if (d) { Object.assign(x, d); ttTouch(TTD); reDay(); } });
+  $('#ttAddL').onclick = async () => {
+    if (!S.subj.length) { toast(tx('Tambahkan mata pelajaran dulu')); $('#sjAdd').focus(); return; }
+    const d = await lessonModal(); if (!d) return;
+    ensure().items.push({ k: 'l', s: d.s, n: d.n }); ttTouch(TTD); reDay();
+  };
+  $('#ttAddB').onclick = async () => { const d = await breakModal(); if (!d) return; ensure().items.push(Object.assign({ k: 'b' }, d)); ttTouch(TTD); reDay(); };
+  const copyFrom = src => { S.tt[TTD] = { start: S.tt[src].start, items: clone(S.tt[src].items), c: Date.now() }; persist(); reDay(); toast(T`Disalin dari ${fd(ymdMs(src))}`); };
+  if ($('#ttPrev')) $('#ttPrev').onclick = () => copyFrom(prevSame);
+  $('#ttCopy').onclick = async () => {
+    const days = Object.keys(S.tt).filter(d => d !== TTD && ttHas(d)).sort().reverse().slice(0, 21);
+    const lastWk = weekOf(addDays(wk[0], -7)), canWeek = lastWk.some(ttHas);
+    if (!days.length) { toast(tx('Belum ada hari lain yang sudah diisi')); return; }
+    const v = await modal({ title: tx('Salin jadwal'), wide: true,
+      html: `${canWeek ? `<button class="btn soft block" data-cw style="margin-bottom:14px">${I('copy')}${tx('Salin seluruh minggu lalu ke minggu ini')}</button><p class="faint small" style="margin:-6px 0 14px">${tx('Hanya mengisi hari yang masih kosong.')}</p>` : ''}
+        <div class="field"><span>${tx('Atau salin ke hari ini dari:')}</span><div class="list tt-src">${days.map(d => `<button class="item" data-src="${d}"><div class="body"><div class="ttl">${fd(ymdMs(d))}</div><div class="faint small">${S.tt[d].items.filter(x => x.k !== 'b').map(x => esc(subjName(x.s))).join(' · ')}</div></div>${I('chevr')}</button>`).join('')}</div></div>`,
+      actions: [{ label: 'Batal', cls: 'ghost', value: null }] });
+    void v;
+  };
+  if ($('#ttClr')) $('#ttClr').onclick = async () => {
+    if (!await ask(tx('Kosongkan jadwal hari ini?'), tx('Semua pelajaran dan istirahat di hari ini dihapus.'), 'Kosongkan', 'danger solid')) return;
+    delete S.tt[TTD]; persist(); reDay();
+  };
+  // mata pelajaran
+  const on = (sel, fn) => $$(sel, view()).forEach(el => el.addEventListener('change', () => { fn(el); persist(); }));
+  on('[data-sn]', el => { S.subj[el.dataset.sn].n = el.value.trim() || tx('Tanpa nama'); });
+  on('[data-st]', el => { S.subj[el.dataset.st].t = el.value.trim(); });
+  $$('[data-sx]', view()).forEach(b => b.onclick = async () => {
+    const s = S.subj[+b.dataset.sx], used = Object.values(S.tt).some(d => (d.items || []).some(x => x.s === s.id));
+    if (used && !await ask(T`Hapus ${s.n}?`, tx('Mata pelajaran ini masih ada di jadwal. Di sana akan tampil sebagai "Mapel dihapus".'), 'Hapus', 'danger solid')) return;
+    S.subj.splice(+b.dataset.sx, 1); persist(); reDay();
+  });
+  $('#sjAdd').onclick = () => { S.subj.push({ id: uid(), n: tx('Mapel baru'), t: '', h: (S.subj.length * 47 + 15) % 360 }); persist(); reDay(); setTimeout(() => { const x = $$('[data-sn]', view()).pop(); if (x) { x.focus(); x.select(); } }, 50); };
+  on('#ttMin', el => { S.ttMin = Math.max(5, Math.round(Number(el.value) || 35)); setTimeout(reDay, 0); });
+  on('#ttSt', el => { S.ttStart = el.value || '07:00'; });
+  on('#ttLead', el => { S.remind.ttLead = Number(el.value) || 0; S.remind.ttAt = Date.now(); });
+}
+function ttCopyClick(e) {
+  const m = $('#modal'); if (m.hidden || V !== 'jadwal') return;
+  const src = e.target.closest('[data-src]'), cw = e.target.closest('[data-cw]');
+  if (!src && !cw) return;
+  if (src) {
+    const s = src.dataset.src;
+    S.tt[TTD] = { start: S.tt[s].start, items: clone(S.tt[s].items), c: Date.now() };
+    persist(); toast(T`Disalin dari ${fd(ymdMs(s))}`);
+  } else {
+    const wk = weekOf(TTD); let n = 0;
+    wk.forEach(d => { const s = addDays(d, -7); if (ttHas(s) && !ttHas(d)) { S.tt[d] = { start: S.tt[s].start, items: clone(S.tt[s].items), c: Date.now() }; n++; } });
+    persist(); toast(n ? T`${n} hari disalin dari minggu lalu` : tx('Semua hari minggu ini sudah terisi'));
+  }
+  const cancel = $('.acts .btn', m); if (cancel) cancel.click();
+  setTimeout(() => { ENTER = false; render(); }, 250);
+}
+document.addEventListener('click', ttCopyClick);
+
+/* Pilih mata pelajaran untuk ditambahkan */
+function lessonModal() {
+  let n = 2;
+  const p = modal({ title: tx('Tambah pelajaran'), wide: true,
+    html: `<div class="field"><span>${tx('Jumlah sesi')}</span><div class="seg" id="lmN">${[1, 2, 3, 4].map(k => `<button type="button" data-n="${k}" class="${k === n ? 'on' : ''}">${k}</button>`).join('')}</div></div>
+      <p class="faint small" style="margin:8px 0 14px">${T`1 sesi = ${S.ttMin} menit. Ketuk mata pelajaran untuk menambahkannya.`}</p>
+      <div class="tt-pick">${S.subj.map(s => `<button type="button" data-s="${s.id}" style="--h:${s.h}"><b>${esc(s.n)}</b><small>${esc(s.t || '')}</small></button>`).join('')}</div>`,
+    actions: [{ label: 'Batal', cls: 'ghost', value: null }] });
+  const m = $('#modal');
+  $$('#lmN button', m).forEach(b => b.onclick = () => { n = +b.dataset.n; $$('#lmN button', m).forEach(x => x.classList.toggle('on', x === b)); });
+  $$('.tt-pick button', m).forEach(b => b.onclick = () => { m._pick = { s: b.dataset.s, n }; $('.acts .btn', m).click(); });
+  return p.then(() => { const r = m._pick; m._pick = null; return r || null; });
+}
+/* Istirahat / kegiatan dengan durasi bebas */
+function breakModal(x) {
+  x = x || { l: 'Istirahat', min: 15 };
+  const presets = ['Istirahat', 'Sholat & makan siang', 'Kegiatan pagi', 'Sholat Dhuha'];
+  const p = modal({ title: tx(x.k ? 'Ubah istirahat' : 'Tambah istirahat'),
+    html: `<div class="tpl" id="bmP">${presets.map(k => `<button type="button" data-l="${esc(k)}">${esc(tx(k))}</button>`).join('')}</div>
+      <div class="stack"><label class="field"><span>${tx('Nama')}</span><input class="input" id="bmL" value="${esc(tx(x.l))}"></label>
+      <label class="field"><span>${tx('Durasi (menit)')}</span><input class="input" id="bmM" type="number" inputmode="numeric" min="1" value="${x.min}"></label></div>`,
+    actions: [{ label: 'Batal', cls: 'ghost', value: null }, { label: 'Simpan', cls: 'grad', validate: m => Number($('#bmM', m).value) > 0, get: m => ({ l: $('#bmL', m).value.trim() || tx('Istirahat'), min: Math.round(Number($('#bmM', m).value)) }) }] });
+  const m = $('#modal');
+  $$('#bmP button', m).forEach(b => b.onclick = () => { $('#bmL', m).value = tx(b.dataset.l); });
+  return p;
+}
+
+/* Kartu jadwal di Beranda */
+function ttHomeCard() {
+  const today = ymd(new Date());
+  let date = today, label = tx('Jadwal hari ini');
+  const tSlots = ttHas(today) ? ttSlots(S.tt[today]) : [];
+  if (!tSlots.length || nowMin() >= tSlots[tSlots.length - 1].b) {
+    const tm = addDays(today, 1);
+    if (ttHas(tm)) { date = tm; label = tx('Jadwal besok'); }
+    else if (!tSlots.length) return `<section class="card" style="margin-top:16px"><div class="card-head"><h2>${tx('Jadwal hari ini')}</h2><button class="btn ghost sm" data-go2="jadwal">${I('plus')}Isi jadwal</button></div><p class="muted small" style="margin:0">${tx('Belum ada pelajaran untuk hari ini.')}</p></section>`;
+  }
+  const slots = ttSlots(S.tt[date]), nm = nowMin(), isT = date === today;
+  const next = isT ? slots.find(s => s.it.k !== 'b' && s.a > nm) : null;
+  const cur = isT ? slots.find(s => nm >= s.a && nm < s.b) : null;
+  const sub = cur && cur.it.k !== 'b' ? T`Sekarang: ${subjName(cur.it.s)}` + (next ? ' · ' + T`berikutnya ${subjName(next.it.s)} jam ${fromMin(next.a)}` : '')
+    : next ? T`Berikutnya: ${subjName(next.it.s)} jam ${fromMin(next.a)}` : isT ? tx('Pelajaran hari ini sudah selesai') : fd(ymdMs(date));
+  return `<section class="card" style="margin-top:16px">
+    <div class="card-head"><div><h2>${label}</h2><div class="muted small" style="margin-top:4px">${esc(sub)}</div></div><button class="btn ghost sm" data-go2="jadwal">${tx('Lihat')}</button></div>
+    <div class="tt-strip">${slots.filter(s => s.it.k !== 'b').map(s => `<div class="tt-chip ${isT && nm >= s.a && nm < s.b ? 'now' : ''} ${isT && nm >= s.b ? 'past' : ''}" style="--h:${subjHue(s.it.s)}"><b>${esc(subjName(s.it.s))}</b><span>${fromMin(s.a)}–${fromMin(s.b)}</span></div>`).join('')}</div>
+  </section>`;
+}
+
+/* Notifikasi sebelum pelajaran (lembut) */
+function ttReminders(push) {
+  const lead = S.remind.ttLead; if (!lead) return;
+  const today = ymd(new Date());
+  [today, addDays(today, 1)].forEach(d => {
+    if (!ttHas(d)) return;
+    const day = S.tt[d], base = ymdMs(d);
+    ttSlots(day).filter(s => s.it.k !== 'b').forEach(s => {
+      const sub = subjOf(s.it.s);
+      push(Math.max(day.c || 0, S.remind.ttAt || 0), { id: 'tt-' + d + '-' + s.i + '-' + s.it.s + '-' + s.a, at: base + (s.a - lead) * 6e4, soft: true,
+        title: subjName(s.it.s), body: T`Mulai ${fromMin(s.a)}` + (sub && sub.t ? ' · ' + sub.t : '') });
+    });
+  });
+}
+
 /* ---------- Belajar ---------- */
 const TM_KEY = 'remindplus:timer';
 let TM = lsGet(TM_KEY) || { run: false, start: 0, acc: 0, topic: '' };
@@ -1592,7 +1820,7 @@ function belajar() {
   <div class="grid g-study">
     <section class="card">
       <div class="card-head"><h2>Timer belajar</h2><span class="chip brand">${I('spark')}${T`${S.study.p} poin / ${S.study.m} mnt`}</span></div>
-      <label class="field"><span>Sedang belajar apa?</span><input class="input" id="bt" placeholder="Contoh: Bahasa Inggris, coding, fisika" value="${esc(TM.topic)}"></label>
+      <label class="field"><span>Sedang belajar apa?</span><input class="input" id="bt" list="subjDL" autocomplete="off" placeholder="Contoh: Bahasa Inggris, coding, fisika" value="${esc(TM.topic)}">${subjDL()}</label>
       <div class="timer-wrap"><div class="timer-ring">
         <svg viewBox="0 0 300 300"><circle class="track" cx="150" cy="150" r="140" fill="none" stroke-width="12"/><circle class="val" id="tring" cx="150" cy="150" r="140" fill="none" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}"/></svg>
         <div class="center"><div><div class="t num" id="clk">00:00:00</div><div class="s" id="clkp"></div></div></div>
@@ -1606,7 +1834,7 @@ function belajar() {
     <section class="card">
       <h2>Catat manual</h2><p class="sub">Untuk sesi belajar yang tidak memakai timer.</p>
       <div class="stack">
-        <label class="field"><span>Topik</span><input class="input" id="mt" placeholder="Topik"></label>
+        <label class="field"><span>Topik</span><input class="input" id="mt" list="subjDL" autocomplete="off" placeholder="Topik"></label>
         <label class="field"><span>Durasi (menit)</span><input class="input" id="mm" type="number" inputmode="numeric" min="1" placeholder="60"></label>
       </div>
       <div class="calc"><span class="muted">Poin yang didapat</span><b class="num" id="mp">0</b></div>
@@ -1904,6 +2132,7 @@ function reminderList() {
       if (k.h1) { const ev = new Date(d + 'T00:00'); ev.setDate(ev.getDate() - 1); const [h, m] = (S.remind.exam || '19:00').split(':'); ev.setHours(+h || 19, +m || 0, 0, 0); push(k.c, { id: 'kas1-' + k.id + '-' + d, at: ev.getTime(), title: T`Besok bayar ${k.n}`, body: T`Siapkan ${rp(k.amt)} malam ini.` }); }
     });
   });
+  ttReminders(push);
   S.rem.forEach(r => {
     remOcc(r, Date.now() - DAY, Date.now() + 2 * DAY).filter(d => !r.done.includes(d)).forEach(d => {
       remTimes(r, d).forEach(([at, k], i) => push(r.c, {
