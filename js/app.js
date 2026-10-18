@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.4.0';
+const VERSION = '3.5.0';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -104,6 +104,15 @@ function applyTheme() {
   const dark = p === 'dark' || (p === 'auto' && mq.matches);
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
   const m = $('#themeColor'); if (m) m.setAttribute('content', dark ? '#090A0F' : '#F4F5FA');
+}
+/* Warna aksen: disimpan per perangkat seperti tema */
+const ACCENT_KEY = 'remindplus:accent';
+const ACCENTS = [['ungu', 'Ungu'], ['biru', 'Biru'], ['hijau', 'Hijau'], ['pink', 'Pink'], ['oranye', 'Oranye'], ['merah', 'Merah']];
+const accentPref = () => { try { const a = localStorage.getItem(ACCENT_KEY); return ACCENTS.some(x => x[0] === a) ? a : 'ungu'; } catch (e) { return 'ungu'; } };
+function setAccent(a) {
+  try { localStorage.setItem(ACCENT_KEY, a); } catch (e) {}
+  if (a === 'ungu') document.documentElement.removeAttribute('data-accent'); else document.documentElement.setAttribute('data-accent', a);
+  $$('.acc-pick button').forEach(b => b.classList.toggle('on', b.dataset.acc === a));
 }
 function setTheme(p) { try { localStorage.setItem(THEME_KEY, p); } catch (e) {} applyTheme(); }
 const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
@@ -997,7 +1006,7 @@ function enterApp(user) {
 
 function shell() {
   $('#root').innerHTML = `
-  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7B5CFF"/><stop offset=".55" stop-color="#4E6BFF"/><stop offset="1" stop-color="#1FC9A2"/></linearGradient></defs></svg>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:rgb(var(--a0))"/><stop offset=".55" style="stop-color:rgb(var(--g2))"/><stop offset="1" style="stop-color:rgb(var(--g3))"/></linearGradient></defs></svg>
   <div class="app">
     <aside class="side"><span class="nav-blob" aria-hidden="true"></span>
       <div class="brand"><img src="logo.svg" alt=""><span>remind<b>+</b></span></div>
@@ -2314,6 +2323,10 @@ function atur() {
       </div>
     </section>
     <section class="card">
+      <h2>${tx('Warna aksen')}</h2><p class="sub">${tx('Warna tombol, sorotan, dan gradasi di seluruh aplikasi.')}</p>
+      <div class="acc-pick">${ACCENTS.map(([k, n]) => `<button type="button" data-acc="${k}" data-accent="${k}" class="${accentPref() === k ? 'on' : ''}"><span class="dot">${I('check')}</span>${tx(n)}</button>`).join('')}</div>
+    </section>
+    <section class="card">
       <h2>Bahasa / Language</h2>
       <div class="seg" id="langPick" style="margin-top:6px"><button data-l="id" class="${LANG === 'id' ? 'on' : ''}">Bahasa Indonesia</button><button data-l="en" class="${LANG === 'en' ? 'on' : ''}">English</button></div>
     </section>
@@ -2438,6 +2451,7 @@ function atur() {
   c('da', () => { S.diff.push({ n: tx('Baru'), p: 30 }); persist(); render(); });
   c('la', () => { const mx = Math.max(...S.levels.map(l => l.min)); S.levels.push({ n: tx('Level baru'), min: mx + 5000 }); persist(); render(); });
   $$('.theme-pick button', view()).forEach(b => b.onclick = e => themeTransition(() => setTheme(b.dataset.t), e));
+  $$('.acc-pick button', view()).forEach(b => b.onclick = e => { if (b.dataset.acc === accentPref()) return; themeTransition(() => setAccent(b.dataset.acc), e); });
   $$('#langPick button', view()).forEach(b => b.onclick = () => { if (b.dataset.l === LANG) return; try { sessionStorage.setItem('remindplus:back', 'atur'); sessionStorage.setItem('remindplus:asec', 'tampilan'); } catch (e) {} setLang(b.dataset.l); });
   c('fxg', e => { setFx({ glass: e.target.checked }); toast(e.target.checked ? 'Efek kaca aktif' : 'Efek kaca dimatikan'); }, 'onchange');
   c('fxm', e => { setFx({ motion: e.target.checked }); toast(e.target.checked ? 'Animasi aktif' : 'Animasi dimatikan'); }, 'onchange');

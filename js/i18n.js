@@ -308,6 +308,7 @@
     'Mapel': 'Subject', 'Terima jadwal': 'Receive timetable', 'Dari {0}': 'From {0}', 'sudah ada': 'already filled', 'Isi hari kosong saja': 'Only fill empty days', 'Timpa semua': 'Replace all',
     'Tambahkan {0} ujian': n => n === 1 ? 'Add 1 exam' : `Add ${n} exams`, 'Catatan: satu sesi di jadwal ini {0} menit, sedangkan milikmu {1} menit.': 'Note: one session in this timetable is {0} minutes, yours is {1} minutes.', 'Terima': 'Accept',
     'Jadwal diterima · {0} hari': n => n === 1 ? 'Timetable received · 1 day' : `Timetable received · ${n} days`, 'Bagikan lewat QR': 'Share via QR',
+    'Warna aksen': 'Accent colour', 'Warna tombol, sorotan, dan gradasi di seluruh aplikasi.': 'The colour of buttons, highlights and gradients across the app.', 'Ungu': 'Purple', 'Biru': 'Blue', 'Hijau': 'Green', 'Pink': 'Pink', 'Oranye': 'Orange', 'Merah': 'Red',
     /* ---------- data bawaan (nama awal) ---------- */
     'Mudah': 'Easy', 'Sedang': 'Medium', 'Sulit': 'Hard', 'Ekstrem': 'Extreme',
     'Pemula': 'Beginner', 'Rajin': 'Diligent', 'Tekun': 'Persistent', 'Disiplin': 'Disciplined', 'Mandiri': 'Independent',

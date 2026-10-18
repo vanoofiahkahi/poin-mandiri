@@ -2,6 +2,11 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.5.0 — 18 Oktober 2026
+### Warna aksen
+- Atur → Tampilan → **Warna aksen**: pilih Ungu, Biru, Hijau, Pink, Oranye, atau Merah.
+- Mengubah warna tombol, sorotan, gradasi saldo poin, cincin level, dan latar aurora di seluruh aplikasi, di tema terang maupun gelap, dengan animasi transisi melingkar.
+
 ## 3.4.0 — 18 Oktober 2026
 ### Mode libur
 - Atur → **Mode libur**: catat libur semester atau hari raya (nama + tanggal mulai–selesai), bisa direncanakan jauh hari.

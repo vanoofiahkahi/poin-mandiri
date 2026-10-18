@@ -21,6 +21,7 @@
 (function(){var p='auto';try{p=localStorage.getItem('remindplus:theme')||'auto'}catch(e){}
 var d=p==='dark'||(p==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);
 document.documentElement.setAttribute('data-theme',d?'dark':'light');
+var ac=null;try{ac=localStorage.getItem('remindplus:accent')}catch(e){}if(ac&&ac!=='ungu')document.documentElement.setAttribute('data-accent',ac);
 var f={};try{f=JSON.parse(localStorage.getItem('remindplus:fx')||'{}')||{}}catch(e){}
 document.documentElement.setAttribute('data-glass',f.glass===false?'off':'on');
 document.documentElement.setAttribute('data-motion',f.motion===false?'off':'on');

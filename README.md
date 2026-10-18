@@ -18,7 +18,7 @@ Aplikasi web yang bisa dipasang di Android (PWA), dengan akun online yang tersin
 - Ringkasan mingguan, pencapaian, pembeku streak, pelacak nilai (opsional)
 - **Mode libur**, **hitung mundur**, dan **bagikan jadwal lewat QR code**
 - Panduan untuk pengguna baru
-- Alarm darurat, Bahasa Indonesia & English, mode terang/gelap, liquid glass
+- Alarm darurat, Bahasa Indonesia & English, mode terang/gelap, 6 warna aksen, liquid glass
 
 ## Changelog
-Versi terbaru: **3.4.0** — lihat semua perubahan di [CHANGELOG.md](CHANGELOG.md).
+Versi terbaru: **3.5.0** — lihat semua perubahan di [CHANGELOG.md](CHANGELOG.md).
