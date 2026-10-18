@@ -2350,10 +2350,15 @@ async function notify(r) {
   try { const reg = await navigator.serviceWorker.ready; await reg.showNotification(title, opt); return true; }
   catch (e) { try { new Notification(title, opt); return true; } catch (x) { return false; } }
 }
-let RT = [];
+let RT = [], RSIG = '', RSYNC = 0;
+/* Dipanggil tiap render: kerja berat (Cache API, setTimeout) hanya jika daftar pengingat berubah,
+   atau sejam sekali agar item yang masuk jendela 24 jam tetap terjadwal */
 async function syncReminders() {
   if (!USER) return;
-  const L = reminderList(), now = Date.now(), N = getN();
+  const L = reminderList(), now = Date.now(), sig = JSON.stringify(L);
+  if (sig === RSIG && now - RSYNC < 36e5) return;
+  RSIG = sig; RSYNC = now;
+  const N = getN();
   try { const c = await caches.open('pm-data'), r = await c.match('./reminders.json'); if (r) { const d = await r.json(); Object.assign(N, d.notified || {}); } } catch (e) {}
   for (const r of L) { if (r.at <= now && now - r.at < 12 * 36e5 && !N[r.id]) { await notify(r); N[r.id] = now; if (!r.soft) alarm(r); else softAlert(r); } }
   for (const k in N) if (now - N[k] > 30 * DAY) delete N[k];
@@ -2405,10 +2410,11 @@ function startLoops() {
   LOOP = setInterval(() => { if (!USER) return; alerts(); badges(); if (V === 'tugas' || V === 'ujian' || V === 'home') render(); }, 60000);
   PULL_LOOP = setInterval(() => { if (USER && !USER.local && !document.hidden) { if (S.meta.dirty) push(); else pull(); } }, 5 * 60000);
 }
-function stopLoops() { clearInterval(LOOP); clearInterval(PULL_LOOP); clearInterval(tick); RT.forEach(clearTimeout); RT = []; }
+function stopLoops() { clearInterval(LOOP); clearInterval(PULL_LOOP); clearInterval(tick); RT.forEach(clearTimeout); RT = []; RSIG = ''; }
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { if (USER && !USER.local && S.meta.dirty) pushNow(); return; }
   if (!USER) return;
+  RSIG = '';  // service worker mungkin sudah mengirim notifikasi saat aplikasi di latar belakang
   render();
   if (!USER.local) { if (S.meta.dirty) push(); else pull(); }
 });
