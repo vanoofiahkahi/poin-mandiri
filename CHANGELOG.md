@@ -2,6 +2,12 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.3.0 — 18 Oktober 2026
+### Panduan untuk pengguna baru
+- Saat pertama kali masuk, muncul panduan singkat 7 langkah (bisa digeser) tentang poin, tugas, ujian, jadwal, pengingat, dan kas, lengkap dengan tombol izinkan notifikasi.
+- Kartu **Mulai di sini** di Beranda: daftar 6 langkah pertama (notifikasi, foto profil, jadwal, tugas, ujian, timer) yang tercentang otomatis dan langsung membuka menu terkait.
+- Panduan bisa dibuka lagi dari Atur → Tentang → Lihat panduan.
+
 ## 3.2.0 — 18 Oktober 2026
 ### Acara sekolah di Pengingat
 - Kategori baru **Acara sekolah** di samping Sekolah dan Pribadi, lengkap dengan tab filternya.

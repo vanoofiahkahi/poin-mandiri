@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.2.0';
+const VERSION = '3.3.0';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -979,6 +979,7 @@ function enterApp(user) {
   go(V && NAV.some(n => n[0] === V) ? V : 'home');
   startLoops();
   if (!user.local) pull(true);
+  setTimeout(() => { if (USER && !S.onb && $('#modal').hidden) guideModal(); }, 1600);
 }
 
 function shell() {
@@ -1077,6 +1078,7 @@ function home() {
   const recent = S.log.slice(0, 6);
   const fz = freezeState(), achN = ACH.filter(a => S.ach && S.ach[a[0]]).length;
   view().innerHTML = `
+  ${startCardHtml()}
   ${ttWidget()}
   <div class="grid g-home">
     <section class="hero"><span class="liq" aria-hidden="true"></span>
@@ -1123,6 +1125,7 @@ function home() {
   </div>`;
   $$('[data-go2]', view()).forEach(b => b.onclick = () => go(b.dataset.go2));
   $('#achGo').onclick = () => { go('atur'); aturGo('ach'); };
+  startCardBind();
   if ($('#frzGo')) $('#frzGo').onclick = freezeStreak;
   if ($('#wkX')) $('#wkX').onclick = () => { const n = new Date(); S.wkSeen = n.getDay() === 0 ? weekKey(n) : addDays(weekKey(n), -7); persist(); render(); };
   if ($('#wkO')) $('#wkO').onclick = () => { const n = new Date(); weekModal(n.getDay() === 0 ? weekKey(n) : addDays(weekKey(n), -7)); };
@@ -2359,7 +2362,7 @@ function atur() {
       <img src="logo.svg" alt="" width="64" height="64" id="eggLogo" class="egg-logo" draggable="false">
       <h2>remind<b>+</b></h2>
       <div class="muted">${T`remind+ versi ${VERSION}`}</div>
-      <button class="btn soft sm" id="clog" style="margin-top:14px">${I('history')}${tx('Lihat changelog')}</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px"><button class="btn soft sm" id="clog">${I('history')}${tx('Lihat changelog')}</button><button class="btn soft sm" id="gdOpen">${I('info')}${tx('Lihat panduan')}</button></div>
       ${NATIVE ? `<p class="faint small" style="margin:16px 0 0;max-width:420px">${tx('Aplikasi Android. Tambahkan widget: tekan lama layar utama → Widget → remind+.')}</p>` : `<a class="btn ghost sm" style="margin-top:10px" href="https://github.com/vanoofiahkahi/poin-mandiri/releases/latest" target="_blank" rel="noopener">${I('upload')}${tx('Unduh aplikasi Android (dengan widget)')}</a>`}
     </section>`
   };
@@ -2427,6 +2430,7 @@ function atur() {
   c('toServer', () => { lsDel(LOCAL_MODE_KEY); USER = null; showAuth('server'); });
   c('logout', logout);
   c('clog', changelogModal);
+  c('gdOpen', guideModal);
   if ($('#eggLogo')) eggBind($('#eggLogo'));
   c('avEdit', avatarModal);
   c('delAcc', deleteAccount);
@@ -2812,6 +2816,84 @@ function gradesBind(root) {
 }
 /* Cocokkan nama ujian dengan mapel yang nilainya aktif */
 const gradeSubjFor = name => gradeSubj().find(s => String(name).toLowerCase().includes(s.n.toLowerCase()));
+
+/* ================= Panduan untuk pengguna baru ================= */
+const GUIDE = [
+  ['spark', 'Selamat datang di remind+', 'Teman belajar yang mengingatkan ujian, tugas, dan jadwalmu, sekaligus memberi poin untuk setiap usaha. Ikuti panduan singkat ini, cuma 1 menit.'],
+  ['checks', 'Tugas & poin', 'Tambahkan tugas di menu Tugas dan pilih tingkat kesulitannya. Centang saat selesai untuk dapat poin. Makin rajin, makin tinggi levelmu.'],
+  ['cap', 'Ujian & rencana belajar', 'Catat jadwal ujian di menu Ujian. remind+ mengingatkan belajar malam sebelumnya, dan tombol Rencana membagi bab yang harus dipelajari ke hari-hari sebelum ujian.'],
+  ['cal', 'Jadwal pelajaran', 'Isi jadwal per hari di menu Jadwal. Jadwal minggu lalu bisa disalin dengan sekali ketuk. Pelajaran sekarang dan berikutnya tampil di Beranda.'],
+  ['bell', 'Pengingat & uang kas', 'Menu Ingat untuk hal di luar pelajaran: bawa baju olahraga, acara sekolah, ulang tahun teman. Menu Kas mengingatkan bayar uang kas.'],
+  ['alarm', 'Nyalakan notifikasi', 'Supaya pengingat benar-benar berbunyi, izinkan notifikasi untuk remind+.'],
+  ['trophy', 'Siap mulai!', 'Ikuti daftar "Mulai di sini" di Beranda untuk langkah pertamamu. Panduan ini bisa dibuka lagi kapan saja dari Atur → Tentang.']
+];
+function guideModal() {
+  let i = 0;
+  const slide = k => {
+    const [ic, t, d] = GUIDE[k];
+    const perm = ic === 'alarm';
+    const ps = ('Notification' in window) ? Notification.permission : 'unsupported';
+    return `<div class="gd-slide"><div class="gd-ico">${I(ic)}</div><h3>${tx(t)}</h3><p>${tx(d)}</p>
+      ${perm ? (ps === 'granted' ? `<span class="chip mint">${I('check')}${tx('Notifikasi sudah aktif')}</span>` : ps === 'unsupported' ? `<span class="chip">${tx('Tidak didukung di browser ini')}</span>` : `<button type="button" class="btn grad sm" id="gdPerm">${I('bell')}Izinkan notifikasi</button>`) : ''}</div>`;
+  };
+  const p = modal({ title: '', html: `<div class="gd"><button type="button" class="linkish gd-skip" id="gdX">${tx('Lewati')}</button><div class="gd-stage" id="gdS">${slide(0)}</div>
+      <div class="gd-dots">${GUIDE.map((_, k) => `<i class="${k === 0 ? 'on' : ''}"></i>`).join('')}</div>
+      <div class="gd-nav"><button type="button" class="btn ghost sm" id="gdB" hidden>${I('chevl')}${tx('Kembali')}</button><span style="flex:1"></span><button type="button" class="btn grad" id="gdN">${tx('Lanjut')}${I('chevr')}</button></div></div>`,
+    actions: [{ label: 'Lewati', cls: 'ghost', value: 'skip' }] });
+  const m = $('#modal'); $('h3', m).remove(); m.querySelector('.box').classList.add('gd-box');
+  $('.acts', m).style.display = 'none';
+  $('#gdX', m).onclick = () => $('.acts .btn', m).click();
+  const draw = dir => {
+    const st = $('#gdS', m); st.innerHTML = slide(i);
+    $$('.gd-dots i', m).forEach((d, k) => d.classList.toggle('on', k === i));
+    $('#gdB', m).hidden = i === 0;
+    $('#gdN', m).innerHTML = i === GUIDE.length - 1 ? `${tx('Mulai')}${I('check')}` : `${tx('Lanjut')}${I('chevr')}`;
+    $('#gdX', m).style.visibility = i === GUIDE.length - 1 ? 'hidden' : '';
+    if (dir && motionOn()) {
+      st.animate([{ opacity: 0, transform: `translateX(${dir * 40}px)`, filter: 'blur(6px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: SP_SOFT.d, easing: SP_SOFT.e });
+      const ico = $('.gd-ico', st); ico.animate([{ transform: 'scale(.6) rotate(-12deg)' }, { transform: 'none' }], { duration: SP.d, easing: SP.e });
+    }
+    const pb = $('#gdPerm', st);
+    if (pb) pb.onclick = async () => { try { await Notification.requestPermission(); } catch (e) {} if (Notification.permission === 'granted') { regPeriodic(); toast('Notifikasi aktif'); } draw(0); };
+  };
+  $('#gdN', m).onclick = () => { if (i < GUIDE.length - 1) { i++; draw(1); } else { m._gd = 'done'; $('.acts .btn', m).click(); } };
+  $('#gdB', m).onclick = () => { if (i > 0) { i--; draw(-1); } };
+  let sx = null;
+  const stg = $('#gdS', m);
+  stg.addEventListener('pointerdown', e => { sx = e.clientX; });
+  stg.addEventListener('pointerup', e => { if (sx === null) return; const dx = e.clientX - sx; sx = null; if (dx < -60 && i < GUIDE.length - 1) { i++; draw(1); } else if (dx > 60 && i > 0) { i--; draw(-1); } });
+  draw(0);
+  return p.then(() => { m._gd = null; if (!S.onb) { S.onb = 1; persist(); } if (V === 'home') render(); });
+}
+
+/* Daftar "Mulai di sini" di Beranda */
+function startSteps() {
+  const perm = ('Notification' in window) ? Notification.permission === 'granted' : true;
+  return [
+    ['notif', 'bell', 'Izinkan notifikasi', perm, () => { go('atur'); aturGo('ingat'); }],
+    ['photo', 'user', 'Pasang foto profil & nama', !!S.profile.av, () => { go('atur'); aturGo('akun'); }],
+    ['tt', 'cal', 'Isi jadwal pelajaran', Object.keys(S.tt).some(ttHas), () => go('jadwal')],
+    ['task', 'checks', 'Tambah tugas pertama', S.tasks.length > 0, () => go('tugas')],
+    ['exam', 'cap', 'Catat jadwal ujian', S.exams.length > 0, () => go('ujian')],
+    ['study', 'timer', 'Coba timer belajar', S.log.some(l => l.kind === 'belajar'), () => go('belajar')]
+  ];
+}
+function startCardHtml() {
+  if (S.onbHide) return '';
+  const st = startSteps(), n = st.filter(x => x[3]).length;
+  if (n === st.length) return '';
+  return `<section class="card st-card"><div class="card-head"><div><h2>${tx('Mulai di sini')}</h2><div class="muted small">${T`${n} dari ${st.length} langkah selesai`}</div></div>
+      <div style="display:flex;gap:6px"><button class="icon-btn sm" id="stG" title="Panduan" aria-label="Panduan">${I('info')}</button><button class="icon-btn sm" id="stX" aria-label="Tutup">${I('x')}</button></div></div>
+    <div class="w-bar" style="margin:0 0 12px"><i style="width:${n / st.length * 100}%"></i></div>
+    <div class="st-list">${st.map(([k, ic, t, done]) => `<button class="st-row ${done ? 'done' : ''}" data-st="${k}"><span class="st-ck">${I(done ? 'check' : ic)}</span><span>${tx(t)}</span>${done ? '' : I('chevr', 'ic set-chev')}</button>`).join('')}</div></section>`;
+}
+function startCardBind() {
+  const x = $('#stX'); if (!x) return;
+  x.onclick = () => { S.onbHide = true; persist(); render(); toast(tx('Panduan bisa dibuka lagi dari Atur → Tentang')); };
+  $('#stG').onclick = guideModal;
+  const st = startSteps();
+  $$('[data-st]', view()).forEach(b => b.onclick = () => { const s = st.find(y => y[0] === b.dataset.st); if (s && !s[3]) s[4](); });
+}
 
 /* ================= Telur paskah: ketuk logo 5× di Atur → Tentang ================= */
 const EGG_KEY = 'remindplus:egg';
