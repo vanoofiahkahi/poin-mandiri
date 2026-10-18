@@ -2,6 +2,17 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 2.10.0 — 18 Oktober 2026
+### Ujian terhubung dengan jadwal
+- Ujian tampil langsung di Jadwal pada tanggal dan jamnya.
+- Ujian yang jamnya jatuh di dalam satu pelajaran menempel ke pelajaran itu, dengan tanda **Ujian** berwarna oranye.
+- Ujian di luar jam pelajaran tampil sebagai baris sendiri.
+- Titik oranye di deretan tanggal menandai hari yang ada ujiannya.
+- Tombol **Jadikan ujian** pada pelajaran langsung membuat ujian di tanggal dan jam itu, lengkap dengan pengingat belajar.
+- Di menu Ujian, pilih pelajaran **dari jadwal** untuk mengisi nama dan jam ujian otomatis.
+- Tombol kalender di tiap ujian membuka jadwal di tanggal ujian itu.
+- Kartu jadwal di Beranda menandai pelajaran yang ada ujiannya.
+
 ## 2.9.0 — 18 Oktober 2026
 ### Foto profil
 - Foto profil sekarang bisa diganti dari Atur: ketuk foto di kartu paling atas.

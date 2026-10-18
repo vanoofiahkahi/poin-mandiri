@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '2.9.0';
+const VERSION = '2.10.0';
 
 /* ================= Ikon ================= */
 const P = {
@@ -1170,6 +1170,7 @@ function ujian() {
       <label class="field"><span>Tanggal</span><input class="input" id="et" type="date" value="${tv}"></label>
       <label class="field"><span>Jam mulai</span><input class="input" id="ej" type="time" value="07:30"></label>
     </div>
+    <div class="tt-from" id="exTT" hidden></div>
     <div class="form-row" style="margin-top:12px">
       <label class="field grow2"><span>Catatan (opsional)</span><input class="input" id="en" placeholder="Contoh: bab 4–6, bawa kalkulator"></label>
       <button class="btn grad" id="ea">${I('plus')}Tambah ujian</button>
@@ -1188,6 +1189,7 @@ function ujian() {
         ${!passed ? `<button class="btn soft sm" data-est="${e.id}">${I('play')}Belajar</button>` : ''}
         ${!e.studied && !passed ? `<button class="btn mint sm" data-esd="${e.id}">${I('check')}Sudah belajar</button>` : ''}
         ${passed ? `<button class="btn mint sm" data-edn="${e.id}">${I('check')}Selesai</button>` : ''}
+        <button class="icon-btn sm" data-ett="${e.tgl}" title="Lihat di jadwal" aria-label="Lihat di jadwal">${I('cal')}</button>
         <button class="icon-btn sm danger" data-edel="${e.id}" aria-label="Hapus">${I('trash')}</button>
       </div></div>`;
   }).join('') : emptyBox('cap', 'Belum ada jadwal ujian', 'Tambahkan ujian agar remind+ bisa mengingatkan Anda belajar.')}</div>
@@ -1202,6 +1204,20 @@ function ujian() {
     toast(examNight(e) > Date.now() ? T`Ujian ditambah · pengingat ${fdt(examNight(e))}` : tx('Ujian ditambah'));
   };
   $('#ea').onclick = addE; $('#em').onkeydown = e => { if (e.key === 'Enter') addE(); };
+  /* Pilih langsung dari jadwal pelajaran di tanggal itu */
+  const fillTT = () => {
+    const d = $('#et').value, box = $('#exTT');
+    const ls = ttHas(d) ? ttSlots(S.tt[d]).filter(x => x.it.k !== 'b') : [];
+    box.hidden = !ls.length;
+    box.innerHTML = ls.length ? `<span class="faint small">${tx('Dari jadwal:')}</span>` + ls.map(x => `<button type="button" data-n="${esc(subjName(x.it.s))}" data-j="${rawMin(x.a)}" style="--h:${subjHue(x.it.s)}">${esc(subjName(x.it.s))}<small>${fromMin(x.a)}</small></button>`).join('') : '';
+    $$('button', box).forEach(b => b.onclick = () => {
+      $('#em').value = b.dataset.n; setVal($('#ej'), b.dataset.j);
+      $$('button', box).forEach(x => x.classList.toggle('on', x === b));
+      if (motionOn()) b.animate([{ transform: 'scale(.9)' }, { transform: 'scale(1)' }], { duration: SP.d, easing: SP.e });
+    });
+  };
+  $('#et').addEventListener('change', fillTT); fillTT();
+  $$('[data-ett]', view()).forEach(b => b.onclick = () => { TTD = b.dataset.ett; go('jadwal'); });
   $$('[data-est]', view()).forEach(b => b.onclick = () => startExamStudy(b.dataset.est));
   $$('[data-esd]', view()).forEach(b => b.onclick = () => examStudied(b.dataset.esd));
   $$('[data-edn]', view()).forEach(b => b.onclick = () => { const e = S.exams.find(x => x.id === b.dataset.edn); e.done = true; persist(); render(); });
@@ -1601,6 +1617,12 @@ function ttSlots(day) {
   });
 }
 const ttHas = d => !!(S.tt[d] && S.tt[d].items && S.tt[d].items.length);
+const exLabel = m => /^(ujian|exam)\b/i.test(m) ? m : T`Ujian ${m}`;
+const rawMin = m => p2(Math.floor(m / 60) % 24) + ':' + p2(m % 60);
+const ttExams = d => S.exams.filter(e => e.tgl === d && !e.done);
+/* Ujian yang jamnya jatuh di dalam satu pelajaran ditempel ke pelajaran itu */
+const ttExamFor = (d, sl) => sl.it.k === 'b' ? null : ttExams(d).find(e => toMin(e.jam) >= sl.a && toMin(e.jam) < sl.b) || null;
+const ttDotCls = d => ttExams(d).length ? 'ex' : ttHas(d) ? 'has' : '';
 function ttDefaultDate() { const d = new Date(); if (d.getDay() === 0) d.setDate(d.getDate() + 1); return ymd(d); }
 function weekOf(date) {
   const d = new Date(date + 'T00:00'); d.setDate(d.getDate() - (d.getDay() + 6) % 7);
@@ -1660,7 +1682,7 @@ function ttWeek(dir) {
   const box = $('#ttDays'); if (!box) return;
   const wk = weekOf(TTD), today = ymd(new Date()), mon = new Date(wk[0] + 'T00:00');
   $('#ttMonth').textContent = BULAN[mon.getMonth()] + ' ' + mon.getFullYear();
-  box.innerHTML = `<span class="nav-blob tt-blob" aria-hidden="true"></span>` + wk.map(d => { const x = new Date(d + 'T00:00'); return `<button class="tt-day ${d === TTD ? 'on' : ''} ${d === today ? 'today' : ''}" data-d="${d}"><small>${HARI_S[x.getDay()]}</small><b>${x.getDate()}</b><i class="${ttHas(d) ? 'has' : ''}"></i></button>`; }).join('');
+  box.innerHTML = `<span class="nav-blob tt-blob" aria-hidden="true"></span>` + wk.map(d => { const x = new Date(d + 'T00:00'); return `<button class="tt-day ${d === TTD ? 'on' : ''} ${d === today ? 'today' : ''}" data-d="${d}"><small>${HARI_S[x.getDay()]}</small><b>${x.getDate()}</b><i class="${ttDotCls(d)}"></i></button>`; }).join('');
   $$('.tt-day', box).forEach(b => b.onclick = () => ttGo(b.dataset.d));
   placeBlob($('.tt-blob', box), $('.tt-day.on', box), true);
   if (dir && motionOn()) $$('.tt-day', box).forEach((b, i) => b.animate(
@@ -1673,14 +1695,15 @@ function ttMoveBlob() {
   $$('.tt-day', box).forEach(b => b.classList.toggle('on', b.dataset.d === TTD));
   placeBlob($('.tt-blob', box), $('.tt-day.on', box));
 }
-function ttDots() { $$('#ttDays .tt-day').forEach(b => $('i', b).className = ttHas(b.dataset.d) ? 'has' : ''); }
+function ttDots() { $$('#ttDays .tt-day').forEach(b => $('i', b).className = ttDotCls(b.dataset.d)); }
 addEventListener('resize', () => { const bl = $('#ttDays .tt-blob'); if (bl) placeBlob(bl, $('#ttDays .tt-day.on'), true); });
 
-function ttRowHtml(s) {
+function ttRowHtml(s, ex) {
   const { it, i, a, b } = s, open = TT_OPEN === i, live = ttLive(a, b);
   const ctl = open ? `<div class="tt-ctl">
       ${it.k === 'b' ? `<button class="btn ghost sm" data-tbe="${i}">${I('pencil')}Ubah</button>`
-        : `<div class="tt-step"><button class="icon-btn sm" data-tm="${i}" aria-label="Kurangi sesi">−</button><b class="num">${T`${it.n} sesi`}</b><button class="icon-btn sm" data-tp="${i}" aria-label="Tambah sesi">+</button></div>`}
+        : `<div class="tt-step"><button class="icon-btn sm" data-tm="${i}" aria-label="Kurangi sesi">−</button><b class="num">${T`${it.n} sesi`}</b><button class="icon-btn sm" data-tp="${i}" aria-label="Tambah sesi">+</button></div>`
+          + (ex ? `<button class="btn ghost sm" data-tgo="ujian">${I('cap')}${tx('Lihat ujian')}</button>` : `<button class="btn ghost sm" data-txm="${i}" data-a="${a}">${I('cap')}${tx('Jadikan ujian')}</button>`)}
       <span style="flex:1"></span>
       <button class="icon-btn sm" data-tu="${i}" aria-label="Naikkan" ${i ? '' : 'disabled'}>${I('chevu')}</button>
       <button class="icon-btn sm" data-td="${i}" aria-label="Turunkan" ${i < S.tt[TTD].items.length - 1 ? '' : 'disabled'}>${I('chev')}</button>
@@ -1689,10 +1712,16 @@ function ttRowHtml(s) {
       <div class="tt-main"><div class="tt-time"><b>${fromMin(a)}</b></div>
       <div class="tt-brk-l"><span>${esc(tx(it.l) || tx('Istirahat'))} · ${T`${it.min} menit`}</span></div></div>${ctl}</div>`;
   const sub = subjOf(it.s);
-  return `<div class="tt-row ${open ? 'open' : ''} ${live ? 'now' : ''}" data-i="${i}" style="--h:${subjHue(it.s)}">
+  return `<div class="tt-row ${open ? 'open' : ''} ${live ? 'now' : ''} ${ex ? 'exam' : ''}" data-i="${i}" style="--h:${subjHue(it.s)}">
       <div class="tt-main"><div class="tt-time"><b>${fromMin(a)}</b><span>${fromMin(b)}</span></div>
-      <div class="tt-txt"><div class="ttl">${esc(subjName(it.s))}</div><div class="tt-sub">${sub && sub.t ? esc(sub.t) : ''}</div></div>
-      ${live ? `<span class="tt-now">${tx('Sekarang')}</span>` : `<span class="tt-n">${it.n}×</span>`}</div>${ctl}</div>`;
+      <div class="tt-txt"><div class="ttl">${esc(subjName(it.s))}</div><div class="tt-sub">${ex ? esc(exLabel(ex.mapel) + ' · ' + fromMin(toMin(ex.jam))) : sub && sub.t ? esc(sub.t) : ''}</div></div>
+      ${ex ? `<span class="tt-exam">${I('cap')}${T`Ujian${''}`}</span>` : live ? `<span class="tt-now">${tx('Sekarang')}</span>` : `<span class="tt-n">${it.n}×</span>`}</div>${ctl}</div>`;
+}
+/* Ujian yang tidak menempel ke pelajaran tampil sebagai baris sendiri */
+function ttExamRow(e) {
+  return `<div class="tt-row tt-xrow" data-tgo="ujian"><div class="tt-main"><div class="tt-time"><b>${fromMin(toMin(e.jam))}</b></div>
+    <div class="tt-txt"><div class="ttl">${esc(exLabel(e.mapel))}</div><div class="tt-sub">${esc(e.catatan || tx('Dari menu Ujian'))}</div></div>
+    <span class="tt-exam">${I('cap')}${T`Ujian${''}`}</span></div></div>`;
 }
 function ttDayDraw(dir, keepOpen) {
   const box = $('#ttBody'); if (!box) return;
@@ -1700,14 +1729,20 @@ function ttDayDraw(dir, keepOpen) {
   const day = S.tt[TTD], slots = day ? ttSlots(day) : [];
   const lessons = slots.filter(x => x.it.k !== 'b');
   const prevSame = addDays(TTD, -7);
+  const exs = ttExams(TTD), used = new Set();
+  const att = slots.map(sl => { const e = ttExamFor(TTD, sl); if (e) used.add(e.id); return e; });
+  const loose = exs.filter(e => !used.has(e.id)).sort((x, y) => toMin(x.jam) - toMin(y.jam));
+  let rows = '', li = 0;
+  slots.forEach((sl, k) => { while (li < loose.length && toMin(loose[li].jam) < sl.a) rows += ttExamRow(loose[li++]); rows += ttRowHtml(sl, att[k]); });
+  while (li < loose.length) rows += ttExamRow(loose[li++]);
   box.innerHTML = `
     <div class="tt-head">
       <div style="min-width:0"><h3>${fd(ymdMs(TTD))}</h3>
-        <div class="muted small">${slots.length ? T`${lessons.length} pelajaran · selesai ${fromMin(slots[slots.length - 1].b)}` : tx('Belum diisi')}</div></div>
+        <div class="muted small">${slots.length ? T`${lessons.length} pelajaran · selesai ${fromMin(slots[slots.length - 1].b)}` : tx('Belum diisi')}${exs.length ? ' · ' + T`${exs.length} ujian` : ''}</div></div>
       <div class="tt-start"><input class="input" type="time" id="tts" value="${esc(day ? day.start : (S.ttStart || '07:00'))}"></div>
     </div>
-    <div class="tt-list">${slots.length ? slots.map(ttRowHtml).join('')
-      : `<div class="tt-empty">${I('cal')}<b>${tx('Belum ada pelajaran')}</b>${ttHas(prevSame) ? `<button class="btn soft sm" id="ttPrev">${I('copy')}${T`Salin dari ${fd(ymdMs(prevSame))}`}</button>` : `<span>${tx('Tambah pelajaran, atau salin dari hari lain.')}</span>`}</div>`}</div>
+    <div class="tt-list">${slots.length ? rows
+      : (loose.length ? `<div class="tt-list" style="margin-bottom:6px">${rows}</div>` : '') + `<div class="tt-empty">${I('cal')}<b>${tx('Belum ada pelajaran')}</b>${ttHas(prevSame) ? `<button class="btn soft sm" id="ttPrev">${I('copy')}${T`Salin dari ${fd(ymdMs(prevSame))}`}</button>` : `<span>${tx('Tambah pelajaran, atau salin dari hari lain.')}</span>`}</div>`}</div>
     <div class="tt-foot">
       <button class="btn grad sm" id="ttAddL">${I('plus')}Pelajaran</button>
       <button class="btn ghost sm" id="ttAddB">${I('plus')}Istirahat</button>
@@ -1726,7 +1761,7 @@ function ttBindDay(box) {
   const ensure = () => { if (!S.tt[TTD]) S.tt[TTD] = { start: $('#tts', box).value || S.ttStart || '07:00', items: [], c: Date.now() }; return S.tt[TTD]; };
   const items = () => S.tt[TTD].items;
   $('#tts', box).onchange = e => { if (!e.target.value) return; ensure().start = e.target.value; ttChanged(); };
-  $$('.tt-row', box).forEach(r => $('.tt-main', r).onclick = () => {
+  $$('.tt-row[data-i]', box).forEach(r => $('.tt-main', r).onclick = () => {
     const i = +r.dataset.i, was = TT_OPEN;
     TT_OPEN = was === i ? -1 : i;
     ttDayDraw(0, true);
@@ -1744,6 +1779,13 @@ function ttBindDay(box) {
     const done = () => { items().splice(i, 1); ttChanged(-1); };
     if (motionOn() && row) row.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(-30px) scale(.96)' }], { duration: 200, easing: 'ease-in', fill: 'forwards' }).onfinish = done; else done();
     toast(tx('Dihapus dari jadwal'), { label: 'Batalkan', fn: () => { if (!S.tt[date]) S.tt[date] = { start: S.ttStart || '07:00', items: [], c: Date.now() }; S.tt[date].items.splice(i, 0, old); if (TTD === date) ttChanged(-1); else persist(); } });
+  });
+  $$('[data-tgo]', box).forEach(b => b.onclick = e => { e.stopPropagation(); go(b.dataset.tgo); });
+  $$('[data-txm]', box).forEach(b => b.onclick = () => {
+    const x = items()[+b.dataset.txm], a = +b.dataset.a;
+    const e = { id: uid(), mapel: subjName(x.s), tgl: TTD, jam: rawMin(a), catatan: '', done: false, studied: false, c: Date.now() };
+    S.exams.push(e); persist(); TT_OPEN = -1; ttDayDraw(0); ttDots(); badges();
+    toast(examNight(e) > Date.now() ? T`Ujian ditambah · pengingat ${fdt(examNight(e))}` : tx('Ujian ditambah'), { label: 'Lihat', fn: () => go('ujian') });
   });
   $$('[data-tbe]', box).forEach(b => b.onclick = async () => { const x = items()[+b.dataset.tbe]; const d = await breakModal(x); if (d) { Object.assign(x, d); ttChanged(); } });
   $('#ttAddL', box).onclick = async () => {
@@ -1877,7 +1919,7 @@ function ttHomeCard() {
     : next ? T`Berikutnya: ${subjName(next.it.s)} jam ${fromMin(next.a)}` : isT ? tx('Pelajaran hari ini sudah selesai') : fd(ymdMs(date));
   return `<section class="card" style="margin-top:16px">
     <div class="card-head"><div><h2>${label}</h2><div class="muted small" style="margin-top:4px">${esc(sub)}</div></div><button class="btn ghost sm" data-go2="jadwal">${tx('Lihat')}</button></div>
-    <div class="tt-strip">${slots.filter(s => s.it.k !== 'b').map(s => `<div class="tt-chip ${isT && nm >= s.a && nm < s.b ? 'now' : ''} ${isT && nm >= s.b ? 'past' : ''}" style="--h:${subjHue(s.it.s)}"><b>${esc(subjName(s.it.s))}</b><span>${fromMin(s.a)}–${fromMin(s.b)}</span></div>`).join('')}</div>
+    <div class="tt-strip">${slots.filter(s => s.it.k !== 'b').map(s => { const ex = ttExamFor(date, s); return `<div class="tt-chip ${isT && nm >= s.a && nm < s.b ? 'now' : ''} ${isT && nm >= s.b ? 'past' : ''} ${ex ? 'exam' : ''}" style="--h:${subjHue(s.it.s)}"><b>${esc(subjName(s.it.s))}</b><span>${ex ? I('cap') + T`Ujian${''}` + ' · ' : ''}${fromMin(s.a)}–${fromMin(s.b)}</span></div>`; }).join('')}</div>
   </section>`;
 }
 

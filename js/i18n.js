@@ -222,6 +222,8 @@
     'Pakai inisial': 'Use initial', 'Atau pilih emoji': 'Or pick an emoji', 'Warna': 'Colour', 'Foto tidak bisa dibuka': "This photo can't be opened", 'Foto profil disimpan': 'Profile picture saved',
 
     'Lihat changelog': 'View changelog', 'Changelog belum bisa dimuat. Coba lagi saat online.': "The changelog couldn't load. Try again when online.", 'Tutup': 'Close',
+    'Ujian{0}': 'Exam{0}', 'Lihat ujian': 'View exam', 'Jadikan ujian': 'Mark as exam', 'Dari menu Ujian': 'From the Exams page', '{0} ujian': n => `${n} exam${s(n)}`,
+    'Dari jadwal:': 'From timetable:', 'Lihat di jadwal': 'View in timetable',
     /* ---------- data bawaan (nama awal) ---------- */
     'Mudah': 'Easy', 'Sedang': 'Medium', 'Sulit': 'Hard', 'Ekstrem': 'Extreme',
     'Pemula': 'Beginner', 'Rajin': 'Diligent', 'Tekun': 'Persistent', 'Disiplin': 'Disciplined', 'Mandiri': 'Independent',
