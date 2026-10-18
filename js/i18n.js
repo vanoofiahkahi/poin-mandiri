@@ -40,9 +40,9 @@
 
     /* ---------- layar akun ---------- */
     'Ingat.': 'Remember.', 'Kerjakan.': 'Get it done.', 'Dapat poin.': 'Earn points.',
-    'Pengingat ujian dan deadline yang benar-benar berbunyi, plus poin untuk setiap usaha belajar. Tukar dengan reward pilihanmu.': 'Exam and deadline reminders that actually ring, plus points for every bit of studying. Trade them for rewards you choose.',
+    'Pengingat ujian dan deadline yang benar-benar berbunyi, plus poin untuk setiap usaha belajar.': 'Exam and deadline reminders that actually ring, plus points for every bit of studying.',
     'Alarm belajar malam sebelum ujian': 'Study alarm the night before exams', 'Deadline tugas dengan tingkat kesulitan': 'Task deadlines with difficulty levels',
-    'Poin bisa ditukar reward atau top-up game': 'Trade points for rewards or game top-ups', 'Tersinkron di semua perangkatmu': 'Synced across all your devices',
+    'Poin dan level untuk setiap usaha': 'Points and levels for every effort', 'Tersinkron di semua perangkatmu': 'Synced across all your devices',
     'Pakai tanpa akun': 'Use without an account', '· data hanya di perangkat ini': '· data stays on this device', 'Selamat datang': 'Welcome',
     'Atur server akun dulu agar bisa daftar dan masuk.': 'Set up the account server first so you can sign up and sign in.', 'Server akun belum disiapkan': 'Account server not set up yet',
     'Masukkan alamat server Supabase Anda, atau pakai remind+ tanpa akun dulu. Data tetap bisa dipindahkan ke akun nanti.': 'Enter your Supabase server address, or use remind+ without an account for now. You can move your data to an account later.',
@@ -67,7 +67,7 @@
     'Selamat pagi': 'Good morning', 'Selamat siang': 'Good afternoon', 'Selamat sore': 'Good afternoon', 'Selamat malam': 'Good evening',
 
     /* ---------- beranda ---------- */
-    'Saldo poin': 'Points balance', 'poin': 'points', '≈ {0} · total didapat {1}': '≈ {0} · {1} earned in total', 'Tukar reward': 'Redeem reward', 'Level': 'Level',
+    'Saldo poin': 'Points balance', 'poin': 'points', 'Total didapat {0} poin': '{0} points earned in total', 'Tukar reward': 'Redeem reward', 'Level': 'Level',
     '{0} poin lagi menuju <b>{1}</b>': '{0} more points to <b>{1}</b>', 'Level tertinggi tercapai': 'Highest level reached', '{0} hari beruntun': n => `${n}-day streak`,
     'Mulai streak hari ini': 'Start a streak today', 'Poin 7 hari': 'Points (7 days)', 'Waktu belajar': 'Study time', 'Tugas selesai': 'Tasks done', 'Tugas aktif': 'Active tasks',
     'Agenda terdekat': 'Coming up', 'Tidak ada agenda': 'Nothing coming up', 'Tambahkan deadline tugas atau jadwal ujian.': 'Add a task deadline or an exam date.', 'Aktivitas terbaru': 'Recent activity',

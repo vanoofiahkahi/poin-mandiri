@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '2.6.0';
+const VERSION = '2.7.0';
 
 /* ================= Ikon ================= */
 const P = {
@@ -736,12 +736,12 @@ function authArt() {
     <div class="brand"><img src="logo.svg" alt=""><span>remind<b>+</b></span></div>
     <div>
       <h1>Ingat.<br>Kerjakan.<br>Dapat poin.</h1>
-      <p>Pengingat ujian dan deadline yang benar-benar berbunyi, plus poin untuk setiap usaha belajar. Tukar dengan reward pilihanmu.</p>
+      <p>Pengingat ujian dan deadline yang benar-benar berbunyi, plus poin untuk setiap usaha belajar.</p>
     </div>
     <div class="feat">
       <div><span class="fi">${I('alarm')}</span>Alarm belajar malam sebelum ujian</div>
       <div><span class="fi">${I('checks')}</span>Deadline tugas dengan tingkat kesulitan</div>
-      <div><span class="fi">${I('gift')}</span>Poin bisa ditukar reward atau top-up game</div>
+      <div><span class="fi">${I('trophy')}</span>Poin dan level untuk setiap usaha</div>
       <div><span class="fi">${I('cloud')}</span>Tersinkron di semua perangkatmu</div>
     </div>
   </section>`;
@@ -903,9 +903,9 @@ function startLocal() {
 /* ================= Aplikasi ================= */
 const NAV = [
   ['home', 'Beranda', 'home'], ['tugas', 'Tugas', 'checks'], ['ujian', 'Ujian', 'cap'], ['kas', 'Kas', 'wallet'], ['ingat', 'Pengingat', 'bell'], ['belajar', 'Belajar', 'timer'],
-  ['reward', 'Reward', 'gift'], ['riwayat', 'Riwayat', 'history'], ['atur', 'Pengaturan', 'sliders']
+  ['riwayat', 'Riwayat', 'history'], ['atur', 'Pengaturan', 'sliders']
 ];
-const TITLES = { tugas: 'Tugas', ujian: 'Ujian', kas: 'Uang Kas', ingat: 'Pengingat', belajar: 'Belajar', reward: 'Reward', riwayat: 'Riwayat', atur: 'Pengaturan' };
+const TITLES = { tugas: 'Tugas', ujian: 'Ujian', kas: 'Uang Kas', ingat: 'Pengingat', belajar: 'Belajar', riwayat: 'Riwayat', atur: 'Pengaturan' };
 const displayName = () => (USER && (USER.local ? S.profile.name : USER.name)) || (USER && USER.email ? USER.email.split('@')[0] : '') || tx('Kamu');
 const initial = () => (displayName().trim()[0] || 'R').toUpperCase();
 
@@ -975,7 +975,7 @@ function go(v) {
 function render() {
   if (!USER || !$('#view')) return;
   closePop(true);
-  const pages = { home, tugas, ujian, kas, ingat, belajar, reward, riwayat, atur };
+  const pages = { home, tugas, ujian, kas, ingat, belajar, riwayat, atur };
   if (V === 'home') { $('#hello').textContent = greeting() + ' 👋'; $('#title').textContent = displayName(); }
   else { $('#hello').textContent = new Date().toLocaleDateString(LOC, { weekday: 'long', day: 'numeric', month: 'long' }); $('#title').textContent = TITLES[V]; }
   pages[V]();
@@ -1022,11 +1022,10 @@ function home() {
     <section class="hero"><span class="liq" aria-hidden="true"></span>
       <div class="lbl">Saldo poin</div>
       <div class="big num"><span id="balNum">${fmt(LAST_BAL === null ? 0 : LAST_BAL)}</span><small>poin</small></div>
-      <div class="meta">${T`≈ ${rp(S.balance * S.rate)} · total didapat ${fmt(S.earned)}`}</div>
+      <div class="meta">${T`Total didapat ${fmt(S.earned)} poin`}</div>
       <div class="acts">
-        <button class="btn" data-go2="reward">${I('gift')}Tukar reward</button>
-        <button class="btn glass" data-go2="tugas">${I('plus')}Tugas</button>
-        <button class="btn glass" data-go2="belajar">${I('play')}Belajar</button>
+        <button class="btn" data-go2="tugas">${I('plus')}Tambah tugas</button>
+        <button class="btn glass" data-go2="belajar">${I('play')}Mulai belajar</button>
       </div>
     </section>
     <section class="card level">
@@ -1647,62 +1646,6 @@ function belajar() {
   };
 }
 
-/* ---------- Reward ---------- */
-const KATS = [['Top-up game', 'game'], ['Belanja', 'bag'], ['Jajan / makan', 'food'], ['Hiburan', 'film'], ['Lainnya', 'spark']];
-let KAT = 'Top-up game';
-function reward() {
-  view().innerHTML = `
-  <div class="grid g2">
-    <section class="card">
-      <h2>Tukar dengan pengeluaran</h2>
-      <p class="sub">${T`Masukkan nominal yang ingin dibelanjakan. Poin dihitung otomatis: <b>1 poin = ${rp(S.rate)}</b>.`}</p>
-      <div class="field"><span>Kategori</span><div class="seg" id="kat">${KATS.map(([k, ic]) => `<button class="${k === KAT ? 'on' : ''}" data-k="${esc(k)}">${I(ic)}${esc(k)}</button>`).join('')}</div></div>
-      <div class="stack" style="margin-top:14px">
-        <label class="field"><span>Untuk apa? (opsional)</span><input class="input" id="rd" placeholder="Contoh: Diamond Mobile Legends, skin, buku"></label>
-        <label class="field"><span>Nominal (Rp)</span><input class="input" id="rn" type="number" inputmode="numeric" min="0" placeholder="50000"></label>
-      </div>
-      <div class="calc"><span class="muted">Poin terpakai</span><b class="num" id="rpz">0</b></div>
-      <div class="small" id="rinfo" style="margin-bottom:12px;min-height:20px"></div>
-      <button class="btn grad block" id="rgo">${I('gift')}Tukar poin</button>
-    </section>
-    <section class="card">
-      <h2>Reward tetap</h2><p class="sub">Hadiah dengan harga poin yang Anda tentukan sendiri. Terbuka saat saldo cukup.</p>
-      <div class="list">${S.rewards.length ? S.rewards.map(r => {
-        const ok = S.balance >= r.p, pct = Math.min(100, S.balance / r.p * 100);
-        return `<div class="item"><div class="lead ${ok ? 't-mint' : 't-brand'}">${I('gift')}</div>
-          <div class="body"><div class="ttl">${esc(r.n)}</div>
-            <div class="meta">${ok ? '<span class="chip mint">Bisa ditukar</span>' : `<span class="chip warn">${T`Kurang ${fmt(r.p - S.balance)}`}</span>`}</div>
-            ${ok ? '' : `<div style="height:6px;border-radius:9px;background:var(--surface-3);margin-top:8px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--grad)"></div></div>`}</div>
-          <span class="pts num">${fmt(r.p)}</span>
-          <button class="btn sm ${ok ? '' : 'ghost'}" ${ok ? '' : 'disabled'} data-rw="${r.id}">Tukar</button></div>`;
-      }).join('') : emptyBox('gift', 'Belum ada reward tetap', 'Tambahkan di Pengaturan.')}</div>
-    </section>
-  </div>`;
-  $$('#kat button').forEach(b => b.onclick = () => { KAT = b.dataset.k; $$('#kat button').forEach(x => x.classList.toggle('on', x === b)); });
-  const calc = () => {
-    const n = Number($('#rn').value) || 0, p = Math.ceil(n / S.rate);
-    $('#rpz').textContent = fmt(p);
-    const i = $('#rinfo');
-    i.innerHTML = n ? (p > S.balance ? `<span style="color:var(--danger);font-weight:700">${T`Saldo kurang ${fmt(p - S.balance)} poin.`}</span>` : `<span class="muted">${T`Sisa saldo setelah ditukar: <b>${fmt(S.balance - p)}</b> poin.`}</span>`) : '';
-    $('#rgo').disabled = !n || p > S.balance;
-    return p;
-  };
-  $('#rn').oninput = calc; calc();
-  $('#rgo').onclick = async () => {
-    const n = Number($('#rn').value), p = calc(); if (!n || p > S.balance) return;
-    const d = $('#rd').value.trim();
-    if (!await ask(T`Tukar ${fmt(p)} poin?`, T`${tx(KAT) + (d ? ' (' + d + ')' : '')} senilai ${rp(n)}. Saldo jadi ${fmt(S.balance - p)} poin.`, 'Tukar', 'grad')) return;
-    add(-p, KAT + (d ? ': ' + d : '') + ' · ' + rp(n), 'reward');
-    render(); toast(T`−${fmt(p)} poin. Selamat menikmati!`);
-  };
-  $$('[data-rw]', view()).forEach(b => b.onclick = async () => {
-    const r = S.rewards.find(x => x.id === b.dataset.rw);
-    if (!r || S.balance < r.p) return;
-    if (!await ask('Tukar reward?', T`"${tx(r.n)}" seharga ${fmt(r.p)} poin.`, 'Tukar', 'grad')) return;
-    add(-r.p, 'Reward: ' + r.n, 'reward'); render(); toast('Reward ditukar. Nikmati!');
-  });
-}
-
 /* ---------- Riwayat ---------- */
 let RF = 'semua';
 function riwayat() {
@@ -1716,7 +1659,7 @@ function riwayat() {
     <div class="card stat"><div class="ico t-danger">${I('down')}</div><div class="v num minus">−${fmt(outT)}</div><div class="l">Dipakai hari ini</div></div>
     <div class="card stat"><div class="ico t-brand">${I('trophy')}</div><div class="v num">${fmt(S.earned)}</div><div class="l">Total sepanjang waktu</div></div>
   </div>
-  <div class="sec-title"><div class="seg" id="rf">${[['semua', 'Semua'], ['tugas', 'Tugas'], ['belajar', 'Belajar'], ['ujian', 'Ujian'], ['kas', 'Kas'], ['ingat', 'Pengingat'], ['reward', 'Reward'], ['koreksi', 'Koreksi']].map(([k, n]) => `<button class="${k === RF ? 'on' : ''}" data-f="${k}">${n}</button>`).join('')}</div></div>
+  <div class="sec-title"><div class="seg" id="rf">${[['semua', 'Semua'], ['tugas', 'Tugas'], ['belajar', 'Belajar'], ['ujian', 'Ujian'], ['kas', 'Kas'], ['ingat', 'Pengingat'], ...(S.log.some(l => l.kind === 'reward') ? [['reward', 'Reward']] : []), ['koreksi', 'Koreksi']].map(([k, n]) => `<button class="${k === RF ? 'on' : ''}" data-f="${k}">${n}</button>`).join('')}</div></div>
   <div class="list">${L.length ? L.slice(0, 250).map(logItem).join('') : emptyBox('history', 'Belum ada catatan', 'Riwayat poin akan muncul di sini.')}</div>`;
   $$('#rf button').forEach(b => b.onclick = () => { RF = b.dataset.f; render(); });
 }
@@ -1784,8 +1727,6 @@ function atur() {
       <h2>Aturan poin</h2><p class="sub">Berapa nilai usaha Anda.</p>
       <div class="stack">
         <div class="form-row"><label class="field"><span>Poin belajar</span><input class="input" type="number" inputmode="numeric" id="sp" value="${S.study.p}"></label><label class="field"><span>setiap (menit)</span><input class="input" type="number" inputmode="numeric" id="sm" value="${S.study.m}"></label></div>
-        <label class="field"><span>Kurs penukaran: 1 poin = Rp</span><input class="input" type="number" inputmode="numeric" id="rt" value="${S.rate}"></label>
-        <p class="faint small" style="margin:0">${T`Contoh: kurs ${rp(S.rate)} → top-up ${rp(50000)} memakai ${fmt(Math.ceil(50000 / S.rate))} poin.`}</p>
       </div>
     </section>
     <section class="card">
@@ -1796,10 +1737,6 @@ function atur() {
       <div class="card-head"><h2>Level</h2><button class="btn soft sm" id="la">${I('plus')}Tambah</button></div>
       <div class="rows">${S.levels.map((l, i) => `<div class="r"><input class="input" data-ln="${i}" value="${esc(l.n)}"><input class="input w-num" type="number" inputmode="numeric" data-lm="${i}" value="${l.min}" ${i === 0 ? 'disabled' : ''}>${i === 0 ? '<span style="width:38px;flex:none"></span>' : `<button class="icon-btn sm danger" data-lx="${i}" aria-label="Hapus">${I('x')}</button>`}</div>`).join('')}</div>
       <p class="faint small" style="margin:10px 0 0">Angka = total poin yang dibutuhkan untuk mencapai level.</p>
-    </section>
-    <section class="card">
-      <div class="card-head"><h2>Reward tetap</h2><button class="btn soft sm" id="ra">${I('plus')}Tambah</button></div>
-      <div class="rows">${S.rewards.map((r, i) => `<div class="r"><input class="input" data-rn="${i}" value="${esc(r.n)}"><input class="input w-num" type="number" inputmode="numeric" data-rp="${i}" value="${r.p}"><button class="icon-btn sm danger" data-rx="${i}" aria-label="Hapus">${I('x')}</button></div>`).join('') || '<p class="faint small">Belum ada.</p>'}</div>
     </section>
     <section class="card">
       <h2>Koreksi poin</h2><p class="sub">Bonus atau potongan manual.</p>
@@ -1826,9 +1763,7 @@ function atur() {
   on('[data-dp]', el => S.diff[el.dataset.dp].p = num(el.value, 1));
   on('[data-ln]', el => S.levels[el.dataset.ln].n = el.value.trim() || 'Level');
   on('[data-lm]', el => { S.levels[el.dataset.lm].min = num(el.value, 1); levelOf(S.earned); setTimeout(render, 0); });
-  on('[data-rn]', el => S.rewards[el.dataset.rn].n = el.value.trim() || 'Reward');
-  on('[data-rp]', el => S.rewards[el.dataset.rp].p = num(el.value, 1));
-  on('#sp', el => S.study.p = num(el.value, 1)); on('#sm', el => S.study.m = num(el.value, 1)); on('#rt', el => S.rate = num(el.value, 1));
+  on('#sp', el => S.study.p = num(el.value, 1)); on('#sm', el => S.study.m = num(el.value, 1));
   on('#rx', el => S.remind.exam = el.value || '19:00'); on('#rh', el => S.remind.taskH = num(el.value, 1));
   on('#rb', el => S.remind.examBonus = num(el.value, 0)); on('#rl', el => S.remind.latePct = Math.min(100, num(el.value, 0)));
   on('#rs2', el => S.remind.siren = el.checked);
@@ -1836,10 +1771,9 @@ function atur() {
     if (S[arr].length <= keep) { toast(T`Minimal ${keep} item`); return; }
     S[arr].splice(Number(b.dataset[attr]), 1); persist(); render();
   });
-  rm('dx', 'diff', 1); rm('lx', 'levels', 1); rm('rx', 'rewards', 0);
+  rm('dx', 'diff', 1); rm('lx', 'levels', 1);
   $('#da').onclick = () => { S.diff.push({ n: tx('Baru'), p: 30 }); persist(); render(); };
   $('#la').onclick = () => { const mx = Math.max(...S.levels.map(l => l.min)); S.levels.push({ n: tx('Level baru'), min: mx + 5000 }); persist(); render(); };
-  $('#ra').onclick = () => { S.rewards.push({ id: uid(), n: tx('Reward baru'), p: 100 }); persist(); render(); };
   $$('.theme-pick button', view()).forEach(b => b.onclick = e => themeTransition(() => setTheme(b.dataset.t), e));
   $$('#langPick button', view()).forEach(b => b.onclick = () => { if (b.dataset.l === LANG) return; try { sessionStorage.setItem('remindplus:back', 'atur'); } catch (e) {} setLang(b.dataset.l); });
   $('#fxg').onchange = e => { setFx({ glass: e.target.checked }); toast(e.target.checked ? 'Efek kaca aktif' : 'Efek kaca dimatikan'); };
