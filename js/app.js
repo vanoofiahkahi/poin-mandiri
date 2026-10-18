@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '2.10.0';
+const VERSION = '2.11.0';
 
 /* ================= Ikon ================= */
 const P = {
@@ -972,6 +972,7 @@ function updateIdentity() {
 let ENTER = true;
 function go(v) {
   if (v !== V) ENTER = true;
+  if (v === 'atur') { if (ASEC_KEEP) ASEC_KEEP = false; else ASEC = null; }
   V = v;
   $$('[data-go]').forEach(b => b.classList.toggle('on', b.dataset.go === v && !b.classList.contains('me') && !b.classList.contains('avatar')));
   render();
@@ -2127,27 +2128,45 @@ async function changelogModal() {
   if (open) html += '</ul>';
   modal({ title: 'Changelog', wide: true, html: `<div class="cl">${html}</div>`, actions: [{ label: 'Tutup', cls: 'grad', value: true }] });
 }
-/* ---------- Pengaturan ---------- */
+/* ---------- Pengaturan: menu utama + halaman per bagian ---------- */
+let ASEC = (() => { try { const v = sessionStorage.getItem('remindplus:asec'); sessionStorage.removeItem('remindplus:asec'); return v || null; } catch (e) { return null; } })(), ADIR = 0, ASEC_KEEP = !!ASEC;
+const ASECS = [
+  ['akun', 'Profil & akun', 'user', 't-brand'],
+  ['tampilan', 'Tampilan', 'sun', 't-warn'],
+  ['ingat', 'Pengingat & alarm', 'bell', 't-danger'],
+  ['poin', 'Poin & level', 'trophy', 't-mint'],
+  ['data', 'Data & cadangan', 'server', 't-brand'],
+  ['tentang', 'Tentang', 'info', 't-mint']
+];
+function aturGo(k) {
+  ADIR = k ? 1 : -1; ASEC = k; ENTER = false; closePop(true);
+  render(); window.scrollTo({ top: 0, behavior: 'auto' });
+}
 function atur() {
   const local = USER.local;
   const notifSt = !('Notification' in window) ? 'Tidak didukung di browser ini' : Notification.permission === 'granted' ? 'Aktif' : Notification.permission === 'denied' ? 'Diblokir. Izinkan dari pengaturan aplikasi.' : 'Belum diizinkan';
   const legacy = lsGet(LEGACY_KEY);
-  view().innerHTML = `
-  <section class="card" style="margin-bottom:16px">
-    <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
-      <button class="avatar lg av-edit" id="avEdit" data-av aria-label="Ubah foto profil"></button>
-      <div style="flex:1;min-width:200px">
-        <h2 style="margin:0">${esc(displayName())}</h2>
-        <div class="muted">${local ? 'Mode tanpa akun · data hanya di perangkat ini' : esc(USER.email)}</div>
-        <div class="sync" style="padding:6px 0 0"></div>
+  const themeN = { light: 'Terang', dark: 'Gelap', auto: 'Otomatis' }[themePref()] || 'Otomatis';
+  const sum = {
+    akun: local ? tx('Mode tanpa akun') : USER.email,
+    tampilan: tx(themeN) + ' · ' + (LANG === 'en' ? 'English' : 'Bahasa Indonesia'),
+    ingat: T`Belajar jam ${hhmm(S.remind.exam)} · tugas ${S.remind.taskH} jam sebelum`,
+    poin: T`${S.diff.length} tingkat kesulitan · ${S.levels.length} level`,
+    data: tx(local ? 'Hanya di perangkat ini' : 'Tersimpan di akun'),
+    tentang: T`Versi ${VERSION}`
+  };
+  const secs = {
+    akun: `
+    <section class="card">
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+        <button class="avatar lg av-edit" id="avEdit" data-av aria-label="Ubah foto profil"></button>
+        <div style="flex:1;min-width:180px"><h2 style="margin:0">${esc(displayName())}</h2><div class="muted small">${local ? 'Mode tanpa akun · data hanya di perangkat ini' : esc(USER.email)}</div><div class="sync" style="padding:6px 0 0"></div></div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${local ? (sb ? `<button class="btn grad" id="toAcc">${I('cloud')}Buat akun / Masuk</button>` : `<button class="btn grad" id="toServer">${I('server')}Atur server akun</button>`) : `<button class="btn ghost" id="syncNow">${I('refresh')}Sinkronkan</button>`}
-        <button class="btn ghost" id="logout">${I('logout')}${local ? 'Keluar mode lokal' : 'Keluar'}</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
+        ${local ? (sb ? `<button class="btn grad sm" id="toAcc">${I('cloud')}Buat akun / Masuk</button>` : `<button class="btn grad sm" id="toServer">${I('server')}Atur server akun</button>`) : `<button class="btn ghost sm" id="syncNow">${I('refresh')}Sinkronkan</button>`}
+        <button class="btn ghost sm" id="logout">${I('logout')}${local ? 'Keluar mode lokal' : 'Keluar'}</button>
       </div>
-    </div>
-  </section>
-  <div class="grid g2">
+    </section>
     <section class="card">
       <h2>Profil</h2><p class="sub">${local ? 'Nama yang tampil di aplikasi.' : 'Nama dan password akun Anda.'}</p>
       <div class="stack">
@@ -2155,41 +2174,56 @@ function atur() {
         ${local ? '' : `<div class="form-row"><label class="field"><span>Password baru</span><input class="input" id="pp" type="password" autocomplete="new-password" placeholder="Minimal 6 karakter"></label><button class="btn ghost" id="ppS">${I('lock')}Ubah</button></div>`}
       </div>
     </section>
+    ${local ? '' : `<section class="card"><h2>Hapus akun</h2><p class="sub">${tx('Akun dan semua datanya dihapus dari server.')}</p><button class="btn danger" id="delAcc">${I('trash')}Hapus akun</button></section>`}`,
+    tampilan: `
     <section class="card">
-      <h2>Tampilan</h2><p class="sub">Pilih tema. Otomatis mengikuti pengaturan tablet.</p>
+      <h2>Tema</h2><p class="sub">Pilih tema. Otomatis mengikuti pengaturan tablet.</p>
       <div class="theme-pick">
         <button data-t="light"><span class="sw sw-light"></span>${I('sun')}Terang</button>
         <button data-t="dark"><span class="sw sw-dark"></span>${I('moon')}Gelap</button>
         <button data-t="auto"><span class="sw sw-auto"></span>${I('monitor')}Otomatis</button>
       </div>
-      <div class="field" style="margin-top:18px"><span>Bahasa / Language</span><div class="seg" id="langPick"><button data-l="id" class="${LANG === 'id' ? 'on' : ''}">Bahasa Indonesia</button><button data-l="en" class="${LANG === 'en' ? 'on' : ''}">English</button></div></div>
-      <div class="stack" style="margin-top:18px;gap:12px">
+    </section>
+    <section class="card">
+      <h2>Bahasa / Language</h2>
+      <div class="seg" id="langPick" style="margin-top:6px"><button data-l="id" class="${LANG === 'id' ? 'on' : ''}">Bahasa Indonesia</button><button data-l="en" class="${LANG === 'en' ? 'on' : ''}">English</button></div>
+    </section>
+    <section class="card">
+      <h2>Efek</h2>
+      <div class="stack" style="gap:12px">
         <label class="switch"><input type="checkbox" id="fxg" ${FX.glass ? 'checked' : ''}>Efek kaca (liquid glass)</label>
         <label class="switch"><input type="checkbox" id="fxm" ${FX.motion ? 'checked' : ''}>Animasi halus</label>
         <p class="faint small" style="margin:0">Matikan salah satunya jika tablet terasa lambat atau baterai cepat habis.</p>
       </div>
+    </section>`,
+    ingat: `
+    <section class="card">
+      <h2>Waktu pengingat</h2><p class="sub">Atur kapan remind+ mengingatkan Anda.</p>
+      <div class="stack">
+        <label class="field"><span>Jam belajar (malam sebelum ujian)</span><input class="input" type="time" id="rx" value="${esc(S.remind.exam)}"></label>
+        <label class="field"><span>Ingatkan tugas (jam sebelum deadline)</span><input class="input" type="number" inputmode="numeric" id="rh" value="${S.remind.taskH}"></label>
+      </div>
     </section>
     <section class="card">
-      <h2>Pengingat & alarm</h2><p class="sub">Atur kapan remind+ mengingatkan Anda.</p>
+      <h2>Alarm & notifikasi</h2>
       <div class="stack">
-        <div class="form-row"><label class="field"><span>Jam belajar (malam sebelum ujian)</span><input class="input" type="time" id="rx" value="${esc(S.remind.exam)}"></label>
-        <label class="field"><span>Ingatkan tugas (jam sebelum deadline)</span><input class="input" type="number" inputmode="numeric" id="rh" value="${S.remind.taskH}"></label></div>
-        <div class="form-row"><label class="field"><span>Bonus belajar sebelum ujian</span><input class="input" type="number" inputmode="numeric" id="rb" value="${S.remind.examBonus}"></label>
-        <label class="field"><span>Potongan poin jika telat (%)</span><input class="input" type="number" inputmode="numeric" id="rl" min="0" max="100" value="${S.remind.latePct}"></label></div>
         <label class="switch"><input type="checkbox" id="rs2" ${S.remind.siren ? 'checked' : ''}>Alarm darurat layar penuh + sirene</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <button class="btn alarm-btn sm" id="atest">${I('alarm')}Tes alarm</button>
           ${('Notification' in window) && Notification.permission === 'default' ? `<button class="btn soft sm" id="nb">${I('bell')}Izinkan notifikasi</button>` : ''}
           <button class="btn ghost sm" id="nt">${I('bell')}Tes notifikasi</button>
-          <span class="faint small">${T`Notifikasi: ${tx(notifSt)}`}</span>
         </div>
+        <span class="faint small">${T`Notifikasi: ${tx(notifSt)}`}</span>
         <p class="faint small" style="margin:0">${IS_IOS ? T`Di iPhone/iPad, notifikasi hanya muncul saat remind+ terbuka. Agar <b>pasti berbunyi walau aplikasi tertutup</b>, ketuk <b>Pengingat iPhone</b> pada ujian, tugas, atau kas, lalu simpan ke Kalender. Supaya tetap berbunyi saat Fokus aktif, buka <b>Pengaturan iPhone → Notifikasi → Kalender</b> lalu nyalakan <b>Notifikasi Sensitif Waktu</b>.` : T`Agar alarm <b>pasti berbunyi walau mode Jangan Ganggu aktif</b>, ketuk <b>Alarm HP</b> pada ujian atau tugas. Tombolnya muncul saat pengingat tinggal kurang dari 24 jam.`}</p>
       </div>
-    </section>
+    </section>`,
+    poin: `
     <section class="card">
       <h2>Aturan poin</h2><p class="sub">Berapa nilai usaha Anda.</p>
       <div class="stack">
         <div class="form-row"><label class="field"><span>Poin belajar</span><input class="input" type="number" inputmode="numeric" id="sp" value="${S.study.p}"></label><label class="field"><span>setiap (menit)</span><input class="input" type="number" inputmode="numeric" id="sm" value="${S.study.m}"></label></div>
+        <div class="form-row"><label class="field"><span>Bonus belajar sebelum ujian</span><input class="input" type="number" inputmode="numeric" id="rb" value="${S.remind.examBonus}"></label>
+        <label class="field"><span>Potongan poin jika telat (%)</span><input class="input" type="number" inputmode="numeric" id="rl" min="0" max="100" value="${S.remind.latePct}"></label></div>
       </div>
     </section>
     <section class="card">
@@ -2204,22 +2238,56 @@ function atur() {
     <section class="card">
       <h2>Koreksi poin</h2><p class="sub">Bonus atau potongan manual.</p>
       <div class="form-row"><label class="field"><span>Poin (+/−)</span><input class="input" type="number" inputmode="numeric" id="kp" placeholder="50 atau -30"></label><label class="field"><span>Alasan</span><input class="input" id="ka" placeholder="Opsional"></label><button class="btn ghost" id="kgo">Terapkan</button></div>
-    </section>
-    <section class="card span2">
-      <h2>Data</h2><p class="sub">${local ? 'Data hanya tersimpan di perangkat ini. Buat cadangan secara rutin.' : 'Data tersimpan di akun dan di perangkat ini.'}</p>
+    </section>`,
+    data: `
+    <section class="card">
+      <h2>Cadangan</h2><p class="sub">${local ? 'Data hanya tersimpan di perangkat ini. Buat cadangan secara rutin.' : 'Data tersimpan di akun dan di perangkat ini.'}</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn ghost" id="ex">${I('copy')}Salin cadangan</button>
         <button class="btn ghost" id="im">${I('upload')}Pulihkan cadangan</button>
         ${legacy && Array.isArray(legacy.log) && !isFresh(legacy) ? `<button class="btn ghost" id="imOld">${I('wand')}Impor data Poin Mandiri</button>` : ''}
-        <button class="btn danger" id="rs">${I('reset')}Reset data</button>
-        ${local ? '' : `<button class="btn danger" id="delAcc">${I('trash')}Hapus akun</button>`}
       </div>
       <div id="bxw" hidden style="margin-top:12px"><textarea class="input" id="bx" rows="4" placeholder="Tempel teks cadangan di sini"></textarea><button class="btn" id="bxgo" style="margin-top:10px">Pulihkan</button></div>
-      <button class="linkish small" id="clog" style="margin-top:16px">${T`remind+ versi ${VERSION}`} · ${tx('Lihat changelog')}</button>
     </section>
-  </div>`;
+    <section class="card">
+      <h2>Reset</h2><p class="sub">Poin, tugas, ujian, riwayat, dan pengaturan kembali ke awal. Tidak bisa dibatalkan.</p>
+      <button class="btn danger" id="rs">${I('reset')}Reset data</button>
+    </section>`,
+    tentang: `
+    <section class="card set-about">
+      <img src="logo.svg" alt="" width="64" height="64">
+      <h2>remind<b>+</b></h2>
+      <div class="muted">${T`remind+ versi ${VERSION}`}</div>
+      <button class="btn soft sm" id="clog" style="margin-top:14px">${I('history')}${tx('Lihat changelog')}</button>
+    </section>`
+  };
+
+  if (!ASEC) {
+    view().innerHTML = `
+    <button class="card set-me" id="aMe">
+      <span class="avatar lg" data-av></span>
+      <span class="set-me-t"><b>${esc(displayName())}</b><span class="muted small">${local ? 'Mode tanpa akun' : esc(USER.email)}</span><span class="sync" style="padding:4px 0 0"></span></span>
+      ${I('chevr', 'ic set-chev')}
+    </button>
+    <section class="card set-list">${ASECS.filter(x => x[0] !== 'akun').map(([k, n, ic, tone]) => `
+      <button class="set-row" data-sec="${k}"><span class="set-ico ${tone}">${I(ic)}</span><span class="set-t"><b>${n}</b><span>${esc(sum[k])}</span></span>${I('chevr', 'ic set-chev')}</button>`).join('')}
+    </section>`;
+    $('#aMe').onclick = () => aturGo('akun');
+    $$('[data-sec]', view()).forEach(b => b.onclick = () => aturGo(b.dataset.sec));
+  } else {
+    const meta = ASECS.find(x => x[0] === ASEC) || ASECS[0];
+    $('#title').textContent = tx(meta[1]);
+    view().innerHTML = `<button class="set-back" id="aBack">${I('chevl')}<span>Pengaturan</span></button><div class="set-sec">${secs[ASEC] || ''}</div>`;
+    $('#aBack').onclick = () => aturGo(null);
+  }
+  if (ADIR && motionOn()) {
+    view().animate([{ opacity: 0, transform: `translateX(${ADIR * 40}px)`, filter: 'blur(8px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: SP_SOFT.d, easing: SP_SOFT.e });
+    $$('.set-row, .set-sec > .card', view()).forEach((el, i) => el.animate([{ opacity: 0, transform: `translateX(${ADIR * 24}px)` }, { opacity: 1, transform: 'none' }], { duration: SP.d, delay: 50 + i * 40, easing: SP.e, fill: 'backwards' }));
+  }
+  ADIR = 0;
   setSync(SYNC.st, SYNC.txt);
   refreshThemeButtons();
+  const c = (id, fn, ev = 'onclick') => { const el = $('#' + id, view()); if (el) el[ev] = fn; };
   const num = (v, min = 0) => Math.max(min, Math.round(Number(v) || 0));
   const on = (sel, fn) => $$(sel, view()).forEach(el => el.addEventListener('change', () => { fn(el); persist(); }));
   on('[data-dn]', el => S.diff[el.dataset.dn].n = el.value.trim() || tx('Tanpa nama'));
@@ -2235,59 +2303,59 @@ function atur() {
     S[arr].splice(Number(b.dataset[attr]), 1); persist(); render();
   });
   rm('dx', 'diff', 1); rm('lx', 'levels', 1);
-  $('#da').onclick = () => { S.diff.push({ n: tx('Baru'), p: 30 }); persist(); render(); };
-  $('#la').onclick = () => { const mx = Math.max(...S.levels.map(l => l.min)); S.levels.push({ n: tx('Level baru'), min: mx + 5000 }); persist(); render(); };
+  c('da', () => { S.diff.push({ n: tx('Baru'), p: 30 }); persist(); render(); });
+  c('la', () => { const mx = Math.max(...S.levels.map(l => l.min)); S.levels.push({ n: tx('Level baru'), min: mx + 5000 }); persist(); render(); });
   $$('.theme-pick button', view()).forEach(b => b.onclick = e => themeTransition(() => setTheme(b.dataset.t), e));
-  $$('#langPick button', view()).forEach(b => b.onclick = () => { if (b.dataset.l === LANG) return; try { sessionStorage.setItem('remindplus:back', 'atur'); } catch (e) {} setLang(b.dataset.l); });
-  $('#fxg').onchange = e => { setFx({ glass: e.target.checked }); toast(e.target.checked ? 'Efek kaca aktif' : 'Efek kaca dimatikan'); };
-  $('#fxm').onchange = e => { setFx({ motion: e.target.checked }); toast(e.target.checked ? 'Animasi aktif' : 'Animasi dimatikan'); };
+  $$('#langPick button', view()).forEach(b => b.onclick = () => { if (b.dataset.l === LANG) return; try { sessionStorage.setItem('remindplus:back', 'atur'); sessionStorage.setItem('remindplus:asec', 'tampilan'); } catch (e) {} setLang(b.dataset.l); });
+  c('fxg', e => { setFx({ glass: e.target.checked }); toast(e.target.checked ? 'Efek kaca aktif' : 'Efek kaca dimatikan'); }, 'onchange');
+  c('fxm', e => { setFx({ motion: e.target.checked }); toast(e.target.checked ? 'Animasi aktif' : 'Animasi dimatikan'); }, 'onchange');
   // akun
-  $('#pnS').onclick = async () => {
+  c('pnS', async () => {
     const n = $('#pn').value.trim(); if (!n) return;
     if (local) { S.profile.name = n; persist(); render(); toast('Nama disimpan'); return; }
     try { await sb.updateUser({ data: { name: n } }); USER.name = n; render(); toast('Nama disimpan'); } catch (e) { toast(tr(e)); }
-  };
-  if ($('#ppS')) $('#ppS').onclick = async () => {
+  });
+  c('ppS', async () => {
     const p = $('#pp').value; if (p.length < 6) { toast('Password minimal 6 karakter'); return; }
     try { await sb.updateUser({ password: p }); $('#pp').value = ''; toast('Password diubah'); } catch (e) { toast(tr(e)); }
-  };
-  if ($('#syncNow')) $('#syncNow').onclick = async () => { if (S.meta.dirty) await pushNow(); await pull(true); };
-  if ($('#toAcc')) $('#toAcc').onclick = () => { lsDel(LOCAL_MODE_KEY); USER = null; showAuth('signup'); };
-  if ($('#toServer')) $('#toServer').onclick = () => { lsDel(LOCAL_MODE_KEY); USER = null; showAuth('server'); };
-  $('#logout').onclick = logout;
-  $('#clog').onclick = changelogModal;
-  $('#avEdit').onclick = avatarModal;
-  if ($('#delAcc')) $('#delAcc').onclick = deleteAccount;
+  });
+  c('syncNow', async () => { if (S.meta.dirty) await pushNow(); await pull(true); });
+  c('toAcc', () => { lsDel(LOCAL_MODE_KEY); USER = null; showAuth('signup'); });
+  c('toServer', () => { lsDel(LOCAL_MODE_KEY); USER = null; showAuth('server'); });
+  c('logout', logout);
+  c('clog', changelogModal);
+  c('avEdit', avatarModal);
+  c('delAcc', deleteAccount);
   // pengingat
-  $('#atest').onclick = () => { const v = S.remind.siren; S.remind.siren = true; alarm({ id: 'test', title: tx('Tes alarm'), body: tx('Beginilah bunyi pengingat ujian dan deadline.') }); S.remind.siren = v; };
-  if ($('#nb')) $('#nb').onclick = async () => { try { await Notification.requestPermission(); } catch (e) {} if (Notification.permission === 'granted') { regPeriodic(); toast('Notifikasi aktif'); } render(); };
-  $('#nt').onclick = async () => { if (!(await notify({ id: 'test', title: 'remind+', body: tx('Notifikasi berfungsi. Semangat belajar!') }))) toast('Izinkan notifikasi dulu'); };
+  c('atest', () => { const v = S.remind.siren; S.remind.siren = true; alarm({ id: 'test', title: tx('Tes alarm'), body: tx('Beginilah bunyi pengingat ujian dan deadline.') }); S.remind.siren = v; });
+  c('nb', async () => { try { await Notification.requestPermission(); } catch (e) {} if (Notification.permission === 'granted') { regPeriodic(); toast('Notifikasi aktif'); } render(); });
+  c('nt', async () => { if (!(await notify({ id: 'test', title: 'remind+', body: tx('Notifikasi berfungsi. Semangat belajar!') }))) toast('Izinkan notifikasi dulu'); });
   // koreksi
-  $('#kgo').onclick = async () => {
+  c('kgo', async () => {
     const p = Math.round(Number($('#kp').value)); if (!p) { $('#kp').focus(); return; }
     if (p < 0 && -p > S.balance && !await ask('Saldo jadi minus', 'Lanjutkan koreksi ini?', 'Lanjutkan')) return;
     add(p, 'Koreksi: ' + ($('#ka').value.trim() || 'manual'), 'koreksi'); render(); toast('Saldo diperbarui');
-  };
+  });
   // data
-  $('#ex').onclick = async () => {
+  c('ex', async () => {
     const t = JSON.stringify(Object.assign({}, S, { meta: undefined }));
     try { await navigator.clipboard.writeText(t); toast('Cadangan disalin. Simpan di catatan Anda.'); }
     catch (e) { $('#bxw').hidden = false; $('#bxgo').hidden = true; $('#bx').value = t; $('#bx').select(); toast('Salin teks di kotak'); }
-  };
-  $('#im').onclick = () => { $('#bxw').hidden = false; $('#bxgo').hidden = false; $('#bx').value = ''; $('#bx').focus(); };
-  $('#bxgo').onclick = async () => {
+  });
+  c('im', () => { $('#bxw').hidden = false; $('#bxgo').hidden = false; $('#bx').value = ''; $('#bx').focus(); });
+  c('bxgo', async () => {
     let d; try { d = JSON.parse($('#bx').value); if (typeof d !== 'object' || !Array.isArray(d.log)) throw 0; } catch (e) { toast('Teks cadangan tidak valid'); return; }
     if (!await ask('Pulihkan cadangan?', 'Semua data sekarang diganti dengan isi cadangan.', 'Pulihkan', 'danger solid')) return;
     const meta = S.meta; merge(d); S.meta = meta; persist(); render(); toast('Data dipulihkan');
-  };
-  if ($('#imOld')) $('#imOld').onclick = async () => {
+  });
+  c('imOld', async () => {
     if (!await ask('Impor data Poin Mandiri?', T`Data sekarang diganti dengan data dari aplikasi lama (${fmt(legacy.balance)} poin).`, 'Impor', 'grad')) return;
     const meta = S.meta; merge(legacy); S.meta = meta; markMigrated(LEGACY_KEY); persist(); render(); toast('Data lama diimpor');
-  };
-  $('#rs').onclick = async () => {
+  });
+  c('rs', async () => {
     if (!await ask('Reset semua data?', 'Poin, tugas, ujian, riwayat, dan pengaturan kembali ke awal. Tidak bisa dibatalkan.', 'Reset', 'danger solid')) return;
     const meta = S.meta, prof = S.profile; S = clone(DEF); S.meta = meta; S.profile = prof; persist(); render(); toast('Data direset');
-  };
+  });
 }
 async function logout() {
   if (USER.local) {

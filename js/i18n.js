@@ -224,6 +224,10 @@
     'Lihat changelog': 'View changelog', 'Changelog belum bisa dimuat. Coba lagi saat online.': "The changelog couldn't load. Try again when online.", 'Tutup': 'Close',
     'Ujian{0}': 'Exam{0}', 'Lihat ujian': 'View exam', 'Jadikan ujian': 'Mark as exam', 'Dari menu Ujian': 'From the Exams page', '{0} ujian': n => `${n} exam${s(n)}`,
     'Dari jadwal:': 'From timetable:', 'Lihat di jadwal': 'View in timetable',
+    'Profil & akun': 'Profile & account', 'Poin & level': 'Points & levels', 'Data & cadangan': 'Data & backup', 'Tentang': 'About', 'Tema': 'Theme', 'Efek': 'Effects',
+    'Waktu pengingat': 'Reminder times', 'Alarm & notifikasi': 'Alarms & notifications', 'Cadangan': 'Backup', 'Akun dan semua datanya dihapus dari server.': 'Your account and all its data are deleted from the server.',
+    'Belajar jam {0} · tugas {1} jam sebelum': (a, b) => `Study at ${a} · tasks ${b} hour${s(b)} before`, '{0} tingkat kesulitan · {1} level': (a, b) => `${a} difficulty level${s(a)} · ${b} level${s(b)}`,
+    'Hanya di perangkat ini': 'Only on this device', 'Tersimpan di akun': 'Saved to your account', 'Versi {0}': 'Version {0}',
     /* ---------- data bawaan (nama awal) ---------- */
     'Mudah': 'Easy', 'Sedang': 'Medium', 'Sulit': 'Hard', 'Ekstrem': 'Extreme',
     'Pemula': 'Beginner', 'Rajin': 'Diligent', 'Tekun': 'Persistent', 'Disiplin': 'Disciplined', 'Mandiri': 'Independent',

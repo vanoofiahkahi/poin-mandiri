@@ -2,6 +2,14 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 2.11.0 — 18 Oktober 2026
+### Pengaturan dipisah per bagian
+- Halaman Atur kini berupa menu ringkas: kartu profil dan 5 bagian (Tampilan, Pengingat & alarm, Poin & level, Data & cadangan, Tentang).
+- Tiap bagian terbuka di halamannya sendiri dengan tombol kembali, dan isinya meluncur masuk dengan animasi liquid glass.
+- Tiap baris menu menampilkan ringkasan pengaturannya (mis. tema dan bahasa yang dipakai).
+- Ketuk kartu profil untuk foto, nama, password, sinkron, keluar, dan hapus akun.
+- Ketuk Atur di menu bawah untuk kembali ke menu pengaturan dari bagian mana pun.
+
 ## 2.10.0 — 18 Oktober 2026
 ### Ujian terhubung dengan jadwal
 - Ujian tampil langsung di Jadwal pada tanggal dan jamnya.

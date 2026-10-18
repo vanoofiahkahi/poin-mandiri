@@ -778,3 +778,28 @@ body { background-image: none; }
 .tt-from button::before { content: ''; position: absolute; left: 6px; top: 8px; bottom: 8px; width: 3px; border-radius: 3px; background: hsl(var(--h, 220) 72% 58%); }
 .tt-from button small { color: var(--text-3); font-weight: 600; }
 .tt-from button.on { background: var(--brand-soft); box-shadow: 0 0 0 2px var(--brand); }
+
+/* ================= Pengaturan bertingkat ================= */
+.set-me { display: flex; align-items: center; gap: 16px; width: 100%; text-align: left; font: inherit; color: var(--text); cursor: pointer; margin-bottom: 16px; transition: transform .45s var(--spring); }
+.set-me:active { transform: scale(.985); }
+.set-me-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.set-me-t b { font-size: 19px; font-weight: 800; letter-spacing: -.01em; }
+.set-chev { width: 20px; height: 20px; color: var(--text-3); flex: none; }
+.set-list { padding: 6px; }
+.set-row { display: flex; align-items: center; gap: 14px; width: 100%; padding: 12px 12px; border: 0; border-radius: 16px; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; position: relative; transition: background .2s, transform .45s var(--spring); }
+.set-row + .set-row::before { content: ''; position: absolute; left: 66px; right: 12px; top: 0; height: 1px; background: var(--glass-line); }
+.set-row:hover { background: var(--glass-2); }
+.set-row:active { transform: scale(.98); background: var(--glass-2); }
+.set-ico { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex: none; }
+.set-ico .ic { width: 20px; height: 20px; }
+.set-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.set-t b { font-weight: 700; font-size: 15.5px; }
+.set-t span { color: var(--text-3); font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.set-back { display: inline-flex; align-items: center; gap: 4px; margin: 0 0 14px; padding: 6px 12px 6px 6px; border: 0; border-radius: 99px; background: var(--glass-2); color: var(--text-2); font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: inset 0 0 0 1px var(--glass-line); transition: transform .45s var(--spring); }
+.set-back .ic { width: 18px; height: 18px; }
+.set-back:active { transform: scale(.94); }
+.set-sec { display: flex; flex-direction: column; gap: 16px; max-width: 760px; }
+.set-about { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 34px 22px; }
+.set-about img { border-radius: 18px; box-shadow: 0 18px 40px -18px rgba(106,77,255,.8); margin-bottom: 12px; }
+.set-about h2 { margin: 0 0 4px; font-size: 24px; }
+.set-about h2 b { color: var(--brand); }
