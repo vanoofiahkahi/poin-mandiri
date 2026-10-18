@@ -2,6 +2,25 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.4.0 — 18 Oktober 2026
+### Mode libur
+- Atur → **Mode libur**: catat libur semester atau hari raya (nama + tanggal mulai–selesai), bisa direncanakan jauh hari.
+- Selama libur, pengingat pelajaran, pertanyaan PR, tagihan uang kas, dan pengingat kategori Sekolah berhenti. Ujian, tugas, acara, dan pengingat pribadi tetap jalan.
+- Streak tidak putus selama libur. Widget jadwal menampilkan sisa hari libur, dan hari libur ditandai di Jadwal.
+
+### Hitung mundur
+- Kartu **Hitung mundur** di Beranda: ujian, acara sekolah, awal/akhir libur, dan hitung mundur buatan sendiri (misalnya study tour) dengan pilihan warna.
+
+### Bagikan jadwal lewat QR
+- Tombol QR di Jadwal membuat QR code dan link untuk minggu ini, minggu depan, atau 2 minggu, bisa termasuk jadwal ujian.
+- Teman cukup memindai QR dengan kamera HP. remind+ terbuka dan menampilkan jadwalnya, lalu bisa diterima ke hari yang masih kosong atau menimpa semua. Mata pelajaran dan guru yang belum ada ikut ditambahkan.
+- Bisa juga lewat Jadwal → ⋯ → Terima jadwal teman (pindai kamera bila didukung browser, atau tempel link).
+- Pembuat QR ditulis sendiri untuk remind+, tanpa library luar.
+
+## Android build 4 — 18 Oktober 2026
+- Tombol Bagikan link memakai lembar bagikan Android.
+- Izin kamera untuk memindai QR jadwal di dalam aplikasi.
+
 ## 3.3.0 — 18 Oktober 2026
 ### Panduan untuk pengguna baru
 - Saat pertama kali masuk, muncul panduan singkat 7 langkah (bisa digeser) tentang poin, tugas, ujian, jadwal, pengingat, dan kas, lengkap dengan tombol izinkan notifikasi.

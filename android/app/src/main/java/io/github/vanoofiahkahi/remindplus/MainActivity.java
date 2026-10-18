@@ -9,6 +9,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.Window;
+import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -20,7 +21,8 @@ import android.webkit.WebViewClient;
 public class MainActivity extends Activity {
     static final String HOST = "vanoofiahkahi.github.io";
     static final String BASE = "https://" + HOST + "/poin-mandiri/";
-    private static final int REQ_FILE = 42, REQ_NOTIF = 7;
+    private static final int REQ_FILE = 42, REQ_NOTIF = 7, REQ_CAM = 9;
+    private PermissionRequest camReq;
 
     WebView web;
     private ValueCallback<Uri[]> fileCb;
@@ -54,6 +56,23 @@ public class MainActivity extends Activity {
             }
         });
         web.setWebChromeClient(new WebChromeClient() {
+            /** Kamera untuk memindai QR jadwal teman */
+            @Override
+            public void onPermissionRequest(PermissionRequest req) {
+                runOnUiThread(() -> {
+                    boolean cam = false;
+                    for (String r : req.getResources()) if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) cam = true;
+                    if (!cam || !HOST.equals(req.getOrigin().getHost())) { req.deny(); return; }
+                    if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                        req.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
+                    } else {
+                        if (camReq != null) camReq.deny();
+                        camReq = req;
+                        requestPermissions(new String[]{Manifest.permission.CAMERA}, REQ_CAM);
+                    }
+                });
+            }
+
             @Override
             public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams p) {
                 if (fileCb != null) fileCb.onReceiveValue(null);
@@ -131,6 +150,11 @@ public class MainActivity extends Activity {
     public void onRequestPermissionsResult(int req, String[] perms, int[] res) {
         super.onRequestPermissionsResult(req, perms, res);
         if (req == REQ_NOTIF) permResult(Alarms.permission(this));
+        if (req == REQ_CAM && camReq != null) {
+            if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) camReq.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
+            else camReq.deny();
+            camReq = null;
+        }
     }
 
     private void permResult(String state) {

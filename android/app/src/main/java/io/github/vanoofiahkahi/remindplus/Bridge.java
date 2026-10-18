@@ -35,5 +35,20 @@ public class Bridge {
     public void requestPermission() { a.runOnUiThread(a::askNotifications); }
 
     @JavascriptInterface
-    public int version() { return 1; }
+    public int version() { return 2; }
+
+    /** Lembar bagikan Android (WebView tidak punya navigator.share). */
+    @JavascriptInterface
+    public void share(String title, String text) {
+        a.runOnUiThread(() -> {
+            try {
+                android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_SEND)
+                        .setType("text/plain")
+                        .putExtra(android.content.Intent.EXTRA_SUBJECT, title)
+                        .putExtra(android.content.Intent.EXTRA_TEXT, title + "\n" + text);
+                a.startActivity(android.content.Intent.createChooser(i, title));
+            } catch (Exception ignored) {
+            }
+        });
+    }
 }

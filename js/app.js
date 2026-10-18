@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.3.0';
+const VERSION = '3.4.0';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -85,6 +85,12 @@ const P = {
   chevr: '<path d="m9 18 6-6-6-6"/>',
   chevu: '<path d="m18 15-6-6-6 6"/>',
   flag: '<path d="M4 22V4"/><path d="M4 4h12l-2 4 2 4H4"/>',
+  palm: '<path d="M12 22c0-6 .5-10 2-13"/><path d="M14 9c-1.5-3-5-4-8-3 2.5.5 4.5 2 5.5 4"/><path d="M14 9c1-3 4.5-4.5 7.5-3.5C19 6 17 7.5 16 9.5"/><path d="M14 9c3 0 6 2 6.5 5-2-1.5-4-2-6-2"/><path d="M14 9c-3-.5-6 1-7 4 2-1 4-1.5 6-1"/><path d="M5 22h14"/>',
+  hourglass: '<path d="M6 2h12M6 22h12"/><path d="M7 2v3a5 5 0 0 0 10 0V2"/><path d="M7 22v-3a5 5 0 0 1 10 0v3"/>',
+  qr: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/>',
+  share: '<circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="m8.3 10.8 7.4-4.3M8.3 13.2l7.4 4.3"/>',
+  scan: '<path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M7 12h10"/>',
+  image: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.5-4.5L6 21"/>',
   more: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>'
 };
 const I = (n, c = 'ic') => `<svg class="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || ''}</svg>`;
@@ -280,6 +286,7 @@ const DEF = {
   /* Jadwal pelajaran: mapel & guru Year 9 (DHIS Lodaya), diisi per tanggal */
   subj: [{ id: 's1', n: 'Mathematics', t: 'Rizky (RZ)', h: 15 }, { id: 's2', n: 'Bahasa Indonesia', t: 'Ahmad (AD)', h: 62 }, { id: 's3', n: 'Biology', t: 'Dzihni Andiasari (DZ)', h: 109 }, { id: 's4', n: 'Chemistry', t: 'Vinna Octaviana (VO)', h: 156 }, { id: 's5', n: 'Physics', t: 'Dyantie (DY)', h: 203 }, { id: 's6', n: 'English Vocabulary', t: 'Yuni (YA)', h: 250 }, { id: 's7', n: 'English Reading & Writing', t: 'Nurul (NR)', h: 297 }, { id: 's8', n: 'English Listening & Speaking', t: 'Keith Langham (KT) / David (DV)', h: 344 }, { id: 's9', n: 'Islamic Studies', t: 'Anugrah Nurhakim (AG)', h: 31 }, { id: 's10', n: 'Tahsin & Tahfidz', t: 'Ari Fauzi (AF) / Hasan (HA)', h: 78 }, { id: 's11', n: 'Social Studies', t: 'Ananda Amalia (AN)', h: 125 }, { id: 's12', n: 'ICT / Computing', t: 'Erizka Yolanda (EY)', h: 172 }, { id: 's13', n: 'Physical Education', t: 'Irfan Fadhil (IF)', h: 219 }, { id: 's14', n: 'Entrepreneurship', t: 'Nunung Setiani (NS)', h: 266 }, { id: 's15', n: 'Civics / Art / Basa Sunda', t: 'M. Reza (MR) / Prega Panji (PR) / Sunda Teacher (SU)', h: 313 }, { id: 's16', n: 'Research', t: 'Salma (SA) & Ahmad (AD)', h: 0 }, { id: 's17', n: 'TKA Prep: Bahasa Indonesia', t: 'Hilwan Faruq (HF)', h: 47 }, { id: 's18', n: 'TKA Prep: Matematika', t: 'Maulana Fajar (MF)', h: 94 }, { id: 's19', n: 'Cambridge Checkpoint Try Out', t: 'Maulana Fajar (MF) / Dyantie (DY) / Febi (FS)', h: 141 }, { id: 's20', n: 'HRT Session', t: 'Dyantie (DY)', h: 188 }, { id: 's21', n: 'Extracurricular', t: '', h: 235 }],
   tt: {}, ttMin: 35, ttStart: '07:00', grades: [], freeze: [], hwAsk: {}, wkSeen: '',
+  vac: [], cd: [],
   remind: { exam: '19:00', taskH: 24, latePct: 0, examBonus: 20, siren: true, ttLead: 0, ttAt: 0 },
   profile: { name: '' },
   meta: { modifiedAt: 0, syncedAt: null, dirty: false }
@@ -298,7 +305,7 @@ function merge(d) {
   S.meta = Object.assign({}, DEF.meta, d.meta || {});
   if (!S.tt || typeof S.tt !== 'object' || Array.isArray(S.tt)) S.tt = {};
   if (!S.hwAsk || typeof S.hwAsk !== 'object') S.hwAsk = {};
-  ['tasks', 'exams', 'kas', 'kasPay', 'rem', 'log', 'rewards', 'diff', 'levels', 'subj', 'grades', 'freeze'].forEach(k => { if (!Array.isArray(S[k])) S[k] = clone(DEF[k]); });
+  ['tasks', 'exams', 'kas', 'kasPay', 'rem', 'log', 'rewards', 'diff', 'levels', 'subj', 'grades', 'freeze', 'vac', 'cd'].forEach(k => { if (!Array.isArray(S[k])) S[k] = clone(DEF[k]); });
 }
 function saveLocal() { if (USER) lsSet(stateKey(USER.id), S); }
 const isFresh = s => !(s.log && s.log.length) && !(s.tasks && s.tasks.length) && !(s.exams && s.exams.length);
@@ -779,11 +786,16 @@ function weekStats() {
 }
 function streak() {
   const days = activeDays();
-  let d = sod(Date.now()), n = 0;
+  let d = sod(Date.now()), n = 0, g = 0;
   if (!days.has(d)) d -= DAY;
-  while (days.has(d)) { n++; d -= DAY; }
+  /* Hari libur tidak memutus streak (dan tidak ikut dihitung) */
+  while (g++ < 4000) { if (days.has(d)) n++; else if (!vacOf(ymd(new Date(d)))) break; d -= DAY; }
   return n;
 }
+/* ---------- Mode libur ---------- */
+const vacOf = d => (S.vac || []).find(v => d >= v.from && d <= v.to) || null;
+const vacNow = () => vacOf(ymd(new Date()));
+const vacGapOk = (a, b) => { for (let d = a + DAY; d < b - DAY / 2; d += DAY) if (!vacOf(ymd(new Date(d)))) return false; return true; };
 const hm = m => m >= 60 ? Math.floor(m / 60) + (LANG === 'en' ? 'h ' : 'j ') + (m % 60) + 'm' : m + (LANG === 'en' ? ' min' : ' mnt');
 
 /* ================= Layar akun ================= */
@@ -979,6 +991,7 @@ function enterApp(user) {
   go(V && NAV.some(n => n[0] === V) ? V : 'home');
   startLoops();
   if (!user.local) pull(true);
+  setTimeout(() => { if (USER && $('#modal').hidden) pendingImport(); }, 700);
   setTimeout(() => { if (USER && !S.onb && $('#modal').hidden) guideModal(); }, 1600);
 }
 
@@ -1080,6 +1093,7 @@ function home() {
   view().innerHTML = `
   ${startCardHtml()}
   ${ttWidget()}
+  ${cdHomeCard()}
   <div class="grid g-home">
     <section class="hero"><span class="liq" aria-hidden="true"></span>
       <div class="lbl">Saldo poin</div>
@@ -1126,6 +1140,7 @@ function home() {
   $$('[data-go2]', view()).forEach(b => b.onclick = () => go(b.dataset.go2));
   $('#achGo').onclick = () => { go('atur'); aturGo('ach'); };
   startCardBind();
+  cdBind(view());
   if ($('#frzGo')) $('#frzGo').onclick = freezeStreak;
   if ($('#wkX')) $('#wkX').onclick = () => { const n = new Date(); S.wkSeen = n.getDay() === 0 ? weekKey(n) : addDays(weekKey(n), -7); persist(); render(); };
   if ($('#wkO')) $('#wkO').onclick = () => { const n = new Date(); weekModal(n.getDay() === 0 ? weekKey(n) : addDays(weekKey(n), -7)); };
@@ -1320,7 +1335,7 @@ function kasDue(k, fromMs, toMs) {
   let g = 0;
   while (d.getTime() <= end && g++ < 900) {
     const dow = d.getDay(), dt = d.getDate(), dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    if ((k.f === 'w' && dow === k.dow) || (k.f === 's' && dow >= 1 && dow <= 5) || (k.f === 'm' && dt === Math.min(k.dom, dim))) out.push(ymd(d));
+    if (((k.f === 'w' && dow === k.dow) || (k.f === 's' && dow >= 1 && dow <= 5) || (k.f === 'm' && dt === Math.min(k.dom, dim))) && !vacOf(ymd(d))) out.push(ymd(d));
     d.setDate(d.getDate() + 1);
   }
   return out;
@@ -1510,7 +1525,7 @@ function remOcc(r, fromMs, toMs) {
     const ok = r.rep === 'daily' || (r.rep === 'weekly' && (r.days || []).includes(dow)) ||
       (r.rep === 'monthly' && dt === Math.min(base.getDate(), dim)) ||
       (r.rep === 'yearly' && mo === base.getMonth() && dt === Math.min(base.getDate(), dim));
-    if (ok) out.push(ymd(d));
+    if (ok && !(r.cat === 'sekolah' && vacOf(ymd(d)))) out.push(ymd(d));
     d.setDate(d.getDate() + 1);
   }
   return out;
@@ -1718,7 +1733,7 @@ const ttExamFor = (d, sl) => {
     return n.includes(me) || !names.some(x => x !== me && n.includes(x));
   }) || null;
 };
-const ttDotCls = d => ttExams(d).length ? 'ex' : ttHas(d) ? 'has' : '';
+const ttDotCls = d => ttExams(d).length ? 'ex' : vacOf(d) ? 'vac' : ttHas(d) ? 'has' : '';
 function ttDefaultDate() { const d = new Date(); if (d.getDay() === 0) d.setDate(d.getDate() + 1); return ymd(d); }
 function weekOf(date) {
   const d = new Date(date + 'T00:00'); d.setDate(d.getDate() - (d.getDay() + 6) % 7);
@@ -1741,6 +1756,7 @@ function jadwal() {
     <div class="tt-top">
       <h2 id="ttMonth"></h2>
       <div class="tt-tools">
+        <button class="icon-btn sm" id="ttShare" title="Bagikan jadwal" aria-label="Bagikan jadwal">${I('qr')}</button>
         <button class="icon-btn sm" id="ttSubj" title="Mata pelajaran & guru" aria-label="Mata pelajaran & guru">${I('book')}</button>
         <button class="icon-btn sm" id="ttSet" title="Pengaturan jadwal" aria-label="Pengaturan jadwal">${I('sliders')}</button>
       </div>
@@ -1756,6 +1772,7 @@ function jadwal() {
   ttDayDraw(0);
   $$('[data-wk]', view()).forEach(b => b.onclick = () => ttGo(addDays(TTD, +b.dataset.wk)));
   $('#ttSubj').onclick = subjModal;
+  $('#ttShare').onclick = ttShareModal;
   $('#ttSet').onclick = ttSettingsModal;
   // geser ke kiri/kanan untuk pindah hari
   const body = $('#ttBody'); let sx = null, sy = 0;
@@ -1838,6 +1855,7 @@ function ttDayDraw(dir, keepOpen) {
         <div class="muted small">${slots.length ? T`${lessons.length} pelajaran · selesai ${fromMin(slots[slots.length - 1].b)}` : tx('Belum diisi')}${exs.length ? ' · ' + T`${exs.length} ujian` : ''}</div></div>
       <div class="tt-start"><input class="input" type="time" id="tts" value="${esc(day ? day.start : (S.ttStart || '07:00'))}"></div>
     </div>
+    ${vacOf(TTD) ? `<div class="tt-vac">${I('palm')}<span>${T`Hari libur · ${esc(vacOf(TTD).n)}`}</span><small>${tx('Pengingat pelajaran tidak dibunyikan')}</small></div>` : ''}
     <div class="tt-list">${slots.length ? rows
       : (loose.length ? `<div class="tt-list" style="margin-bottom:6px">${rows}</div>` : '') + `<div class="tt-empty">${I('cal')}<b>${tx('Belum ada pelajaran')}</b>${ttHas(prevSame) ? `<button class="btn soft sm" id="ttPrev">${I('copy')}${T`Salin dari ${fd(ymdMs(prevSame))}`}</button>` : `<span>${tx('Tambah pelajaran, atau salin dari hari lain.')}</span>`}</div>`}</div>
     <div class="tt-foot">
@@ -1905,11 +1923,17 @@ function ttMoreMenu(anchor) {
   const has = ttHas(TTD);
   el.innerHTML = `<button type="button" class="opt" data-m="day"><span>${tx('Salin dari hari lain…')}</span>${I('copy')}</button>
     <button type="button" class="opt" data-m="week"><span>${tx('Salin minggu lalu ke hari kosong')}</span>${I('refresh')}</button>
+    <button type="button" class="opt" data-m="share"><span>${tx('Bagikan lewat QR')}</span>${I('qr')}</button>
+    <button type="button" class="opt" data-m="recv"><span>${tx('Terima jadwal teman')}</span>${I('scan')}</button>
+    <button type="button" class="opt" data-m="vac"><span>${tx('Mode libur')}</span>${I('palm')}</button>
     ${has ? `<button type="button" class="opt" data-m="clr" style="color:var(--danger)"><span>${tx('Kosongkan hari ini')}</span>${I('trash')}</button>` : ''}`;
   popIn(el);
   $$('.opt', el).forEach(o => o.onclick = async () => {
     closePop();
     if (o.dataset.m === 'day') ttCopyModal();
+    else if (o.dataset.m === 'share') ttShareModal();
+    else if (o.dataset.m === 'recv') scanModal();
+    else if (o.dataset.m === 'vac') { go('atur'); aturGo('libur'); }
     else if (o.dataset.m === 'week') {
       let n = 0;
       weekOf(TTD).forEach(d => { const s = addDays(d, -7); if (ttHas(s) && !ttHas(d)) { S.tt[d] = { start: S.tt[s].start, items: stripNotes(S.tt[s].items), c: Date.now() }; n++; } });
@@ -2027,7 +2051,7 @@ function ttReminders(push) {
   const lead = S.remind.ttLead; if (!lead) return;
   const today = ymd(new Date());
   [today, addDays(today, 1)].forEach(d => {
-    if (!ttHas(d)) return;
+    if (!ttHas(d) || vacOf(d)) return;
     const day = S.tt[d], base = ymdMs(d);
     ttSlots(day).filter(s => s.it.k !== 'b').forEach(s => {
       const sub = subjOf(s.it.s);
@@ -2234,6 +2258,7 @@ const ASECS = [
   ['akun', 'Profil & akun', 'user', 't-brand'],
   ['tampilan', 'Tampilan', 'sun', 't-warn'],
   ['ingat', 'Pengingat & alarm', 'bell', 't-danger'],
+  ['libur', 'Mode libur', 'palm', 't-mint'],
   ['poin', 'Poin & level', 'trophy', 't-mint'],
   ['ach', 'Pencapaian', 'spark', 't-warn'],
   ['data', 'Data & cadangan', 'server', 't-brand'],
@@ -2252,12 +2277,14 @@ function atur() {
     akun: local ? tx('Mode tanpa akun') : USER.email,
     tampilan: tx(themeN) + ' · ' + (LANG === 'en' ? 'English' : 'Bahasa Indonesia'),
     ingat: T`Belajar jam ${hhmm(S.remind.exam)} · tugas ${S.remind.taskH} jam sebelum`,
+    libur: vacNow() ? T`Aktif sampai ${fdShort(vacNow().to)}` : (S.vac || []).some(v => v.from > ymd(new Date())) ? T`${(S.vac || []).filter(v => v.from > ymd(new Date())).length} libur terjadwal` : tx('Tidak aktif'),
     poin: T`${S.diff.length} tingkat kesulitan · ${S.levels.length} level`,
     data: tx(local ? 'Hanya di perangkat ini' : 'Tersimpan di akun'),
     tentang: T`Versi ${VERSION}`,
     ach: T`${ACH.filter(a => S.ach && S.ach[a[0]]).length} dari ${ACH.length} terbuka`
   };
   const secs = {
+    libur: ASEC === 'libur' ? vacSection() : '',
     akun: `
     <section class="card">
       <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
@@ -2431,6 +2458,7 @@ function atur() {
   c('logout', logout);
   c('clog', changelogModal);
   c('gdOpen', guideModal);
+  if (ASEC === 'libur') vacBind(view());
   if ($('#eggLogo')) eggBind($('#eggLogo'));
   c('avEdit', avatarModal);
   c('delAcc', deleteAccount);
@@ -2508,6 +2536,13 @@ function ttWidget() {
     </div>`;
   };
   const wrap = (body, sub) => `<section class="card w-card" data-go2="jadwal"><div class="w-head"><span class="w-ico">${I('cal')}</span><b>${tx('Jadwal berikutnya')}</b><span class="faint small">${sub || ''}</span>${I('chevr', 'ic set-chev')}</div>${body}</section>`;
+  const vc = vacNow();
+  if (vc) {
+    let nx = '';
+    for (let k = 1; k <= 30 && !nx; k++) { const d = addDays(vc.to, k); if (!ttHas(d) || vacOf(d)) continue; const l2 = ttSlots(S.tt[d]).filter(s => s.it.k !== 'b'); if (l2.length) nx = lessonCard(l2[0], d, fd(ymdMs(d))); }
+    const left = dayDiff(ymdMs(vc.to)) + 1;
+    return wrap(`<div class="w-vac"><span>${I('palm')}</span><div><b>${esc(vc.n)}</b><small>${T`Libur sampai ${fd(ymdMs(vc.to))}`} · ${left === 1 ? tx('hari terakhir') : T`sisa ${left} hari`}</small></div></div>` + nx, tx('Mode libur'));
+  }
   const slots = ttHas(today) ? ttSlots(S.tt[today]) : [];
   const les = slots.filter(s => s.it.k !== 'b');
   if (les.length && nm < les[les.length - 1].b) {
@@ -2544,7 +2579,7 @@ const stripNotes = items => clone(items).map(x => { delete x.note; return x; });
 /* ================= PR setelah pelajaran ================= */
 function hwPending() {
   const today = ymd(new Date()), nm = nowMin();
-  if (!ttHas(today)) return [];
+  if (!ttHas(today) || vacOf(today)) return [];
   const asked = (S.hwAsk && S.hwAsk[today]) || [];
   return ttSlots(S.tt[today]).filter(s => s.it.k !== 'b' && s.b <= nm && nm - s.b < 10 * 60 && !asked.includes(s.i + ':' + s.it.s));
 }
@@ -2642,14 +2677,14 @@ function activeDays() {
 }
 function bestStreak() {
   const ds = [...activeDays()].sort((a, b) => a - b); let best = 0, run = 0, prev = null;
-  for (const d of ds) { run = prev !== null && Math.round((d - prev) / DAY) === 1 ? run + 1 : 1; best = Math.max(best, run); prev = d; }
+  for (const d of ds) { run = prev !== null && (Math.round((d - prev) / DAY) === 1 || vacGapOk(prev, d)) ? run + 1 : 1; best = Math.max(best, run); prev = d; }
   return best;
 }
 function freezeState() {
   const today = ymd(new Date()), act = activeDays(), st = streak();
   const frozen = (S.freeze || []).includes(today), activeToday = act.has(ymdMs(today));
   const recent = (S.freeze || []).filter(d => d > addDays(today, -7)).length;
-  return { st, frozen, can: st > 0 && !activeToday && !frozen && recent < 2, recent };
+  return { st, frozen, can: st > 0 && !activeToday && !frozen && recent < 2 && !vacNow(), recent };
 }
 async function freezeStreak() {
   if (S.balance < FREEZE_COST) { toast(T`Butuh ${FREEZE_COST} poin`); return; }
@@ -2895,6 +2930,312 @@ function startCardBind() {
   $$('[data-st]', view()).forEach(b => b.onclick = () => { const s = st.find(y => y[0] === b.dataset.st); if (s && !s[3]) s[4](); });
 }
 
+/* ================= Mode libur ================= */
+const vacSorted = () => (S.vac || []).slice().sort((a, b) => a.from < b.from ? -1 : 1);
+function vacPrune() { const lim = addDays(ymd(new Date()), -200); S.vac = (S.vac || []).filter(v => v.to >= lim); }
+async function vacModal(v) {
+  const today = ymd(new Date()), isNew = !v;
+  v = v || { n: '', from: today, to: addDays(today, 13) };
+  const r = await modal({ title: tx(isNew ? 'Tambah libur' : 'Ubah libur'),
+    html: `<div class="stack">
+      <label class="field"><span>Nama libur</span><input class="input" id="vN" value="${esc(v.n)}" placeholder="${esc(tx('Contoh: Libur semester'))}"></label>
+      <div class="form-row"><label class="field"><span>Mulai</span><input class="input" type="date" id="vF" value="${v.from}"></label>
+      <label class="field"><span>Sampai</span><input class="input" type="date" id="vT" value="${v.to}"></label></div>
+      <p class="faint small" style="margin:0">${tx('Selama libur: pengingat pelajaran, pertanyaan PR, uang kas, dan pengingat sekolah berhenti. Streak tidak putus. Ujian dan tugas tetap diingatkan.')}</p></div>`,
+    actions: [...(isNew ? [] : [{ label: 'Hapus', cls: 'ghost danger', value: 'del' }]), { label: 'Batal', cls: 'ghost', value: null },
+      { label: 'Simpan', cls: 'grad', validate: m => { const f = $('#vF', m).value, t = $('#vT', m).value; if (!f || !t || t < f) { toast(tx('Tanggal selesai harus setelah tanggal mulai')); return false; } return true; },
+        get: m => ({ n: $('#vN', m).value.trim() || tx('Libur'), from: $('#vF', m).value, to: $('#vT', m).value }) }] });
+  if (!r) return false;
+  if (r === 'del') S.vac = S.vac.filter(x => x.id !== v.id);
+  else if (isNew) S.vac.push({ id: uid(), ...r });
+  else Object.assign(S.vac.find(x => x.id === v.id) || {}, r);
+  vacPrune(); persist(); syncReminders();
+  toast(r === 'del' ? tx('Libur dihapus') : vacOf(today) ? tx('🌴 Mode libur aktif') : tx('Libur disimpan'));
+  return true;
+}
+async function vacEndNow() {
+  const v = vacNow(); if (!v) return;
+  const y = addDays(ymd(new Date()), -1);
+  if (v.from > y) S.vac = S.vac.filter(x => x !== v); else v.to = y;
+  persist(); syncReminders(); toast(tx('Mode libur diakhiri. Selamat sekolah lagi!'));
+}
+function vacSection() {
+  const today = ymd(new Date()), now = vacNow(), list = vacSorted().filter(v => v.to >= today), past = vacSorted().filter(v => v.to < today).reverse().slice(0, 3);
+  const row = v => { const on = v.from <= today && v.to >= today, dd = dayDiff(ymdMs(v.from));
+    return `<button class="set-row" data-vac="${v.id}"><span class="set-ico ${on ? 't-mint' : 't-brand'}">${I('palm')}</span><span class="set-t"><b>${esc(v.n)}</b><span>${fdShort(v.from)} – ${fdShort(v.to)}</span></span>${on ? `<span class="chip mint">${tx('Aktif')}</span>` : dd > 0 ? `<span class="faint small">${dd === 1 ? tx('Besok') : T`${dd} hari lagi`}</span>` : ''}${I('chevr', 'ic set-chev')}</button>`; };
+  return `
+    <section class="card vac-hero ${now ? 'on' : ''}">
+      <div class="vac-ic">${I('palm')}</div>
+      <div style="flex:1;min-width:0"><h2 style="margin:0">${now ? esc(now.n) : tx('Mode libur')}</h2>
+        <p class="sub" style="margin:4px 0 0">${now ? T`Aktif sampai ${fd(ymdMs(now.to))}` : tx('Hentikan pengingat sekolah saat libur tanpa memutus streak.')}</p></div>
+      ${now ? `<button class="btn ghost sm" id="vacEnd">${tx('Akhiri sekarang')}</button>` : `<button class="btn grad sm" data-vadd>${I('plus')}${tx('Tambah libur')}</button>`}
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>${tx('Jadwal libur')}</h2>${now ? `<button class="btn soft sm" data-vadd>${I('plus')}${tx('Tambah')}</button>` : ''}</div>
+      ${list.length ? `<div class="vac-list">${list.map(row).join('')}</div>` : `<p class="muted small" style="margin:0">${tx('Belum ada libur. Tambahkan libur semester atau libur hari raya dari kalender sekolah.')}</p>`}
+      ${past.length ? `<div class="sec-title" style="margin-top:14px"><h3>${tx('Sudah lewat')}</h3></div><div class="vac-list faded">${past.map(row).join('')}</div>` : ''}
+    </section>
+    <section class="card">
+      <h2>${tx('Yang berubah saat libur')}</h2>
+      <div class="vac-rules">
+        <div><span class="ico t-danger">${I('bell')}</span>${tx('Pengingat pelajaran & pertanyaan PR berhenti')}</div>
+        <div><span class="ico t-mint">${I('wallet')}</span>${tx('Uang kas tidak ditagih')}</div>
+        <div><span class="ico t-brand">${I('backpack')}</span>${tx('Pengingat kategori Sekolah berhenti')}</div>
+        <div><span class="ico t-warn">${I('flame')}</span>${tx('Streak tidak putus walau tidak belajar')}</div>
+        <div><span class="ico t-mint">${I('cap')}</span>${tx('Ujian, tugas, acara, dan pengingat pribadi tetap jalan')}</div>
+      </div>
+    </section>`;
+}
+const fdShort = d => new Date(ymdMs(d)).toLocaleDateString(LOC, { day: 'numeric', month: 'short' });
+function vacBind(root) {
+  $$('[data-vadd]', root).forEach(b => b.onclick = async () => { if (await vacModal()) render(); });
+  const e = $('#vacEnd', root); if (e) e.onclick = async () => { if (await ask(tx('Akhiri mode libur?'), tx('Pengingat sekolah akan aktif lagi mulai hari ini.'), 'Akhiri', 'grad')) { await vacEndNow(); render(); } };
+  $$('[data-vac]', root).forEach(b => b.onclick = async () => { if (await vacModal(S.vac.find(v => v.id === b.dataset.vac))) render(); });
+}
+
+/* ================= Hitung mundur ================= */
+function cdItems() {
+  const today = ymd(new Date()), lim = addDays(today, 366), out = [];
+  S.exams.filter(e => !e.done && e.tgl >= today && e.tgl <= lim).forEach(e => out.push({ d: e.tgl, n: exLabel(e.mapel), ic: 'cap', h: 32, go: 'ujian' }));
+  S.rem.filter(r => r.cat === 'acara').forEach(r => { const d = remNext(r); if (d && d <= lim) out.push({ d, n: r.t, ic: 'flag', h: 280, go: 'ingat' }); });
+  (S.vac || []).forEach(v => {
+    if (v.from > today && v.from <= lim) out.push({ d: v.from, n: v.n, ic: 'palm', h: 160, go: 'vac', sub: tx('mulai') });
+    else if (v.from <= today && v.to >= today) out.push({ d: addDays(v.to, 1), n: tx('Masuk sekolah lagi'), ic: 'backpack', h: 200, go: 'vac' });
+  });
+  (S.cd || []).forEach(c => { if (c.d >= today) out.push({ d: c.d, n: c.n, ic: 'hourglass', h: c.h == null ? 255 : c.h, go: 'cd', id: c.id }); });
+  return out.sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : 0);
+}
+function cdHomeCard() {
+  const it = cdItems();
+  if (!it.length) return `<section class="card cd-card cd-empty"><span class="cd-ic" style="--h:255">${I('hourglass')}</span><div style="flex:1;min-width:0"><b>${tx('Hitung mundur')}</b><div class="muted small">${tx('Ujian, acara, dan libur akan muncul di sini.')}</div></div><button class="btn ghost sm" id="cdAdd">${I('plus')}${tx('Tambah')}</button></section>`;
+  return `<section class="card cd-card"><div class="card-head"><h2>${tx('Hitung mundur')}</h2><button class="btn ghost sm" id="cdAdd">${I('plus')}${tx('Tambah')}</button></div>
+    <div class="cd-strip">${it.slice(0, 8).map((x, k) => { const n = dayDiff(ymdMs(x.d)); return `<button class="cd-tile" data-cd="${k}" style="--h:${x.h}">
+      <span class="cd-ic">${I(x.ic)}</span>
+      <span class="cd-n ${n > 1 ? 'num' : 'wd'}">${n <= 0 ? tx('Hari ini') : n === 1 ? tx('Besok') : n}</span><span class="cd-u">${n > 1 ? tx('hari lagi') : '&nbsp;'}</span>
+      <span class="cd-t">${esc(x.n)}</span><span class="cd-d">${x.sub ? esc(x.sub) + ' · ' : ''}${fdShort(x.d)}</span></button>`; }).join('')}</div></section>`;
+}
+function cdBind(root) {
+  const a = $('#cdAdd', root); if (!a) return;
+  a.onclick = async () => { if (await cdModal()) render(); };
+  const it = cdItems();
+  $$('[data-cd]', root).forEach(b => b.onclick = async () => {
+    const x = it[+b.dataset.cd]; if (!x) return;
+    if (x.go === 'cd') { if (await cdModal(S.cd.find(c => c.id === x.id))) render(); }
+    else if (x.go === 'vac') { go('atur'); aturGo('libur'); }
+    else go(x.go);
+  });
+}
+const CD_HUES = [255, 330, 20, 45, 150, 195];
+async function cdModal(c) {
+  const isNew = !c; c = c || { n: '', d: addDays(ymd(new Date()), 30), h: 255 };
+  let hue = c.h == null ? 255 : c.h;
+  const p = modal({ title: tx(isNew ? 'Hitung mundur baru' : 'Ubah hitung mundur'),
+    html: `<div class="stack"><label class="field"><span>Nama</span><input class="input" id="cdN" value="${esc(c.n)}" placeholder="${esc(tx('Contoh: Study tour, lomba, ulang tahun'))}"></label>
+      <label class="field"><span>Tanggal</span><input class="input" type="date" id="cdD" value="${c.d}"></label>
+      <div class="cd-hues">${CD_HUES.map(h => `<button type="button" class="${h === hue ? 'on' : ''}" data-h="${h}" style="--h:${h}" aria-label="Warna"></button>`).join('')}</div>
+      <p class="faint small" style="margin:0">${tx('Ujian, acara sekolah, dan libur sudah otomatis muncul di hitung mundur.')}</p></div>`,
+    actions: [...(isNew ? [] : [{ label: 'Hapus', cls: 'ghost danger', value: 'del' }]), { label: 'Batal', cls: 'ghost', value: null },
+      { label: 'Simpan', cls: 'grad', validate: m => { if (!$('#cdN', m).value.trim()) { $('#cdN', m).focus(); return false; } return !!$('#cdD', m).value; },
+        get: m => ({ n: $('#cdN', m).value.trim(), d: $('#cdD', m).value, h: hue }) }] });
+  const m = $('#modal');
+  $$('[data-h]', m).forEach(b => b.onclick = () => { hue = +b.dataset.h; $$('[data-h]', m).forEach(x => x.classList.toggle('on', x === b)); });
+  const r = await p;
+  if (!r) return false;
+  if (r === 'del') S.cd = S.cd.filter(x => x.id !== c.id);
+  else if (isNew) S.cd.push({ id: uid(), ...r });
+  else Object.assign(S.cd.find(x => x.id === c.id) || {}, r);
+  const lim = addDays(ymd(new Date()), -30); S.cd = S.cd.filter(x => x.d >= lim);
+  persist(); return true;
+}
+
+/* ================= Bagikan jadwal lewat QR ================= */
+const B64 = {
+  enc: u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); },
+  dec: s => { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+};
+async function zip(data, inflate) {
+  const s = new Blob([data]).stream().pipeThrough(inflate ? new DecompressionStream('deflate-raw') : new CompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(s).arrayBuffer());
+}
+async function ttPack(days, withEx) {
+  const sj = [], idx = {};
+  const si = id => { if (!(id in idx)) { const s = subjOf(id) || { n: tx('Mapel dihapus'), t: '', h: 220 }; idx[id] = sj.length; sj.push([s.n, s.t || '', s.h]); } return idx[id]; };
+  const d = days.filter(ttHas).map(k => [k, S.tt[k].start, S.tt[k].items.map(x => x.k === 'b' ? [-1, Number(x.min) || 0, x.l || ''] : [si(x.s), Number(x.n) || 1])]);
+  const e = withEx ? S.exams.filter(x => !x.done && days.includes(x.tgl)).map(x => [x.mapel, x.tgl, x.jam]) : [];
+  const by = displayName() === tx('Kamu') ? '' : displayName();
+  const json = JSON.stringify({ v: 1, by, m: S.ttMin, s: sj, d, e });
+  let payload;
+  try { payload = '1' + B64.enc(await zip(json)); } catch (er) { payload = '0' + B64.enc(new TextEncoder().encode(json)); }
+  return { url: location.origin + location.pathname + '#tt=' + payload, nd: d.length, ne: e.length };
+}
+async function ttUnpack(p) {
+  const raw = B64.dec(p.slice(1));
+  const o = JSON.parse(new TextDecoder().decode(p[0] === '1' ? await zip(raw, true) : raw));
+  if (!o || o.v !== 1 || !Array.isArray(o.d) || !Array.isArray(o.s)) throw new Error('bad');
+  return o;
+}
+const ttPayloadOf = txt => { const m = /#tt=([01][A-Za-z0-9_-]+)/.exec(String(txt || '')); return m ? m[1] : null; };
+const qrSvg = text => window.RemindQR.svg(text, 'L');
+async function shareText(url, title) {
+  if (NATIVE && NATIVE.share) { try { NATIVE.share(title, url); return; } catch (e) {} }
+  if (navigator.share) { try { await navigator.share({ title, url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+  copyText(url);
+}
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); toast(tx('Link disalin')); return; } catch (e) {}
+  const a = document.createElement('textarea'); a.value = t; a.style.position = 'fixed'; a.style.opacity = '0'; document.body.appendChild(a); a.select();
+  try { document.execCommand('copy'); toast(tx('Link disalin')); } catch (e) { toast(tx('Gagal menyalin')); }
+  a.remove();
+}
+function ttShareModal() {
+  const base = weekOf(TTD || ttDefaultDate());
+  const ranges = [['w0', tx('Minggu ini'), base], ['w1', tx('Minggu depan'), weekOf(addDays(base[0], 7))], ['w2', tx('2 minggu'), [...base, ...weekOf(addDays(base[0], 7))]]];
+  let rk = 'w0', ex = true, cur = null, seq = 0;
+  const range = () => ranges.find(r => r[0] === rk)[2];
+  const p = modal({ title: tx('Bagikan jadwal'), wide: true,
+    html: `<div class="qr-wrap">
+      <div class="seg qr-seg">${ranges.map(r => `<button type="button" data-rk="${r[0]}" class="${r[0] === rk ? 'on' : ''}">${r[1]}</button>`).join('')}</div>
+      <div class="faint small" id="qrR"></div>
+      <div class="qr-box" id="qrB"></div>
+      <div class="muted small" id="qrI"></div>
+      <label class="switch"><input type="checkbox" id="qrE" checked>${tx('Sertakan jadwal ujian')}</label>
+      <div class="qr-acts"><button type="button" class="btn grad sm" id="qrS">${I('share')}${tx('Bagikan link')}</button><button type="button" class="btn ghost sm" id="qrC">${I('copy')}${tx('Salin link')}</button></div>
+      <p class="faint small" style="margin:0">${tx('Teman cukup memindai QR ini dengan kamera HP, lalu membuka link-nya.')}</p>
+      <button type="button" class="btn soft sm" id="qrScan">${I('scan')}${tx('Terima jadwal teman')}</button></div>`,
+    actions: [{ label: 'Tutup', cls: 'ghost', value: null }] });
+  const m = $('#modal');
+  const draw = async () => {
+    const my = ++seq, ds = range();
+    $('#qrR', m).textContent = fdShort(ds[0]) + ' – ' + fdShort(ds[ds.length - 1]);
+    const box = $('#qrB', m), info = $('#qrI', m);
+    const pk = await ttPack(ds, ex);
+    if (my !== seq || m.hidden) return;
+    cur = pk;
+    const none = !cur.nd;
+    $('#qrS', m).disabled = $('#qrC', m).disabled = none;
+    if (none) { box.innerHTML = `<div class="qr-empty">${I('cal')}<span>${tx('Belum ada jadwal di rentang ini')}</span></div>`; info.textContent = ''; return; }
+    try { box.innerHTML = qrSvg(cur.url); }
+    catch (e) { box.innerHTML = `<div class="qr-empty">${I('warn')}<span>${tx('Jadwal terlalu panjang untuk satu QR. Pilih rentang yang lebih pendek, atau bagikan lewat link.')}</span></div>`; }
+    if (motionOn() && box.firstChild) box.firstChild.animate([{ opacity: 0, transform: 'scale(.92)' }, { opacity: 1, transform: 'none' }], { duration: SP.d, easing: SP.e });
+    info.textContent = T`${cur.nd} hari` + (cur.ne ? ' · ' + T`${cur.ne} ujian` : '');
+  };
+  $$('[data-rk]', m).forEach(b => b.onclick = () => { rk = b.dataset.rk; $$('[data-rk]', m).forEach(x => x.classList.toggle('on', x === b)); draw(); });
+  $('#qrE', m).onchange = e => { ex = e.target.checked; draw(); };
+  $('#qrS', m).onclick = () => cur && shareText(cur.url, displayName() === tx('Kamu') ? tx('Jadwal pelajaran') : T`Jadwal pelajaran dari ${displayName()}`);
+  $('#qrC', m).onclick = () => cur && copyText(cur.url);
+  $('#qrScan', m).onclick = () => { m._scan = 1; $('.acts .btn', m).click(); };
+  draw();
+  p.then(() => { if (m._scan) { m._scan = 0; setTimeout(scanModal, 60); } });
+}
+
+/* Pindai QR: kamera (pembaca QR bawaan browser), atau tempel link */
+const HAS_BD = 'BarcodeDetector' in window;
+let BD = null;
+async function qrDecode(src) {
+  if (!HAS_BD) return null;
+  try { BD = BD || new BarcodeDetector({ formats: ['qr_code'] }); const r = await BD.detect(src); return r && r[0] ? r[0].rawValue : null; } catch (e) { return null; }
+}
+function scanModal() {
+  let stream = null, alive = true, busy = false;
+  const p = modal({ title: tx('Terima jadwal teman'),
+    html: `${HAS_BD ? `<div class="scan-box" id="scB"><video id="scV" playsinline muted></video><span class="scan-frame"></span><div class="scan-msg" id="scM">${tx('Menyalakan kamera…')}</div></div>
+      <div class="qr-acts" style="margin-top:10px"><label class="btn ghost sm">${I('image')}${tx('Pilih foto QR')}<input type="file" accept="image/*" id="scF" hidden></label></div>`
+      : `<div class="scan-alt">${I('scan')}<p>${tx('Pindai QR teman dengan aplikasi Kamera HP atau Google Lens, lalu buka link yang muncul. Jadwalnya langsung masuk ke remind+.')}</p></div>`}
+      <label class="field" style="margin-top:14px"><span>${tx('Atau tempel link jadwal')}</span><div class="form-row"><input class="input" id="scL" placeholder="https://…#tt=…"><button type="button" class="btn grad sm" id="scGo">${tx('Buka')}</button></div></label>`,
+    actions: [{ label: 'Tutup', cls: 'ghost', value: null }] });
+  const m = $('#modal'), v = $('#scV', m), msg = $('#scM', m);
+  const say = t => { if (msg) { msg.textContent = t; msg.hidden = false; } else toast(t); };
+  const found = txt => {
+    const pl = ttPayloadOf(txt);
+    if (!pl) { say(tx('Ini bukan QR jadwal remind+')); return false; }
+    alive = false; m._pl = pl; $('.acts .btn', m).click(); return true;
+  };
+  $('#scGo', m).onclick = () => { const t = $('#scL', m).value.trim(); if (t) found(t); };
+  $('#scL', m).onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('#scGo', m).click(); } };
+  if (HAS_BD) {
+    const loop = async () => {
+      if (!alive) return;
+      if (!busy && v.readyState >= 2 && v.videoWidth) { busy = true; const t = await qrDecode(v); if (t && found(t)) return; busy = false; }
+      setTimeout(() => requestAnimationFrame(loop), 160);
+    };
+    (async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+        if (!alive) { stream.getTracks().forEach(t => t.stop()); return; }
+        v.srcObject = stream; await v.play(); msg.hidden = true; loop();
+      } catch (e) { say(tx('Kamera tidak bisa dibuka. Pilih foto QR saja.')); $('#scB', m).classList.add('off'); }
+    })();
+    $('#scF', m).onchange = async e => {
+      const f = e.target.files && e.target.files[0]; if (!f) return;
+      say(tx('Membaca foto…'));
+      try { const img = await createImageBitmap(f); const t = await qrDecode(img); if (!t) say(tx('QR tidak terbaca. Coba foto yang lebih jelas.')); else found(t); }
+      catch (er) { say(tx('QR tidak terbaca. Coba foto yang lebih jelas.')); }
+    };
+  }
+  p.then(() => { alive = false; if (stream) stream.getTracks().forEach(t => t.stop()); const pl = m._pl; m._pl = null; if (pl) setTimeout(() => importModal(pl), 60); });
+}
+
+/* Terima jadwal dari link/QR */
+const IMP_KEY = 'remindplus:import';
+function captureImport() {
+  const pl = ttPayloadOf(location.hash);
+  if (!pl) return;
+  lsSet(IMP_KEY, { pl, at: Date.now() });
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+}
+function pendingImport() {
+  const x = lsGet(IMP_KEY); if (!x) return false;
+  try { localStorage.removeItem(IMP_KEY); } catch (e) {}
+  if (Date.now() - x.at < 2 * DAY) { importModal(x.pl); return true; }
+  return false;
+}
+addEventListener('hashchange', () => { if (ttPayloadOf(location.hash)) { captureImport(); if (USER) pendingImport(); } });
+async function importModal(pl) {
+  let o;
+  try { o = await ttUnpack(pl); } catch (e) { toast(tx('Link jadwal rusak atau tidak lengkap')); return; }
+  const isD = s => /^\d{4}-\d\d-\d\d$/.test(s);
+  const days = o.d.filter(x => Array.isArray(x) && isD(x[0]) && Array.isArray(x[2])).sort((a, b) => a[0] < b[0] ? -1 : 1);
+  if (!days.length) { toast(tx('Link jadwal ini kosong')); return; }
+  const exs = (o.e || []).filter(x => Array.isArray(x) && x[0] && isD(x[1]));
+  const sname = i => String((o.s[i] || [tx('Mapel')])[0]);
+  const clash = days.filter(d => ttHas(d[0])).length;
+  const newEx = exs.filter(x => !S.exams.some(e => e.tgl === x[1] && e.mapel.toLowerCase() === String(x[0]).toLowerCase()));
+  let mode = 'empty';
+  const p = modal({ title: tx('Terima jadwal'), wide: true,
+    html: `<p class="muted small" style="margin:0 0 10px">${o.by ? T`Dari ${esc(o.by)}` + ' · ' : ''}${T`${days.length} hari`}${exs.length ? ' · ' + T`${exs.length} ujian` : ''}</p>
+      <div class="imp-list">${days.map(d => `<div class="imp-day"><span><b>${fd(ymdMs(d[0]))}</b><small>${d[2].filter(x => x[0] >= 0).map(x => esc(sname(x[0]))).join(' · ')}</small></span>${ttHas(d[0]) ? `<span class="chip">${tx('sudah ada')}</span>` : ''}</div>`).join('')}</div>
+      ${clash ? `<div class="seg imp-seg"><button type="button" class="on" data-im="empty">${tx('Isi hari kosong saja')}</button><button type="button" data-im="all">${tx('Timpa semua')}</button></div>` : ''}
+      ${newEx.length ? `<label class="switch" style="margin-top:12px"><input type="checkbox" id="imE" checked>${T`Tambahkan ${newEx.length} ujian`}</label>` : ''}
+      ${o.m && o.m !== S.ttMin ? `<p class="faint small" style="margin:10px 0 0">${T`Catatan: satu sesi di jadwal ini ${o.m} menit, sedangkan milikmu ${S.ttMin} menit.`}</p>` : ''}`,
+    actions: [{ label: 'Batal', cls: 'ghost', value: null }, { label: 'Terima', cls: 'grad', get: m => ({ mode, ex: !!($('#imE', m) && $('#imE', m).checked) }) }] });
+  const m = $('#modal');
+  $$('[data-im]', m).forEach(b => b.onclick = () => { mode = b.dataset.im; $$('[data-im]', m).forEach(x => x.classList.toggle('on', x === b)); });
+  const r = await p;
+  if (!r) return;
+  const map = {};
+  const sid = i => {
+    if (i in map) return map[i];
+    const [n, t, h] = o.s[i] || [tx('Mapel'), '', 220];
+    let s = S.subj.find(x => x.n.trim().toLowerCase() === String(n).trim().toLowerCase());
+    if (!s) { s = { id: uid(), n: String(n).slice(0, 80), t: String(t || '').slice(0, 120), h: (Number(h) || 0) % 360 }; S.subj.push(s); }
+    else if (!s.t && t) s.t = String(t).slice(0, 120);
+    return (map[i] = s.id);
+  };
+  let nd = 0;
+  days.forEach(([d, start, items]) => {
+    if (ttHas(d) && r.mode !== 'all') return;
+    S.tt[d] = { start: /^\d\d:\d\d$/.test(start) ? start : (S.ttStart || '07:00'), c: Date.now(),
+      items: items.filter(Array.isArray).map(x => x[0] < 0 ? { k: 'b', min: Math.max(0, Math.min(240, Number(x[1]) || 0)), l: String(x[2] || '').slice(0, 40) } : { s: sid(x[0]), n: Math.max(1, Math.min(12, Number(x[1]) || 1)) }) };
+    nd++;
+  });
+  let ne = 0;
+  if (r.ex) newEx.forEach(([mp, tg, jm]) => { S.exams.push({ id: uid(), mapel: String(mp).slice(0, 80), tgl: tg, jam: /^\d\d:\d\d$/.test(jm) ? jm : '07:00', catatan: o.by ? T`Dari ${o.by}` : '', done: false, studied: false, c: Date.now() }); ne++; });
+  persist(); syncReminders();
+  TTD = days[0][0];
+  go('jadwal');
+  toast(T`Jadwal diterima · ${nd} hari` + (ne ? ' · ' + T`${ne} ujian` : ''));
+}
+
 /* ================= Telur paskah: ketuk logo 5× di Atur → Tentang ================= */
 const EGG_KEY = 'remindplus:egg';
 const eggApply = () => document.documentElement.setAttribute('data-egg', lsGet(EGG_KEY) ? 'on' : 'off');
@@ -3074,7 +3415,7 @@ function hslHex(h, s = 72, l = 58) {
 function widgetData() {
   const today = ymd(new Date()), days = [];
   for (let k = 0; k <= 8; k++) {
-    const d = addDays(today, k); if (!ttHas(d)) continue;
+    const d = addDays(today, k); if (!ttHas(d) || vacOf(d)) continue;
     days.push({ d, label: fd(ymdMs(d)), s: ttSlots(S.tt[d]).map(sl => sl.it.k === 'b'
       ? { k: 'b', a: sl.a, b: sl.b, n: tx(sl.it.l) || tx('Istirahat') }
       : { k: 'l', a: sl.a, b: sl.b, n: subjName(sl.it.s), t: (subjOf(sl.it.s) || {}).t || '', note: sl.it.note || '', c: hslHex(subjHue(sl.it.s)), x: ttExamFor(d, sl) ? 1 : 0 }) });
@@ -3167,6 +3508,7 @@ if ('Notification' in window && Notification.permission === 'granted') regPeriod
 
 /* ================= Mulai ================= */
 async function boot() {
+  captureImport();
   applyTheme();
   let red = null;
   if (sb) {

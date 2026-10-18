@@ -965,3 +965,75 @@ body { background-image: none; }
 .st-row.done span:nth-child(2) { text-decoration: line-through; }
 .st-row.done .st-ck { color: var(--mint); background: var(--mint-soft); }
 .gd { position: relative; } .gd-skip { position: absolute; top: -6px; right: 0; z-index: 2; color: var(--text-3); font-weight: 700; font-size: 14px; }
+
+/* ---------- Hitung mundur ---------- */
+.cd-card { margin-bottom: 16px; }
+.cd-card .card-head { margin-bottom: 12px; }
+.cd-strip { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -22px; padding: 2px 22px 6px; scrollbar-width: none; }
+.cd-strip::-webkit-scrollbar { display: none; }
+.cd-tile { --c: hsl(var(--h) 80% 62%); flex: none; width: 128px; scroll-snap-align: start; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px 14px 12px; border-radius: 20px; border: 1px solid var(--glass-line); text-align: left; font: inherit; color: var(--text); cursor: pointer; position: relative; overflow: hidden;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--c) 22%, transparent), color-mix(in srgb, var(--c) 6%, transparent)); box-shadow: inset 0 1px 0 rgba(255,255,255,.18); transition: transform .45s var(--spring); }
+.cd-tile::after { content: ''; position: absolute; width: 90px; height: 90px; right: -36px; top: -36px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--c) 45%, transparent), transparent 70%); pointer-events: none; }
+.cd-tile:active { transform: scale(.95); }
+.cd-ic { --c: hsl(var(--h) 80% 62%); width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; flex: none; color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); margin-bottom: 6px; }
+.cd-ic .ic { width: 16px; height: 16px; }
+.cd-n { font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -.02em; }
+.cd-n.wd { font-size: 22px; line-height: 34px; }
+.cd-u { font-size: 12px; font-weight: 700; color: var(--text-3); }
+.cd-t { margin-top: 6px; font-weight: 700; font-size: 14px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; width: 100%; }
+.cd-d { font-size: 12px; color: var(--text-3); font-weight: 600; }
+.cd-empty { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
+.cd-empty .cd-ic { margin: 0; width: 38px; height: 38px; border-radius: 12px; }
+.cd-hues { display: flex; gap: 10px; }
+.cd-hues button { width: 32px; height: 32px; border-radius: 50%; border: 0; cursor: pointer; background: hsl(var(--h) 80% 62%); box-shadow: inset 0 0 0 2px rgba(255,255,255,.25); transition: transform .45s var(--spring); }
+.cd-hues button.on { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px hsl(var(--h) 80% 62%); transform: scale(1.06); }
+
+/* ---------- Mode libur ---------- */
+.vac-hero { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; position: relative; overflow: hidden; }
+.vac-hero::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(120% 90% at 0% 0%, rgba(46,230,166,.16), transparent 60%); }
+.vac-hero > * { position: relative; z-index: 1; }
+.vac-hero > div:nth-child(2) { flex: 1 1 170px !important; }
+.vac-hero > .btn { margin-left: auto; }
+.vac-ic { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; flex: none; background: var(--mint-soft); color: var(--mint); }
+.vac-ic .ic { width: 26px; height: 26px; }
+.vac-hero.on .vac-ic { background: var(--mint); color: #062; box-shadow: 0 10px 26px -10px var(--mint); }
+.vac-list { margin: 0 -10px; }
+.vac-list.faded { opacity: .6; }
+.vac-rules { display: grid; gap: 10px; margin-top: 6px; }
+.vac-rules > div { display: flex; align-items: center; gap: 12px; font-size: 14.5px; font-weight: 600; color: var(--text-2); }
+.vac-rules .ico { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; flex: none; }
+.vac-rules .ico .ic { width: 16px; height: 16px; }
+.w-vac { position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 8px; border-radius: 16px; background: var(--mint-soft); }
+.w-vac > span { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--mint); color: #063; flex: none; }
+.w-vac b { display: block; font-size: 16px; }
+.w-vac small { color: var(--text-2); font-weight: 600; font-size: 13px; }
+.tt-day i.vac { background: var(--mint); opacity: .55; width: 10px; border-radius: 3px; }
+.tt-vac { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; padding: 10px 14px; margin: 0 0 12px; border-radius: 14px; background: var(--mint-soft); color: var(--mint); font-weight: 700; font-size: 14px; }
+.tt-vac .ic { width: 18px; height: 18px; }
+.tt-vac small { color: var(--text-2); font-weight: 600; flex-basis: 100%; padding-left: 26px; }
+
+/* ---------- Bagikan jadwal lewat QR ---------- */
+.qr-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.qr-seg { display: flex; flex-wrap: nowrap; width: 100%; }
+.qr-seg button { flex: 1; justify-content: center; padding: 8px 6px; white-space: nowrap; }
+.qr-box { width: min(280px, 72vw); aspect-ratio: 1; border-radius: 24px; padding: 12px; background: #fff; display: grid; place-items: center; box-shadow: 0 18px 50px -20px rgba(60,40,160,.45), inset 0 0 0 1px rgba(0,0,0,.06); }
+.qr-box svg { width: 100%; height: 100%; display: block; border-radius: 10px; }
+.qr-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; color: #6b6f85; font-weight: 600; font-size: 14px; padding: 18px; }
+.qr-empty .ic { width: 30px; height: 30px; }
+.qr-acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.qr-wrap .switch { align-self: center; }
+.scan-box { position: relative; width: 100%; aspect-ratio: 1; max-height: 60vh; border-radius: 22px; overflow: hidden; background: #000; }
+.scan-box video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.scan-box.off video { display: none; }
+.scan-frame { position: absolute; inset: 18%; border-radius: 22px; box-shadow: 0 0 0 999px rgba(0,0,0,.35), inset 0 0 0 3px rgba(255,255,255,.9); pointer-events: none; }
+.scan-msg { position: absolute; left: 12px; right: 12px; bottom: 12px; padding: 8px 12px; border-radius: 12px; background: rgba(0,0,0,.6); color: #fff; font-size: 13.5px; font-weight: 600; text-align: center; backdrop-filter: blur(10px); }
+.scan-alt { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 18px 12px; border-radius: 20px; background: var(--glass-2); box-shadow: inset 0 0 0 1px var(--glass-line); color: var(--text-2); }
+.scan-alt .ic { width: 38px; height: 38px; color: var(--brand); }
+.scan-alt p { margin: 0; font-size: 14px; line-height: 1.5; }
+.imp-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; max-height: 42vh; overflow: auto; }
+.imp-day { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--glass-2); box-shadow: inset 0 0 0 1px var(--glass-line); }
+.imp-day > span:first-child { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.imp-day b { font-size: 14px; }
+.imp-day small { color: var(--text-3); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.imp-seg { margin-top: 12px; display: flex; }
+.imp-seg button { flex: 1; justify-content: center; }
