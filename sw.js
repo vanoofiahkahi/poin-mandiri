@@ -1,10 +1,12 @@
 /* remind+ service worker: offline, cache, dan pengingat latar belakang */
-const CACHE = 'remindplus-v13';
+// Naikkan versi ini setiap rilis: SW baru memuat ulang semua file aplikasi dan cache lama dihapus
+const CACHE = 'remindplus-v14';
 const FONTS = 'remindplus-fonts';
 const SHELL = ['./', './index.html', './css/app.css', './js/i18n.js', './js/config.js', './js/supa.js', './js/app.js', './manifest.webmanifest', './CHANGELOG.md',
   './logo.svg', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './badge-96.png'];
 
-self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
+// cache: 'reload' melewati cache HTTP browser agar versi baru tidak terisi file lama
+self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' }))))); self.skipWaiting(); });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => ![CACHE, FONTS, 'pm-data'].includes(k)).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
@@ -22,9 +24,14 @@ self.addEventListener('fetch', e => {
     return;
   }
   if (url.origin !== self.location.origin) return; // API akun selalu langsung ke server
-  // File aplikasi: utamakan jaringan agar selalu terbaru, jatuh ke cache saat offline
-  e.respondWith(fetch(req).then(r => { if (r.ok) { const c = r.clone(); caches.open(CACHE).then(x => x.put(req, c)); } return r; })
-    .catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || (req.mode === 'navigate' ? caches.match('./index.html') : undefined))));
+  // File aplikasi: stale-while-revalidate. Langsung dari cache agar cepat dibuka, perbarui di belakang untuk pembukaan berikutnya
+  let put;
+  const net = fetch(req).then(r => { if (r.status === 200 && r.type === 'basic') { const copy = r.clone(); put = caches.open(CACHE).then(c => c.put(req, copy)); } return r; });
+  e.waitUntil(net.then(() => put).catch(() => {}));
+  e.respondWith(caches.open(CACHE).then(async c => {
+    const hit = await c.match(req, { ignoreSearch: true }) || (req.mode === 'navigate' ? await c.match('./index.html') : undefined);
+    return hit || net.catch(() => Response.error());
+  }));
 });
 
 /* Pemeriksaan pengingat di latar belakang (Chrome Android, aplikasi terpasang) */
