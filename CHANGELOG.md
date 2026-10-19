@@ -2,6 +2,9 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.5.1 — 19 Oktober 2026
+- Perbaikan: di tablet, judul ujian bisa terjepit jadi satu huruf per baris saat tombolnya banyak (Alarm HP, Kalender, Rencana, Belajar…). Sekarang judul selalu kebagian ruang dan tombol turun ke baris bawah bila tidak muat. Berlaku juga untuk daftar tugas, pengingat, dan kas.
+
 ## 3.5.0 — 18 Oktober 2026
 ### Warna aksen
 - Atur → Tampilan → **Warna aksen**: pilih Ungu, Biru, Hijau, Pink, Oranye, atau Merah.

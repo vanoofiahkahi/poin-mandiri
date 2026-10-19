@@ -235,16 +235,17 @@ a { color: var(--brand); text-decoration: none; }
 /* ---------- Daftar ---------- */
 .list { display: flex; flex-direction: column; gap: 10px; }
 .item {
-  display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--r);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--r);
   background: var(--surface); border: 1px solid var(--line); box-shadow: var(--inner); transition: border-color .15s, transform .15s;
 }
 .item:hover { border-color: var(--line-2); }
 .item .lead { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; flex: none; }
-.item .body { flex: 1; min-width: 0; }
+/* Judul selalu kebagian ruang; kalau tombol tidak muat, tombol turun ke baris bawah */
+.item .body { flex: 1 1 260px; min-width: min(260px, calc(100% - 60px)); }
 .item .ttl { font-weight: 700; overflow-wrap: anywhere; }
 .item .meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
 .item .pts { font-weight: 800; font-size: 17px; white-space: nowrap; }
-.item .acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+.item .acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; align-items: center; margin-left: auto; max-width: 100%; }
 .item.done { opacity: .62; }
 .item.done .ttl { text-decoration: line-through; }
 .check {
