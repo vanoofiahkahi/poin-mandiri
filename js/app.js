@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.7.0';
+const VERSION = '3.8.0';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -1027,6 +1027,7 @@ function shell() {
           <button class="avatar mobile-brand" data-go="atur" data-av style="border:0;cursor:pointer" aria-label="Akun"></button>
         </div>
       </header>
+      <div id="hTabsSlot"></div>
       <div id="alerts" class="alerts"></div>
       <div id="view"></div>
     </main>
@@ -1056,6 +1057,7 @@ function render() {
   if (!USER || !$('#view')) return;
   closePop(true);
   const pages = { home, tugas, ujian, jadwal, kas, ingat, riwayat, atur };
+  if (V !== 'home' && $('#hTabsSlot')) $('#hTabsSlot').innerHTML = '';
   if (!pages[V]) { V = 'home'; $$('[data-go]').forEach(b => b.classList.toggle('on', b.dataset.go === 'home' && !b.classList.contains('me') && !b.classList.contains('avatar'))); }
   if (V === 'home') { $('#hello').textContent = greeting() + ' 👋'; $('#title').textContent = displayName(); }
   else { $('#hello').textContent = new Date().toLocaleDateString(LOC, { weekday: 'long', day: 'numeric', month: 'long' }); $('#title').textContent = TITLES[V]; }
@@ -1087,23 +1089,54 @@ const view = () => $('#view');
 const emptyBox = (ic, t, s) => `<div class="empty">${I(ic)}<b>${t}</b>${s}</div>`;
 
 /* ---------- Beranda ---------- */
-function home() {
-  const { cur, next } = levelOf(S.earned);
-  const pct = next ? Math.min(1, (S.earned - cur.min) / (next.min - cur.min)) : 1;
-  const C = 2 * Math.PI * 40;
-  const w = weekStats(), st = streak(), now = Date.now();
-  const agenda = [
+/* Beranda dibagi jadi beberapa tab agar tidak ramai */
+const HOME_TABS = [['utama', 'Utama', 'home'], ['kalender', 'Kalender', 'cal'], ['agenda', 'Agenda', 'bell'], ['statistik', 'Statistik', 'spark']];
+let HOME_TAB = (() => { try { const t = localStorage.getItem('remindplus:hometab'); return HOME_TABS.some(x => x[0] === t) ? t : 'utama'; } catch (e) { return 'utama'; } })();
+function homeAgenda() {
+  const now = Date.now();
+  return [
     ...S.tasks.filter(t => !t.done && t.dl).map(t => ({ at: dlMs(t), kind: 'tugas', t: t.n, sub: esc(t.d), ic: 'checks', tone: 't-brand' })),
     ...S.exams.filter(e => !e.done && examAt(e) > now - 3 * 36e5).map(e => ({ at: examAt(e), kind: 'ujian', t: T`Ujian ${e.mapel}`, sub: esc(e.jam), ic: 'cap', tone: 't-warn' })),
     ...S.kas.map(k => { const d = kasUnpaid(k)[0] || kasNext(k); return d && ymdMs(d) - now < 8 * DAY ? { at: kasAt(k, d), kind: 'kas', t: k.n + ' · ' + rp(k.amt), ic: 'wallet', tone: 't-mint' } : null; }).filter(Boolean),
     ...S.rem.map(r => { const d = remNext(r); const c = REM_CAT[r.cat] || REM_CAT.sekolah; return d && ymdMs(d) - now < 4 * DAY ? { at: remAt(r, d), kind: 'ingat', t: r.t, ic: c.ic, tone: c.tone } : null; }).filter(Boolean)
-  ].sort((a, b) => a.at - b.at).slice(0, 6);
-  const recent = S.log.slice(0, 6);
+  ].sort((a, b) => a.at - b.at).slice(0, 8);
+}
+function homeBody(tab) {
+  if (tab === 'kalender') return calHomeHtml().replace('style="margin-top:16px"', '');
+  if (tab === 'agenda') {
+    const agenda = homeAgenda();
+    return `${cdHomeCard()}
+  <div class="grid">
+    <section class="card">
+      <div class="card-head"><h2>Agenda terdekat</h2><button class="btn ghost sm" data-go2="ujian">${I('plus')}Ujian</button></div>
+      <div class="list">${agenda.length ? agenda.map(a => `
+        <div class="item" data-go2="${a.kind}" style="cursor:pointer"><div class="lead ${a.tone}">${I(a.ic)}</div>
+          <div class="body"><div class="ttl">${esc(a.t)}</div><div class="meta">${dueChip(a.at)}<span class="faint small">${fdt(a.at)}</span></div></div></div>`).join('')
+        : emptyBox('cal', 'Tidak ada agenda', 'Tambahkan deadline tugas atau jadwal ujian.')}</div>
+    </section>
+  </div>`;
+  }
+  if (tab === 'statistik') {
+    const w = weekStats(), now = Date.now(), recent = S.log.slice(0, 8);
+    return `  <div class="grid g4">
+    <div class="card stat"><div class="ico t-brand">${I('spark')}</div><div class="v num">${fmt(w.pts)}</div><div class="l">Poin 7 hari</div></div>
+    <div class="card stat"><div class="ico t-mint">${I('cap')}</div><div class="v num">${S.exams.filter(e => !e.done && examAt(e) > now).length}</div><div class="l">Ujian mendatang</div></div>
+    <div class="card stat"><div class="ico t-warn">${I('checks')}</div><div class="v num">${w.tasks}</div><div class="l">Tugas selesai</div></div>
+    <div class="card stat"><div class="ico t-danger">${I('trophy')}</div><div class="v num">${S.tasks.filter(t => !t.done).length}</div><div class="l">Tugas aktif</div></div>
+  </div>
+  <div class="grid" style="margin-top:16px">
+    <section class="card">
+      <div class="card-head"><h2>Aktivitas terbaru</h2><button class="btn ghost sm" data-go2="riwayat">Semua</button></div>
+      <div class="list">${recent.length ? recent.map(logItem).join('') : emptyBox('history', 'Belum ada aktivitas', 'Selesaikan tugas untuk dapat poin.')}</div>
+    </section>
+  </div>`;
+  }
+  const { cur, next } = levelOf(S.earned);
+  const pct = next ? Math.min(1, (S.earned - cur.min) / (next.min - cur.min)) : 1;
+  const C = 2 * Math.PI * 40, st = streak();
   const fz = freezeState(), achN = ACH.filter(a => S.ach && S.ach[a[0]]).length;
-  view().innerHTML = `
-  ${startCardHtml()}
+  return `${startCardHtml()}
   ${ttWidget()}
-  ${cdHomeCard()}
   <div class="grid g-home">
     <section class="hero"><span class="liq" aria-hidden="true"></span>
       <div class="lbl">Saldo poin</div>
@@ -1126,41 +1159,53 @@ function home() {
       </div>
     </section>
   </div>
-  <div class="grid g4" style="margin-top:16px">
-    <div class="card stat"><div class="ico t-brand">${I('spark')}</div><div class="v num">${fmt(w.pts)}</div><div class="l">Poin 7 hari</div></div>
-    <div class="card stat"><div class="ico t-mint">${I('cap')}</div><div class="v num">${S.exams.filter(e => !e.done && examAt(e) > now).length}</div><div class="l">Ujian mendatang</div></div>
-    <div class="card stat"><div class="ico t-warn">${I('checks')}</div><div class="v num">${w.tasks}</div><div class="l">Tugas selesai</div></div>
-    <div class="card stat"><div class="ico t-danger">${I('trophy')}</div><div class="v num">${S.tasks.filter(t => !t.done).length}</div><div class="l">Tugas aktif</div></div>
-  </div>
-  ${calHomeHtml()}
   ${planHomeCard()}
-  ${weekCardHtml()}
-  <div class="grid g2" style="margin-top:16px">
-    <section class="card">
-      <div class="card-head"><h2>Agenda terdekat</h2><button class="btn ghost sm" data-go2="ujian">${I('plus')}Ujian</button></div>
-      <div class="list">${agenda.length ? agenda.map(a => `
-        <div class="item" data-go2="${a.kind}" style="cursor:pointer"><div class="lead ${a.tone}">${I(a.ic)}</div>
-          <div class="body"><div class="ttl">${esc(a.t)}</div><div class="meta">${dueChip(a.at)}<span class="faint small">${fdt(a.at)}</span></div></div></div>`).join('')
-        : emptyBox('cal', 'Tidak ada agenda', 'Tambahkan deadline tugas atau jadwal ujian.')}</div>
-    </section>
-    <section class="card">
-      <div class="card-head"><h2>Aktivitas terbaru</h2><button class="btn ghost sm" data-go2="riwayat">Semua</button></div>
-      <div class="list">${recent.length ? recent.map(logItem).join('') : emptyBox('history', 'Belum ada aktivitas', 'Selesaikan tugas untuk dapat poin.')}</div>
-    </section>
-  </div>`;
-  $$('[data-go2]', view()).forEach(b => b.onclick = () => go(b.dataset.go2));
-  $('#achGo').onclick = () => { go('atur'); aturGo('ach'); };
+  ${weekCardHtml()}`;
+}
+function homeBind() {
+  const v = view();
+  $$('#hBody [data-go2]', v).forEach(b => b.onclick = () => go(b.dataset.go2));
+  const ach = $('#achGo', v); if (ach) ach.onclick = () => { go('atur'); aturGo('ach'); };
   startCardBind();
-  cdBind(view());
+  cdBind(v);
   calBind();
   if ($('#frzGo')) $('#frzGo').onclick = freezeStreak;
   if ($('#wkX')) $('#wkX').onclick = () => { const n = new Date(); S.wkSeen = n.getDay() === 0 ? weekKey(n) : addDays(weekKey(n), -7); persist(); render(); };
   if ($('#wkO')) $('#wkO').onclick = () => { const n = new Date(); weekModal(n.getDay() === 0 ? weekKey(n) : addDays(weekKey(n), -7)); };
-  $$('[data-ht]', view()).forEach(b => b.onclick = () => { const [eid, tid] = b.dataset.ht.split(':'); const e = S.exams.find(x => x.id === eid), x = e && e.topics.find(y => y.id === tid); if (!x) return; b.classList.add('on'); topicToggle(e, x); toast(T`+${5} poin`); setTimeout(render, 350); });
-  countUp($('#balNum'), S.balance);
+  $$('[data-ht]', v).forEach(b => b.onclick = () => { const [eid, tid] = b.dataset.ht.split(':'); const e = S.exams.find(x => x.id === eid), x = e && e.topics.find(y => y.id === tid); if (!x) return; b.classList.add('on'); topicToggle(e, x); toast(T`+${5} poin`); setTimeout(render, 350); });
+  const bal = $('#balNum'); if (bal) countUp(bal, S.balance);
   const ringV = $('.ring .val'); if (ringV) requestAnimationFrame(() => requestAnimationFrame(() => { ringV.style.strokeDashoffset = ringV.dataset.to; }));
   const hero = $('.hero');
-  hero.addEventListener('pointermove', e => { const r = hero.getBoundingClientRect(); hero.style.setProperty('--mx', (e.clientX - r.left) + 'px'); hero.style.setProperty('--my', (e.clientY - r.top) + 'px'); });
+  if (hero) hero.addEventListener('pointermove', e => { const r = hero.getBoundingClientRect(); hero.style.setProperty('--mx', (e.clientX - r.left) + 'px'); hero.style.setProperty('--my', (e.clientY - r.top) + 'px'); });
+}
+function home() {
+  const nAg = homeAgenda().filter(a => a.at - Date.now() < 3 * DAY).length;
+  $('#hTabsSlot').innerHTML = `<div class="seg full home-tabs" id="hTabs"><span class="nav-blob tab-blob" aria-hidden="true"></span>${HOME_TABS.map(([k, n, ic]) => `<button type="button" data-ht2="${k}" class="${k === HOME_TAB ? 'on' : ''}">${I(ic)}<span>${tx(n)}</span>${k === 'agenda' && nAg ? `<i class="tab-n">${nAg}</i>` : ''}</button>`).join('')}</div>`;
+  view().innerHTML = `<div id="hBody">${homeBody(HOME_TAB)}</div>`;
+  const tabs = $('#hTabs');
+  placeBlob($('.tab-blob', tabs), $('button.on', tabs), true);
+  $$('[data-ht2]', tabs).forEach(b => b.onclick = () => homeTab(b.dataset.ht2));
+  homeBind();
+}
+addEventListener('resize', () => { const t = $('#hTabs'); if (t) placeBlob($('.tab-blob', t), $('button.on', t), true); });
+function homeTab(t) {
+  if (t === HOME_TAB) return;
+  const order = HOME_TABS.map(x => x[0]), dir = order.indexOf(t) > order.indexOf(HOME_TAB) ? 1 : -1;
+  HOME_TAB = t;
+  try { localStorage.setItem('remindplus:hometab', t); } catch (e) {}
+  const tabs = $('#hTabs');
+  $$('button', tabs).forEach(b => b.classList.toggle('on', b.dataset.ht2 === t));
+  placeBlob($('.tab-blob', tabs), $('button.on', tabs));
+  const body = $('#hBody');
+  alerts();
+  ENTER = true;
+  body.innerHTML = homeBody(t);
+  homeBind();
+  ENTER = false;
+  if (motionOn()) {
+    body.animate([{ opacity: 0, transform: `translateX(${dir * 36}px)`, filter: 'blur(8px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: SP_SOFT.d, easing: SP_SOFT.e });
+    $$('#hBody > *', view()).slice(0, 6).forEach((el, i) => el.animate([{ opacity: 0, transform: `translateY(14px)` }, { opacity: 1, transform: 'none' }], { duration: SP.d, delay: 30 + i * 40, easing: SP.e, fill: 'backwards' }));
+  }
 }
 function logItem(l) {
   const ic = { tugas: 'checks', belajar: 'book', reward: 'gift', ujian: 'cap', kas: 'wallet', ingat: 'bell', koreksi: 'pencil', freeze: 'flame' }[l.kind] || 'spark';
@@ -3367,6 +3412,7 @@ function eggModal() {
 /* ================= Peringatan & pengingat ================= */
 function alerts() {
   const box = $('#alerts'); if (!box) return;
+  if (V === 'home' && HOME_TAB !== 'utama') { box.innerHTML = ''; return; }
   const out = [], now = Date.now();
   S.exams.filter(e => !e.done).forEach(e => {
     const dd = dayDiff(examAt(e));

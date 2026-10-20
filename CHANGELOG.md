@@ -2,6 +2,14 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.8.0 — 20 Oktober 2026
+### Beranda dibagi jadi tab
+- Beranda sekarang punya menu **Utama | Kalender | Agenda | Statistik** di paling atas, dengan sorotan cair yang bergeser saat pindah tab. Tab terakhir diingat.
+- **Utama:** peringatan, jadwal berikutnya, saldo poin, level & streak, rencana belajar hari ini.
+- **Kalender:** kalender bulanan dan rincian hari.
+- **Agenda:** hitung mundur dan agenda terdekat, dengan angka merah untuk agenda 3 hari ke depan.
+- **Statistik:** poin 7 hari, ujian mendatang, tugas, dan aktivitas terbaru.
+
 ## 3.7.0 — 20 Oktober 2026
 ### Kalender bulanan pindah ke Beranda
 - Kalender bulanan sekarang ada langsung di **Beranda**, lengkap dengan rincian hari yang dipilih. Halaman Jadwal kembali hanya tampilan mingguan.

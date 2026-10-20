@@ -312,6 +312,9 @@
     'Acara': 'Events', 'Hari libur': 'Holiday', 'Kemarin': 'Yesterday', 'Hari Minggu': 'Sunday', 'Buka jadwal': 'Open day', 'Belum ada jadwal pelajaran': 'No lessons yet',
     '{0} pelajaran · {1}–{2}': (n, a, b) => `${n} lesson${n === 1 ? '' : 's'} · ${a}–${b}`, 'Bulan sebelumnya': 'Previous month', 'Bulan berikutnya': 'Next month',
     'Lihat jadwal': 'View timetable', 'Selesaikan tugas untuk dapat poin.': 'Finish tasks to earn points.', 'hari aktif': 'active days', 'streak terbaik': 'best streak',
+    'Utama': 'Main',
+    'Agenda': 'Agenda',
+    'Statistik': 'Stats',
     /* ---------- data bawaan (nama awal) ---------- */
     'Mudah': 'Easy', 'Sedang': 'Medium', 'Sulit': 'Hard', 'Ekstrem': 'Extreme',
     'Pemula': 'Beginner', 'Rajin': 'Diligent', 'Tekun': 'Persistent', 'Disiplin': 'Disciplined', 'Mandiri': 'Independent',
