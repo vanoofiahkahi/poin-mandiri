@@ -2,6 +2,16 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.7.0 — 20 Oktober 2026
+### Kalender bulanan pindah ke Beranda
+- Kalender bulanan sekarang ada langsung di **Beranda**, lengkap dengan rincian hari yang dipilih. Halaman Jadwal kembali hanya tampilan mingguan.
+
+### Timer belajar dihapus
+- Menu **Belajar** (timer dan catat manual) dihapus dari navigasi, dan tombol "Mulai belajar" / "Belajar" di Beranda, Ujian, dan peringatan ujian ikut dihapus.
+- Poin sekarang didapat dari tugas, belajar sebelum ujian (tombol **Sudah belajar**), rencana belajar, uang kas, dan pengingat.
+- Pencapaian berbasis waktu belajar dihapus. Ringkasan mingguan menampilkan **hari aktif** sebagai pengganti waktu belajar.
+- Riwayat belajar lama tetap tersimpan di Riwayat.
+
 ## 3.6.0 — 20 Oktober 2026
 ### Kalender bulanan
 - Halaman Jadwal punya pilihan **Mingguan | Bulanan**. Pilihan terakhir diingat.

@@ -1058,14 +1058,10 @@ body { background-image: none; }
 .acc-pick button.on .dot .ic { opacity: 1; transform: none; }
 @media (max-width: 380px) { .acc-pick { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
-/* ---------- Jadwal: pilihan Mingguan / Bulanan ---------- */
-.tt-vseg { padding: 3px; gap: 2px; border-radius: 12px; flex-wrap: nowrap; }
-.tt-vseg button { min-height: 32px; padding: 6px 12px; font-size: 13.5px; border-radius: 9px; }
-.tt-mlabel { margin: -4px 0 12px; font-size: 20px; }
-
 /* ---------- Kalender bulanan ---------- */
 .cal-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
 .cal-nav h2 { margin: 0; text-align: center; flex: 1; }
+.cal-today { margin-left: 4px; }
 .cal-nav .icon-btn { border-color: transparent; }
 .cal-head, .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .cal-head { margin-bottom: 4px; }
