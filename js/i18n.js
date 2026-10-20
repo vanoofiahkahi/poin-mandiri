@@ -309,6 +309,8 @@
     'Tambahkan {0} ujian': n => n === 1 ? 'Add 1 exam' : `Add ${n} exams`, 'Catatan: satu sesi di jadwal ini {0} menit, sedangkan milikmu {1} menit.': 'Note: one session in this timetable is {0} minutes, yours is {1} minutes.', 'Terima': 'Accept',
     'Jadwal diterima · {0} hari': n => n === 1 ? 'Timetable received · 1 day' : `Timetable received · ${n} days`, 'Bagikan lewat QR': 'Share via QR',
     'Warna aksen': 'Accent colour', 'Warna tombol, sorotan, dan gradasi di seluruh aplikasi.': 'The colour of buttons, highlights and gradients across the app.', 'Ungu': 'Purple', 'Biru': 'Blue', 'Hijau': 'Green', 'Pink': 'Pink', 'Oranye': 'Orange', 'Merah': 'Red',
+    'Acara': 'Events', 'Hari libur': 'Holiday', 'Kemarin': 'Yesterday', 'Hari Minggu': 'Sunday', 'Buka jadwal': 'Open day', 'Belum ada jadwal pelajaran': 'No lessons yet',
+    '{0} pelajaran · {1}–{2}': (n, a, b) => `${n} lesson${n === 1 ? '' : 's'} · ${a}–${b}`, 'Bulan sebelumnya': 'Previous month', 'Bulan berikutnya': 'Next month',
     /* ---------- data bawaan (nama awal) ---------- */
     'Mudah': 'Easy', 'Sedang': 'Medium', 'Sulit': 'Hard', 'Ekstrem': 'Extreme',
     'Pemula': 'Beginner', 'Rajin': 'Diligent', 'Tekun': 'Persistent', 'Disiplin': 'Disciplined', 'Mandiri': 'Independent',

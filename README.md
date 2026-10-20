@@ -10,7 +10,7 @@ Aplikasi web yang bisa dipasang di Android (PWA), dengan akun online yang tersin
 ## Fitur
 - **Tugas** dengan tingkat kesulitan, deadline, dan poin
 - **Ujian** dengan pengingat belajar malam sebelumnya
-- **Jadwal pelajaran** yang diisi per tanggal
+- **Jadwal pelajaran** yang diisi per tanggal, dengan tampilan mingguan dan **kalender bulanan**
 - **Kas** — pengingat bayar uang kas
 - **Pengingat** sekolah, pribadi, dan acara sekolah
 - **Timer belajar**, level, streak, dan riwayat poin
@@ -21,4 +21,4 @@ Aplikasi web yang bisa dipasang di Android (PWA), dengan akun online yang tersin
 - Alarm darurat, Bahasa Indonesia & English, mode terang/gelap, 6 warna aksen, liquid glass
 
 ## Changelog
-Versi terbaru: **3.5.1** — lihat semua perubahan di [CHANGELOG.md](CHANGELOG.md).
+Versi terbaru: **3.6.0** — lihat semua perubahan di [CHANGELOG.md](CHANGELOG.md).

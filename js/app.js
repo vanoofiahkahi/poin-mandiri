@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.5.1';
+const VERSION = '3.6.0';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -1758,18 +1758,21 @@ let TTD = null, TT_OPEN = -1;
 const ttLive = (a, b) => TTD === ymd(new Date()) && nowMin() >= a && nowMin() < b;
 function jadwal() {
   if (!TTD) TTD = ttDefaultDate();
+  if (new Date(TTD + 'T00:00').getDay() === 0) TTD = addDays(TTD, 1);
   TT_OPEN = -1;
   ttPrune();
+  if (TT_VIEW === 'month') { calMonth(); return; }
   view().innerHTML = `
   <section class="card tt-card">
     <div class="tt-top">
-      <h2 id="ttMonth"></h2>
+      ${ttViewSeg()}
       <div class="tt-tools">
         <button class="icon-btn sm" id="ttShare" title="Bagikan jadwal" aria-label="Bagikan jadwal">${I('qr')}</button>
         <button class="icon-btn sm" id="ttSubj" title="Mata pelajaran & guru" aria-label="Mata pelajaran & guru">${I('book')}</button>
         <button class="icon-btn sm" id="ttSet" title="Pengaturan jadwal" aria-label="Pengaturan jadwal">${I('sliders')}</button>
       </div>
     </div>
+    <h2 id="ttMonth" class="tt-mlabel"></h2>
     <div class="tt-week">
       <button class="icon-btn sm" data-wk="-7" aria-label="Minggu sebelumnya">${I('chevl')}</button>
       <div class="tt-days" id="ttDays"></div>
@@ -1779,6 +1782,7 @@ function jadwal() {
   </section>`;
   ttWeek(0);
   ttDayDraw(0);
+  bindViewSeg(view());
   $$('[data-wk]', view()).forEach(b => b.onclick = () => ttGo(addDays(TTD, +b.dataset.wk)));
   $('#ttSubj').onclick = subjModal;
   $('#ttShare').onclick = ttShareModal;
@@ -1791,6 +1795,138 @@ function jadwal() {
     if (Math.abs(dx) > 70 && Math.abs(dy) < 45) ttStep(dx < 0 ? 1 : -1);
   }, { passive: true });
 }
+/* ================= Kalender bulanan ================= */
+let TT_VIEW = (() => { try { return localStorage.getItem('remindplus:ttview') === 'month' ? 'month' : 'week'; } catch (e) { return 'week'; } })();
+let CAL_M = null, CAL_SEL = null;
+const ttViewSeg = () => `<div class="seg tt-vseg"><button type="button" data-tv="week" class="${TT_VIEW === 'week' ? 'on' : ''}">${tx('Mingguan')}</button><button type="button" data-tv="month" class="${TT_VIEW === 'month' ? 'on' : ''}">${tx('Bulanan')}</button></div>`;
+function setTTView(v) {
+  if (v === TT_VIEW) return;
+  TT_VIEW = v;
+  try { localStorage.setItem('remindplus:ttview', v); } catch (e) {}
+  if (v === 'month') { CAL_SEL = TTD || ymd(new Date()); CAL_M = CAL_SEL.slice(0, 7); }
+  jadwal();
+  if (motionOn()) view().firstElementChild.animate([{ opacity: 0, transform: 'scale(.97)', filter: 'blur(6px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: SP_SOFT.d, easing: SP_SOFT.e });
+}
+function bindViewSeg(root) { $$('[data-tv]', root).forEach(b => b.onclick = () => setTTView(b.dataset.tv)); }
+
+/* Semua agenda di satu tanggal */
+function calItems(d) {
+  const out = [], ms = ymdMs(d);
+  const v = vacOf(d);
+  if (v) out.push({ k: 'vac', ic: 'palm', tone: 't-mint', t: v.n, sub: tx('Libur'), go: () => { go('atur'); aturGo('libur'); } });
+  S.exams.filter(e => e.tgl === d && !e.done).sort((a, b) => toMin(a.jam) - toMin(b.jam)).forEach(e => out.push({ k: 'ex', ic: 'cap', tone: 't-warn', t: exLabel(e.mapel), sub: hhmm(e.jam) + (e.catatan ? ' · ' + e.catatan : ''), go: () => go('ujian') }));
+  S.rem.forEach(r => {
+    if (!(r.cat === 'acara' || r.rep === 'once')) return;
+    if (!remOcc(r, ms, ms).length) return;
+    const c = REM_CAT[r.cat] || REM_CAT.sekolah;
+    out.push({ k: r.cat === 'acara' ? 'ev' : 'rem', ic: c.ic, tone: c.tone, t: r.t, sub: hhmm(r.jam || '') + ' · ' + tx(c.n), go: () => go('ingat') });
+  });
+  S.tasks.filter(t => !t.done && t.dl && String(t.dl).slice(0, 10) === d).forEach(t => out.push({ k: 'task', ic: 'checks', tone: 't-brand', t: t.n, sub: tx('Deadline') + ' ' + hhmm(String(t.dl).slice(11, 16)), go: () => go('tugas') }));
+  S.kas.forEach(k => { if (kasDue(k, ms, ms).length && !k.paid.includes(d)) out.push({ k: 'kas', ic: 'wallet', tone: 't-mint', t: k.n, sub: rp(k.amt), go: () => go('kas') }); });
+  (S.cd || []).filter(c => c.d === d).forEach(c => out.push({ k: 'cd', ic: 'hourglass', tone: 't-danger', t: c.n, sub: tx('Hitung mundur'), go: async () => { if (await cdModal(c)) calDraw(0); } }));
+  return out;
+}
+/* Minggu (baris) yang dibutuhkan untuk satu bulan, mulai Senin */
+function calDays(ym) {
+  const first = new Date(ym + '-01T00:00'), start = new Date(first);
+  start.setDate(1 - (first.getDay() + 6) % 7);
+  const last = new Date(first.getFullYear(), first.getMonth() + 1, 0);
+  const days = [];
+  for (const d = new Date(start); d <= last || days.length % 7; d.setDate(d.getDate() + 1)) days.push(ymd(d));
+  return days;
+}
+const calShift = (ym, n) => { const d = new Date(ym + '-01T00:00'); d.setMonth(d.getMonth() + n); return ymd(d).slice(0, 7); };
+
+function calMonth() {
+  if (!CAL_SEL) CAL_SEL = TTD || ymd(new Date());
+  if (!CAL_M) CAL_M = CAL_SEL.slice(0, 7);
+  const hd = [1, 2, 3, 4, 5, 6, 0].map(i => `<span class="${i === 0 ? 'sun' : ''}">${HARI_S[i]}</span>`).join('');
+  view().innerHTML = `
+  <section class="card tt-card cal-card">
+    <div class="tt-top">${ttViewSeg()}
+      <div class="tt-tools"><button class="btn ghost sm" id="calToday">${tx('Hari ini')}</button></div></div>
+    <div class="cal-nav">
+      <button class="icon-btn sm" data-cm="-1" aria-label="Bulan sebelumnya">${I('chevl')}</button>
+      <h2 id="calTitle"></h2>
+      <button class="icon-btn sm" data-cm="1" aria-label="Bulan berikutnya">${I('chevr')}</button>
+    </div>
+    <div class="cal-head">${hd}</div>
+    <div class="cal-wrap" id="calWrap"><div class="cal-grid" id="calGrid"></div></div>
+    <div class="cal-legend"><span><i class="m-ex"></i>${tx('Ujian')}</span><span><i class="m-ev"></i>${tx('Acara')}</span><span><i class="m-task"></i>${tx('Tugas')}</span><span><i class="m-kas"></i>${tx('Kas')}</span><span><i class="m-vac"></i>${tx('Libur')}</span></div>
+  </section>
+  <section class="card cal-day" id="calDay"></section>`;
+  bindViewSeg(view());
+  $$('[data-cm]', view()).forEach(b => b.onclick = () => calMove(+b.dataset.cm));
+  $('#calToday').onclick = () => { const t = ymd(new Date()); const dir = t.slice(0, 7) === CAL_M ? 0 : t > CAL_SEL ? 1 : -1; CAL_SEL = t; CAL_M = t.slice(0, 7); calDraw(dir); };
+  const w = $('#calWrap'); let sx = null, sy = 0;
+  w.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') { sx = e.clientX; sy = e.clientY; } }, { passive: true });
+  w.addEventListener('pointerup', e => { if (sx === null) return; const dx = e.clientX - sx, dy = e.clientY - sy; sx = null; if (Math.abs(dx) > 70 && Math.abs(dy) < 50) calMove(dx < 0 ? 1 : -1); }, { passive: true });
+  calDraw(0);
+}
+function calMove(n) {
+  CAL_M = calShift(CAL_M, n);
+  const today = ymd(new Date());
+  CAL_SEL = today.slice(0, 7) === CAL_M ? today : CAL_M + '-01';
+  calDraw(n);
+}
+function calDraw(dir) {
+  const grid = $('#calGrid'); if (!grid) return;
+  const today = ymd(new Date()), days = calDays(CAL_M);
+  const m0 = new Date(CAL_M + '-01T00:00');
+  $('#calTitle').textContent = BULAN[m0.getMonth()] + ' ' + m0.getFullYear();
+  const cell = (d, i) => {
+    const it = calItems(d), out = d.slice(0, 7) !== CAL_M, v = vacOf(d);
+    const kinds = [...new Set(it.filter(x => x.k !== 'vac').map(x => x.k))].slice(0, 4);
+    const prevV = v && vacOf(addDays(d, -1)) === v && i % 7 !== 0, nextV = v && vacOf(addDays(d, 1)) === v && i % 7 !== 6;
+    const labels = it.filter(x => x.k !== 'vac').slice(0, 2);
+    const dow = new Date(d + 'T00:00').getDay();
+    return `<button type="button" class="cal-c${out ? ' out' : ''}${d === today ? ' today' : ''}${d === CAL_SEL ? ' on' : ''}${dow === 0 ? ' sun' : ''}" data-cd="${d}">
+      ${v ? `<span class="cal-vac${prevV ? ' l' : ''}${nextV ? ' r' : ''}"></span>` : ''}
+      <b>${+d.slice(8)}</b>
+      <span class="cal-mk">${kinds.map(k => `<i class="m-${k}"></i>`).join('')}${!kinds.length && ttHas(d) && !v ? '<i class="m-tt"></i>' : ''}</span>
+      <span class="cal-lbs">${v && !prevV ? `<span class="cal-lb m-vacl">${esc(v.n)}</span>` : ''}${labels.map(x => `<span class="cal-lb m-${x.k}">${esc(x.t)}</span>`).join('')}${it.filter(x => x.k !== 'vac').length > 2 ? `<span class="cal-more">+${it.filter(x => x.k !== 'vac').length - 2}</span>` : ''}</span>
+    </button>`;
+  };
+  grid.innerHTML = `<span class="nav-blob cal-blob" aria-hidden="true"></span>` + days.map(cell).join('');
+  $$('.cal-c', grid).forEach(b => b.onclick = () => calPick(b.dataset.cd));
+  placeBlob($('.cal-blob', grid), $('.cal-c.on', grid), true);
+  if (dir && motionOn()) {
+    grid.animate([{ opacity: 0, transform: `translateX(${dir * 40}px)`, filter: 'blur(8px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: SP_SOFT.d, easing: SP_SOFT.e });
+    $('#calTitle').animate([{ opacity: 0, transform: `translateY(${dir * 10}px)` }, { opacity: 1, transform: 'none' }], { duration: SP.d, easing: SP.e });
+  }
+  calDayDraw(dir ? dir : 0);
+}
+function calPick(d) {
+  if (d === CAL_SEL) return;
+  if (d.slice(0, 7) !== CAL_M) { const dir = d > CAL_SEL ? 1 : -1; CAL_SEL = d; CAL_M = d.slice(0, 7); calDraw(dir); return; }
+  const dir = d > CAL_SEL ? 1 : -1;
+  CAL_SEL = d;
+  const grid = $('#calGrid');
+  $$('.cal-c', grid).forEach(b => b.classList.toggle('on', b.dataset.cd === d));
+  placeBlob($('.cal-blob', grid), $('.cal-c.on', grid));
+  calDayDraw(dir);
+}
+function calDayDraw(dir) {
+  const box = $('#calDay'); if (!box) return;
+  const d = CAL_SEL, it = calItems(d), today = ymd(new Date());
+  const slots = ttHas(d) ? ttSlots(S.tt[d]) : [], les = slots.filter(s => s.it.k !== 'b');
+  const dd = dayDiff(ymdMs(d));
+  const rel = dd === 0 ? tx('Hari ini') : dd === 1 ? tx('Besok') : dd === -1 ? tx('Kemarin') : dd > 1 ? T`${dd} hari lagi` : '';
+  const isSun = new Date(d + 'T00:00').getDay() === 0;
+  box.innerHTML = `
+    <div class="card-head"><div style="min-width:0"><h2>${fd(ymdMs(d))}</h2>
+      <div class="muted small">${rel ? `<b class="cal-rel">${rel}</b> · ` : ''}${les.length ? T`${les.length} pelajaran · ${fromMin(slots[0].a)}–${fromMin(slots[slots.length - 1].b)}` : tx(vacOf(d) ? 'Hari libur' : isSun ? 'Hari Minggu' : 'Belum ada jadwal pelajaran')}</div></div>
+      ${isSun ? '' : `<button class="btn ghost sm" id="calOpen">${I('cal')}${tx('Buka jadwal')}</button>`}</div>
+    ${les.length ? `<div class="tt-strip cal-strip">${les.map(s => `<div class="tt-chip ${d === today && nowMin() >= s.a && nowMin() < s.b ? 'now' : ''}" style="--h:${subjHue(s.it.s)}"><b>${esc(subjName(s.it.s))}</b><span>${fromMin(s.a)}–${fromMin(s.b)}</span></div>`).join('')}</div>` : ''}
+    <div class="list" style="margin-top:${les.length ? 14 : 4}px">${it.length ? it.map((x, i) => `
+      <div class="item cal-it" data-ci="${i}" style="cursor:pointer"><div class="lead ${x.tone}">${I(x.ic)}</div>
+        <div class="body"><div class="ttl">${esc(x.t)}</div><div class="faint small">${esc(x.sub)}</div></div>${I('chevr', 'ic set-chev')}</div>`).join('')
+      : `<p class="muted small" style="margin:6px 0 0">${tx('Tidak ada agenda')}</p>`}</div>`;
+  $$('[data-ci]', box).forEach(el => el.onclick = () => it[+el.dataset.ci].go());
+  const o = $('#calOpen', box); if (o) o.onclick = () => { TTD = d; setTTView('week'); };
+  if (dir && motionOn()) box.animate([{ opacity: 0, transform: `translateY(${10}px)`, filter: 'blur(6px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: SP_SOFT.d, easing: SP_SOFT.e });
+}
+
 /* Pindah ke hari berikut/sebelumnya (lewati Minggu) */
 function ttStep(n) { let d = addDays(TTD, n); if (new Date(d + 'T00:00').getDay() === 0) d = addDays(d, n); ttGo(d); }
 function ttGo(d) {

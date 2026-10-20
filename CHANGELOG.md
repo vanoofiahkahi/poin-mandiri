@@ -2,6 +2,14 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.6.0 — 20 Oktober 2026
+### Kalender bulanan
+- Halaman Jadwal punya pilihan **Mingguan | Bulanan**. Pilihan terakhir diingat.
+- Kalender sebulan penuh dengan penanda ujian, acara sekolah, deadline tugas, uang kas, dan hitung mundur. Hari libur ditandai pita hijau.
+- Di tablet, nama agendanya langsung tampil di dalam kotak tanggal. Di HP berupa titik warna.
+- Ketuk tanggal untuk melihat pelajaran dan semua agenda hari itu. Ketuk agenda untuk membuka menunya, atau **Buka jadwal** untuk langsung ke jadwal hari itu.
+- Geser kiri/kanan untuk pindah bulan, dan tombol **Hari ini** untuk kembali ke tanggal hari ini.
+
 ## 3.5.1 — 19 Oktober 2026
 - Perbaikan: di tablet, judul ujian bisa terjepit jadi satu huruf per baris saat tombolnya banyak (Alarm HP, Kalender, Rencana, Belajar…). Sekarang judul selalu kebagian ruang dan tombol turun ke baris bawah bila tidak muat. Berlaku juga untuk daftar tugas, pengingat, dan kas.
 
