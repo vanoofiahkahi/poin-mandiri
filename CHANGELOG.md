@@ -2,12 +2,14 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
-## 3.9.0 — 1 November 2026
-### Impor jadwal dari PDF dengan AI
-- Menu **Jadwal → ⋯ → Impor dari PDF (AI)**: pilih PDF jadwal sekolah, tulis kelasmu (mis. Y9), pilih mulai minggu ini/depan dan berapa minggu diulang.
-- AI (Claude, lewat fungsi server Supabase `parse-schedule`) membaca jadwal kelas itu: pelajaran, guru, istirahat, dan kegiatan, lengkap dengan jamnya.
-- Hasilnya tampil sebagai pratinjau sebelum disimpan. Nama mata pelajaran yang sudah ada dipakai ulang, dan nama guru yang sudah diisi tidak ditimpa.
-- Butuh akun dan pemasangan fungsi server sekali saja (lihat `supabase/functions/parse-schedule/README.md`).
+## 3.9.1 — 1 November 2026
+### Impor jadwal dari PDF, dibaca langsung di perangkat
+- Menu **Jadwal → ⋯ → Impor dari PDF**: pilih PDF jadwal sekolah (format *Regular Program Schedule*), tulis kelasmu (mis. Y9), pilih mulai minggu ini/depan dan berapa minggu diulang (1–16).
+- PDF dibaca oleh pembaca buatan sendiri di dalam aplikasi: tanpa server, tanpa AI, tanpa biaya, dan file tidak dikirim ke mana pun.
+- Membaca mata pelajaran, kode guru, jam, istirahat, dan kegiatan, termasuk pelajaran beberapa jam dan sel gabungan (upacara, istirahat, makan siang).
+- Nama mapel dicocokkan dengan yang sudah ada, termasuk ejaan yang sedikit berbeda. Kalau nama kelas salah, aplikasi menampilkan daftar kelas di PDF untuk dipilih.
+- Hasilnya tampil sebagai pratinjau sebelum disimpan.
+- Menggantikan versi AI di 3.9.0, yang dihapus beserta fungsi server `parse-schedule`.
 
 ## 3.8.0 — 20 Oktober 2026
 ### Beranda dibagi jadi tab

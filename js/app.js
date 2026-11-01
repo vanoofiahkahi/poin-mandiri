@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.9.0';
+const VERSION = '3.9.1';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -2101,7 +2101,7 @@ function ttMoreMenu(anchor) {
     <button type="button" class="opt" data-m="week"><span>${tx('Salin minggu lalu ke hari kosong')}</span>${I('refresh')}</button>
     <button type="button" class="opt" data-m="share"><span>${tx('Bagikan lewat QR')}</span>${I('qr')}</button>
     <button type="button" class="opt" data-m="recv"><span>${tx('Terima jadwal teman')}</span>${I('scan')}</button>
-    <button type="button" class="opt" data-m="pdf"><span>${tx('Impor dari PDF (AI)')}</span>${I('upload')}</button>
+    <button type="button" class="opt" data-m="pdf"><span>${tx('Impor dari PDF')}</span>${I('upload')}</button>
     <button type="button" class="opt" data-m="vac"><span>${tx('Mode libur')}</span>${I('palm')}</button>
     ${has ? `<button type="button" class="opt" data-m="clr" style="color:var(--danger)"><span>${tx('Kosongkan hari ini')}</span>${I('trash')}</button>` : ''}`;
   popIn(el);
@@ -3284,68 +3284,74 @@ function scanModal() {
   p.then(() => { alive = false; if (stream) stream.getTracks().forEach(t => t.stop()); const pl = m._pl; m._pl = null; if (pl) setTimeout(() => importModal(pl), 60); });
 }
 
-/* ================= Impor jadwal dari PDF (dibaca AI di server) ================= */
+/* ================= Impor jadwal dari PDF (dibaca di perangkat, tanpa server) ================= */
 const PDF_KELAS_KEY = 'remindplus:pdfKelas';
-const PDF_DAYS = ['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'];
-function fileB64(f) {
-  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = () => rej(new Error('read')); r.readAsDataURL(f); });
+const subjKey = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+function lev(a, b) {
+  if (Math.abs(a.length - b.length) > 3) return 9;
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
 }
-/* Hasil AI → format data yang sama dengan link/QR jadwal, lalu dipratinjau lewat importData() */
+/* Cocokkan nama dari PDF dengan mata pelajaran yang sudah ada (abaikan tanda baca & salah ketik kecil) */
+function matchSubj(name) {
+  const k = subjKey(name); if (!k) return null;
+  return S.subj.find(s => subjKey(s.n) === k) || (k.length >= 7 ? S.subj.find(s => lev(subjKey(s.n), k) <= 2) : null) || null;
+}
+/* Sel PDF → format data yang sama dengan link/QR jadwal, lalu dipratinjau lewat importData() */
 function pdfToData(res, kelas, wk, weeks) {
-  const tm = s => { const m = /(\d{1,2})[.:](\d{2})/.exec(String(s || '')); return m ? (+m[1]) * 60 + (+m[2]) : null; };
+  const BRK = /\b(break|istirahat|lunch|makan|dzuhur|zuhur|prayer|sholat|shalat)\b/i;
+  const ACT = /\b(ceremony|assembly|exercise|activity|upacara|senam|chat ?time)\b/i;
   const sj = [], idx = {};
-  const si = (n, t) => {
-    const k = n.toLowerCase();
-    if (!(k in idx)) { const ex = S.subj.find(x => x.n.trim().toLowerCase() === k); idx[k] = sj.length; sj.push([ex ? ex.n : n, ex && ex.t ? ex.t : t, ex ? ex.h : (S.subj.length + sj.length) * 47 % 360]); }
+  const si = (n, t, ex) => {
+    const k = subjKey(n);
+    if (!(k in idx)) { idx[k] = sj.length; sj.push([n, ex && ex.t ? ex.t : t, ex ? ex.h : (S.subj.length + sj.length) * 47 % 360]); }
     else if (t && !sj[idx[k]][1]) sj[idx[k]][1] = t;
     return idx[k];
   };
+  const label = s => s.length > 40 ? s.slice(0, 39).trim() + '…' : s;
   const pattern = {};
-  (res.hari || []).forEach(h => {
-    const di = PDF_DAYS.indexOf(String(h.hari || '').toLowerCase()); if (di < 0) return;
-    const bl = (h.blok || []).map(b => Object.assign({}, b, { a: tm(b.mulai), z: tm(b.selesai) })).filter(b => b.a != null && b.z != null && b.z > b.a).sort((x, y) => x.a - y.a);
-    if (!bl.length) return;
-    const items = []; let cur = bl[0].a;
-    bl.forEach(b => {
-      if (b.z <= cur) return;
-      if (b.a > cur) items.push([-1, b.a - cur, '']);
-      const a = Math.max(b.a, cur), dur = b.z - a;
-      if (b.jenis === 'pelajaran') {
-        const name = String(b.nama || '').replace(/\s*\([^)]*\)\s*$/, '').trim().slice(0, 80) || tx('Mapel');
-        const id = si(name, String(b.guru || '').trim().slice(0, 120));
+  Object.entries(res.days || {}).forEach(([di, cells]) => {
+    if (!cells.length) return;
+    const items = []; let cur = cells[0].a;
+    cells.forEach(c => {
+      if (c.z <= cur) return;
+      if (c.a > cur) items.push([-1, c.a - cur, '']);
+      const a = Math.max(c.a, cur), dur = c.z - a, text = String(c.text || '').trim();
+      const m = /^(.*?)\s*\(([^()]*)\)\s*$/.exec(text);
+      const name = (m ? m[1] : text).trim(), teacher = m ? m[2].trim() : '';
+      const ex = matchSubj(name);
+      if (text && (ex || (!BRK.test(text) && !ACT.test(text)))) {
+        const id = si(ex ? ex.n : name.slice(0, 80), teacher.slice(0, 120), ex);
         const n = Math.max(1, Math.round(dur / S.ttMin));
         const last = items[items.length - 1];
         if (last && last[0] === id) last[1] += n; else items.push([id, n]);
-      } else { const l = String(b.nama || '').trim(); items.push([-1, dur, l.length > 40 ? l.slice(0, 39).trim() + '…' : l]); }
-      cur = b.z;
+      } else items.push([-1, dur, label(text)]);
+      cur = c.z;
     });
-    pattern[di] = [rawMin(bl[0].a), items];
+    pattern[di] = [rawMin(cells[0].a), items];
   });
   const first = weekOf(addDays(weekOf(ttDefaultDate())[0], wk * 7))[0], d = [];
   for (let w = 0; w < weeks; w++) weekOf(addDays(first, w * 7)).forEach((date, di) => { if (pattern[di]) d.push([date, pattern[di][0], pattern[di][1]]); });
-  return { v: 1, by: 'PDF · ' + (res.kelas_ditemukan || kelas), m: S.ttMin, s: sj, d, e: [], title: tx('Hasil baca PDF') };
+  return { v: 1, by: 'PDF · ' + kelas, m: S.ttMin, s: sj, d, e: [], title: tx('Hasil baca PDF') };
 }
 async function pdfImportModal() {
-  if (!sb || !USER || USER.local) {
-    await modal({ title: tx('Perlu akun'), html: `<p>${tx('Impor dari PDF memakai AI di server remind+, jadi kamu perlu masuk dengan akun dulu.')}</p>`, actions: [{ label: 'Mengerti', cls: 'grad', value: true }] });
-    return;
-  }
   let file = null, wk = 0, busy = false;
   const p = modal({ title: tx('Impor jadwal dari PDF'), wide: true,
     html: `<div class="stack">
-      <label class="pdf-drop" id="pdD"><input type="file" accept="application/pdf,.pdf" id="pdF" hidden>${I('upload')}<b id="pdN">${tx('Pilih file PDF jadwal')}</b><small>${tx('Maksimal 9 MB')}</small></label>
-      <label class="field"><span>${tx('Kelas kamu di PDF')}</span><input class="input" id="pdK" value="${esc(lsGet(PDF_KELAS_KEY) || '')}" placeholder="${esc(tx('Contoh: Y9, 9A, Year 9'))}" autocomplete="off"></label>
+      <label class="pdf-drop" id="pdD"><input type="file" accept="application/pdf,.pdf" id="pdF" hidden>${I('upload')}<b id="pdN">${tx('Pilih file PDF jadwal')}</b><small>${tx('Format jadwal sekolah (Regular Program Schedule)')}</small></label>
+      <label class="field"><span>${tx('Kelas kamu di PDF')}</span><input class="input" id="pdK" value="${esc(lsGet(PDF_KELAS_KEY) || '')}" placeholder="${esc(tx('Contoh: Y9, 8A'))}" autocomplete="off"></label>
       <div class="field"><span>${tx('Isi mulai')}</span><div class="seg full" id="pdW"><button type="button" class="on" data-w="0">${tx('Minggu ini')}</button><button type="button" data-w="1">${tx('Minggu depan')}</button></div></div>
       <label class="field"><span>${tx('Ulangi jadwal selama')}</span><select class="input" id="pdR">${[1, 2, 4, 8, 12, 16].map(n => `<option value="${n}" ${n === 4 ? 'selected' : ''}>${T`${n} minggu`}</option>`).join('')}</select></label>
-      <p class="faint small" style="margin:0">${tx('PDF dikirim ke AI hanya untuk dibaca. Hasilnya bisa kamu periksa dulu sebelum disimpan, dan jam pelajaran mengikuti PDF.')}</p>
+      <p class="faint small" style="margin:0">${tx('PDF dibaca langsung di perangkat ini, tidak dikirim ke mana pun. Hasilnya bisa kamu periksa dulu sebelum disimpan, dan jam pelajaran mengikuti PDF.')}</p>
       <div class="pdf-status" id="pdS" hidden></div></div>`,
-    actions: [{ label: 'Batal', cls: 'ghost', value: null }, { label: tx('Baca dengan AI'), cls: 'grad', validate: m => { start(m); return false; } }] });
+    actions: [{ label: 'Batal', cls: 'ghost', value: null }, { label: tx('Baca PDF'), cls: 'grad', validate: m => { start(m); return false; } }] });
   const m = $('#modal');
   const say = (html, cls) => { const s = $('#pdS', m); s.hidden = false; s.className = 'pdf-status ' + (cls || ''); s.innerHTML = html; };
   $('#pdF', m).onchange = e => {
     const f = e.target.files && e.target.files[0]; if (!f) return;
     if (!/pdf$/i.test(f.type) && !/\.pdf$/i.test(f.name)) { say(I('warn') + tx('File harus berformat PDF.'), 'err'); return; }
-    if (f.size > 9 * 1024 * 1024) { say(I('warn') + tx('PDF terlalu besar (maksimal 9 MB).'), 'err'); return; }
     file = f; $('#pdN', m).textContent = f.name; $('#pdD', m).classList.add('on'); $('#pdS', m).hidden = true;
   };
   $$('[data-w]', m).forEach(b => b.onclick = () => { wk = +b.dataset.w; $$('[data-w]', m).forEach(x => x.classList.toggle('on', x === b)); });
@@ -3354,28 +3360,31 @@ async function pdfImportModal() {
     const kelas = $('#pdK', mm).value.trim();
     if (!file) { say(I('warn') + tx('Pilih file PDF dulu.'), 'err'); return; }
     if (!kelas) { say(I('warn') + tx('Tulis kelasmu seperti di PDF, misalnya Y9.'), 'err'); $('#pdK', mm).focus(); return; }
+    if (!window.RemindPDF) { say(I('warn') + tx('Pembaca PDF belum termuat. Muat ulang aplikasi lalu coba lagi.'), 'err'); return; }
     busy = true;
-    const btns = $$('.acts .btn', mm); btns.forEach(b => b.disabled = true);
-    say(`<span class="spin"></span>${tx('AI sedang membaca PDF… biasanya 20–60 detik.')}`);
+    say(`<span class="spin"></span>${tx('Membaca PDF…')}`);
     try {
-      const pdf = await fileB64(file);
-      const res = await sb._authed('/functions/v1/parse-schedule', { method: 'POST', body: { pdf, kelas, mapel: S.subj.map(s => s.n) } });
+      const res = await RemindPDF.read(await file.arrayBuffer(), kelas);
       const weeks = +$('#pdR', mm).value || 4;
-      const o = pdfToData(res || {}, kelas, wk, weeks);
-      if (!o.d.length) throw Object.assign(new Error(T`Jadwal kelas ${kelas} tidak ditemukan di PDF. Coba tulis nama kelas persis seperti di PDF.`), { soft: true });
+      const o = pdfToData(res, kelas, wk, weeks);
+      if (!o.d.length) {
+        busy = false;
+        if (res.classes.length) {
+          say(`${I('warn')}<div>${T`Kelas ${esc(kelas)} tidak ditemukan. Pilih kelasmu:`}<div class="pdf-kls">${res.classes.map(k => `<button type="button" class="chip" data-kls="${esc(k)}">${esc(k)}</button>`).join('')}</div></div>`, 'err');
+          $$('[data-kls]', mm).forEach(b => b.onclick = () => { $('#pdK', mm).value = b.dataset.kls; start(mm); });
+        } else say(I('warn') + tx('Jadwal tidak terbaca dari PDF ini. Pastikan formatnya sama dengan jadwal sekolah (Regular Program Schedule).'), 'err');
+        return;
+      }
       lsSet(PDF_KELAS_KEY, kelas);
-      mm._out = { o, note: res.catatan || '' };
-      busy = false; btns.forEach(b => b.disabled = false); btns[0].click();
+      mm._out = o; busy = false; $('.acts .btn', mm).click();
     } catch (e) {
-      busy = false; btns.forEach(b => b.disabled = false);
-      const msg = e.status === 404 ? tx('Fitur AI belum dipasang di server. Ikuti langkah pemasangan di README (supabase/functions/parse-schedule).')
-        : e.code === 'offline' ? tx('Tidak ada koneksi internet.') : (e.message || tx('Terjadi kesalahan. Coba lagi.'));
-      say(I('warn') + esc(msg), 'err');
+      busy = false;
+      say(I('warn') + esc(tx('PDF ini tidak bisa dibaca.') + ' ' + (e && e.message ? tx(e.message) : '')), 'err');
     }
   }
   await p;
   const out = m._out; m._out = null;
-  if (out) setTimeout(() => importData(out.o, out.note), 60);
+  if (out) setTimeout(() => importData(out), 60);
 }
 
 /* Terima jadwal dari link/QR */

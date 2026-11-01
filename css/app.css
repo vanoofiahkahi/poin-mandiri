@@ -1145,3 +1145,5 @@ body { background-image: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .pdf-note { display: flex; gap: 8px; align-items: flex-start; margin: -2px 0 10px; }
 .pdf-note .ic { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+.pdf-kls { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.pdf-kls .chip { cursor: pointer; border: 0; font: inherit; font-size: 13px; font-weight: 700; }
