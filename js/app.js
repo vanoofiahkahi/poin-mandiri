@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.9.2';
+const VERSION = '3.9.3';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -2096,14 +2096,15 @@ function ttCopyDay(src) { S.tt[TTD] = { start: S.tt[src].start, items: stripNote
 function ttMoreMenu(anchor) {
   if (POP && POP.anchor === anchor) { closePop(); return; }
   const el = openPop(anchor, 'pop-list', 240);
-  const has = ttHas(TTD);
+  const has = ttHas(TTD), wkHas = weekOf(TTD).filter(ttHas).length;
   el.innerHTML = `<button type="button" class="opt" data-m="day"><span>${tx('Salin dari hari lain…')}</span>${I('copy')}</button>
     <button type="button" class="opt" data-m="week"><span>${tx('Salin minggu lalu ke hari kosong')}</span>${I('refresh')}</button>
     <button type="button" class="opt" data-m="share"><span>${tx('Bagikan lewat QR')}</span>${I('qr')}</button>
     <button type="button" class="opt" data-m="recv"><span>${tx('Terima jadwal teman')}</span>${I('scan')}</button>
     <button type="button" class="opt" data-m="pdf"><span>${tx('Impor dari PDF')}</span>${I('upload')}</button>
     <button type="button" class="opt" data-m="vac"><span>${tx('Mode libur')}</span>${I('palm')}</button>
-    ${has ? `<button type="button" class="opt" data-m="clr" style="color:var(--danger)"><span>${tx('Kosongkan hari ini')}</span>${I('trash')}</button>` : ''}`;
+    ${has ? `<button type="button" class="opt" data-m="clr" style="color:var(--danger)"><span>${tx('Kosongkan hari ini')}</span>${I('trash')}</button>` : ''}
+    ${wkHas ? `<button type="button" class="opt" data-m="clrw" style="color:var(--danger)"><span>${tx('Hapus semua jadwal minggu ini')}</span>${I('trash')}</button>` : ''}`;
   popIn(el);
   $$('.opt', el).forEach(o => o.onclick = async () => {
     closePop();
@@ -2120,6 +2121,14 @@ function ttMoreMenu(anchor) {
     } else if (o.dataset.m === 'clr') {
       if (!await ask(tx('Kosongkan jadwal hari ini?'), tx('Semua pelajaran dan istirahat di hari ini dihapus.'), 'Kosongkan', 'danger solid')) return;
       delete S.tt[TTD]; persist(); ttDayDraw(0); ttDots();
+    } else if (o.dataset.m === 'clrw') {
+      const wk = weekOf(TTD), ds = wk.filter(ttHas);
+      if (!ds.length) return;
+      const range = fdShort(wk[0]) + ' – ' + fdShort(wk[wk.length - 1]);
+      if (!await ask(tx('Hapus semua jadwal minggu ini?'), T`Jadwal ${ds.length} hari (${range}) dihapus. Ujian dan tugas tidak ikut terhapus.`, 'Hapus', 'danger solid')) return;
+      const old = {}; ds.forEach(d => { old[d] = S.tt[d]; delete S.tt[d]; });
+      persist(); ttDayDraw(0); ttDots(); badges();
+      toast(T`Jadwal ${ds.length} hari dihapus`, { label: 'Batalkan', fn: () => { Object.assign(S.tt, old); persist(); ttDayDraw(0); ttDots(); badges(); toast('Dibatalkan'); } });
     }
   });
 }

@@ -2,6 +2,11 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.9.3 — 5 November 2026
+### Hapus semua jadwal minggu ini
+- Menu **Jadwal → ⋯ → Hapus semua jadwal minggu ini** mengosongkan semua hari di minggu yang sedang dibuka, setelah konfirmasi.
+- Ujian dan tugas tidak ikut terhapus, dan ada tombol **Batalkan** kalau berubah pikiran.
+
 ## 3.9.2 — 5 November 2026
 ### Perbaikan impor PDF: durasi pelajaran sesuai PDF
 - Pelajaran yang tidak sepanjang 1 sesi, seperti HRT 15 menit, sekarang tetap 15 menit. Sebelumnya dibulatkan jadi 1 sesi (35 menit), sehingga semua jam setelahnya mundur 20 menit.

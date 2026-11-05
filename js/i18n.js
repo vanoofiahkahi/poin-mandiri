@@ -216,7 +216,7 @@
     'Belum ada pelajaran': 'No lessons yet', 'Tambah pelajaran, atau salin dari hari lain.': 'Add a lesson, or copy from another day.',
     '{0} pelajaran · selesai {1}': (a, b) => `${a} lesson${s(a)} · ends ${b}`, 'Turunkan': 'Move down', 'Lainnya': 'More',
     'Salin dari hari lain…': 'Copy from another day…', 'Salin dari hari lain': 'Copy from another day', 'Salin minggu lalu ke hari kosong': "Copy last week into empty days",
-    'Kosongkan hari ini': 'Clear this day', 'Tidak ada hari kosong yang bisa diisi': 'No empty days to fill', '{0} dihapus': '{0} deleted', 'Pengaturan jadwal disimpan': 'Timetable settings saved',
+    'Kosongkan hari ini': 'Clear this day', 'Hapus semua jadwal minggu ini': "Clear this week's timetable", 'Hapus semua jadwal minggu ini?': "Clear this week's timetable?", 'Jadwal {0} hari ({1}) dihapus. Ujian dan tugas tidak ikut terhapus.': 'The timetable for {0} days ({1}) will be removed. Exams and tasks are kept.', 'Jadwal {0} hari dihapus': n => `Timetable cleared for ${n} day${n == 1 ? '' : 's'}`, 'Tidak ada hari kosong yang bisa diisi': 'No empty days to fill', '{0} dihapus': '{0} deleted', 'Pengaturan jadwal disimpan': 'Timetable settings saved',
 
     'Foto profil': 'Profile picture', 'Ubah foto profil': 'Change profile picture', 'Geser foto untuk mengatur posisi': 'Drag the photo to position it', 'Pilih foto': 'Choose photo',
     'Pakai inisial': 'Use initial', 'Atau pilih emoji': 'Or pick an emoji', 'Warna': 'Colour', 'Foto tidak bisa dibuka': "This photo can't be opened", 'Foto profil disimpan': 'Profile picture saved',
