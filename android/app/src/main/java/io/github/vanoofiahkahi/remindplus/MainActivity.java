@@ -21,7 +21,7 @@ import android.webkit.WebViewClient;
 public class MainActivity extends Activity {
     static final String HOST = "vanoofiahkahi.github.io";
     static final String BASE = "https://" + HOST + "/poin-mandiri/";
-    private static final int REQ_FILE = 42, REQ_NOTIF = 7, REQ_CAM = 9;
+    private static final int REQ_FILE = 42, REQ_NOTIF = 7, REQ_CAM = 9, REQ_LOC = 11;
     private PermissionRequest camReq;
 
     WebView web;
@@ -146,9 +146,26 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** Location for the weather on the big widget. Asks for permission first if needed. */
+    void askLocation() {
+        if (Weather.locPermitted(this)) Weather.locate(this, this::wxCb);
+        else requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION}, REQ_LOC);
+    }
+
+    /** Tell the web app the weather/location state changed. err: null, perm, off, none, net, bad */
+    void wxCb(String err) {
+        runOnUiThread(() -> {
+            if (web != null) web.evaluateJavascript("window.__wxCb && window.__wxCb(" + (err == null ? "null" : org.json.JSONObject.quote(err)) + ")", null);
+        });
+    }
+
     @Override
     public void onRequestPermissionsResult(int req, String[] perms, int[] res) {
         super.onRequestPermissionsResult(req, perms, res);
+        if (req == REQ_LOC) {
+            if (Weather.locPermitted(this)) Weather.locate(this, this::wxCb);
+            else wxCb("perm");
+        }
         if (req == REQ_NOTIF) permResult(Alarms.permission(this));
         if (req == REQ_CAM && camReq != null) {
             if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) camReq.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
@@ -183,5 +200,6 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         if (web != null) web.onResume();
+        try { Weather.onAppOpen(this); } catch (Exception ignored) {}
     }
 }

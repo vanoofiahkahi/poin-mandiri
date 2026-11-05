@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="widget_desc">Pelajaran sekarang dan berikutnya dari jadwal remind+</string>
+    <string name="widget_big_desc">Cuaca, pelajaran sekarang, dan sisa jadwal hari ini. Bisa dipasang di layar kunci.</string>
 </resources>

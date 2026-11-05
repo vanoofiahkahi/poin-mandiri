@@ -22,32 +22,53 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/** Home-screen widget: current lesson, plus the next one once the current lesson is past halfway. */
+/**
+ * Widgets:
+ *  - small "Jadwal berikutnya": current lesson, plus the next one once the current lesson is past halfway;
+ *  - big (BigWidgetProvider, home screen & lock screen): weather + location, current/next lesson, rest of today.
+ * Both are drawn here from the same data so they always agree; one tick alarm refreshes both.
+ */
 public class WidgetProvider extends AppWidgetProvider {
     static final String TICK = "io.github.vanoofiahkahi.remindplus.WIDGET_TICK";
 
     @Override
-    public void onUpdate(Context c, AppWidgetManager m, int[] ids) { render(c, m, ids); }
+    public void onUpdate(Context c, AppWidgetManager m, int[] ids) { updateAll(c); }
 
     @Override
     public void onReceive(Context c, Intent i) {
         super.onReceive(c, i);
-        if (TICK.equals(i.getAction())) updateAll(c);
+        if (TICK.equals(i.getAction())) {
+            updateAll(c);
+            if (count(c, BigWidgetProvider.class) > 0 && Weather.stale(c)) Weather.refreshIfStale(c, goAsync());
+        }
     }
 
     @Override
-    public void onDisabled(Context c) {
+    public void onDisabled(Context c) { cancelTickIfUnused(c); }
+
+    @Override
+    public void onAppWidgetOptionsChanged(Context c, AppWidgetManager m, int id, android.os.Bundle o) { updateAll(c); }
+
+    static int count(Context c, Class<?> k) {
+        int[] ids = AppWidgetManager.getInstance(c).getAppWidgetIds(new ComponentName(c, k));
+        return ids == null ? 0 : ids.length;
+    }
+
+    static void cancelTickIfUnused(Context c) {
+        if (count(c, WidgetProvider.class) + count(c, BigWidgetProvider.class) > 0) return;
         AlarmManager am = c.getSystemService(AlarmManager.class);
         if (am != null) am.cancel(tickPi(c));
     }
 
-    static void updateAll(Context c) {
+    static synchronized void updateAll(Context c) {
         AppWidgetManager m = AppWidgetManager.getInstance(c);
-        int[] ids = m.getAppWidgetIds(new ComponentName(c, WidgetProvider.class));
-        if (ids != null && ids.length > 0) render(c, m, ids);
+        int[] small = m.getAppWidgetIds(new ComponentName(c, WidgetProvider.class));
+        int[] big = m.getAppWidgetIds(new ComponentName(c, BigWidgetProvider.class));
+        boolean hs = small != null && small.length > 0, hb = big != null && big.length > 0;
+        if (hs || hb) render(c, m, hs ? small : new int[0], hb ? big : new int[0]);
     }
 
-    private static PendingIntent tickPi(Context c) {
+    static PendingIntent tickPi(Context c) {
         Intent i = new Intent(c, WidgetProvider.class).setAction(TICK);
         return PendingIntent.getBroadcast(c, 9001, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
@@ -60,7 +81,7 @@ public class WidgetProvider extends AppWidgetProvider {
         try { return Color.parseColor(s); } catch (Exception e) { return def; }
     }
 
-    static void render(Context c, AppWidgetManager m, int[] ids) {
+    static void render(Context c, AppWidgetManager m, int[] ids, int[] bigIds) {
         Calendar now = Calendar.getInstance();
         String today = ymd(now);
         Calendar tm = (Calendar) now.clone();
@@ -69,12 +90,13 @@ public class WidgetProvider extends AppWidgetProvider {
 
         Map<String, String> L = new HashMap<>();
         List<WidgetLogic.Day> days = new ArrayList<>();
-        String sep = ":", title = "remind+";
+        String sep = ":", title = "remind+", lang = "id";
         String raw = Alarms.prefs(c).getString("widget", null);
         try {
             if (raw != null) {
                 JSONObject o = new JSONObject(raw);
                 sep = o.optString("sep", ":");
+                lang = o.optString("lang", "id");
                 JSONObject l = o.optJSONObject("L");
                 if (l != null) for (Iterator<String> it = l.keys(); it.hasNext(); ) { String k = it.next(); L.put(k, l.optString(k)); }
                 title = L.containsKey("title") ? L.get("title") : title;
@@ -100,29 +122,36 @@ public class WidgetProvider extends AppWidgetProvider {
         } catch (Exception ignored) {
         }
 
+        WidgetLogic.Result r = raw == null ? null : WidgetLogic.compute(days, today, ymd(tm), nm, sep, L);
+        if (r != null) scheduleTick(c, now, r.nextUpdateMin);
+        if (bigIds.length > 0) {
+            for (int id : bigIds) m.updateAppWidget(id, Big.build(c, r, L, sep, lang, now, Big.rowsFor(m, id)));
+        }
+        if (ids.length == 0) return;
+
         RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.widget);
         v.setTextViewText(R.id.w_title, title);
-        if (raw == null) {
+        if (r == null) {
             v.setTextViewText(R.id.w_sub, "");
             v.setViewVisibility(R.id.b1, View.GONE);
             v.setViewVisibility(R.id.b2, View.GONE);
             v.setViewVisibility(R.id.w_empty, View.VISIBLE);
             v.setTextViewText(R.id.w_empty, "Buka remind+ sekali agar jadwal tampil di sini.");
         } else {
-            WidgetLogic.Result r = WidgetLogic.compute(days, today, ymd(tm), nm, sep, L);
             v.setTextViewText(R.id.w_sub, r.sub);
             fill(v, r.main, R.id.b1, R.id.b1_bar, R.id.b1_lbl, R.id.b1_time, R.id.b1_title, R.id.b1_meta, R.id.b1_prog, R.id.b1_extra);
             fill(v, r.next, R.id.b2, R.id.b2_bar, R.id.b2_lbl, R.id.b2_time, R.id.b2_title, R.id.b2_meta, 0, 0);
             boolean empty = r.main == null;
             v.setViewVisibility(R.id.w_empty, empty ? View.VISIBLE : View.GONE);
             if (empty) v.setTextViewText(R.id.w_empty, r.empty);
-            scheduleTick(c, now, r.nextUpdateMin);
         }
         v.setOnClickPendingIntent(R.id.root, Alarms.openApp(c, "jadwal", 9002));
         for (int id : ids) m.updateAppWidget(id, v);
     }
 
-    private static void fill(RemoteViews v, WidgetLogic.Block b, int box, int bar, int lbl, int time, int title, int meta, int prog, int extra) {
+    static int color(String s) { return color(s, 0xFF7B5CFF); }
+
+    static void fill(RemoteViews v, WidgetLogic.Block b, int box, int bar, int lbl, int time, int title, int meta, int prog, int extra) {
         if (b == null) { v.setViewVisibility(box, View.GONE); return; }
         v.setViewVisibility(box, View.VISIBLE);
         v.setInt(bar, "setBackgroundColor", color(b.color, 0xFF7B5CFF));

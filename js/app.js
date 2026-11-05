@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.9.3';
+const VERSION = '3.10.0';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -1057,6 +1057,7 @@ function render() {
   if (!USER || !$('#view')) return;
   closePop(true);
   const pages = { home, tugas, ujian, jadwal, kas, ingat, riwayat, atur };
+  if (typeof V === 'string' && V.startsWith('atur:')) { ASEC = V.slice(5) || null; V = 'atur'; $$('[data-go]').forEach(b => b.classList.toggle('on', b.dataset.go === 'atur' && !b.classList.contains('me') && !b.classList.contains('avatar'))); }
   if (V !== 'home' && $('#hTabsSlot')) $('#hTabsSlot').innerHTML = '';
   if (!pages[V]) { V = 'home'; $$('[data-go]').forEach(b => b.classList.toggle('on', b.dataset.go === 'home' && !b.classList.contains('me') && !b.classList.contains('avatar'))); }
   if (V === 'home') { $('#hello').textContent = greeting() + ' 👋'; $('#title').textContent = displayName(); }
@@ -2382,6 +2383,7 @@ const ASECS = [
   ['libur', 'Mode libur', 'palm', 't-mint'],
   ['poin', 'Poin & level', 'trophy', 't-mint'],
   ['ach', 'Pencapaian', 'spark', 't-warn'],
+  ['widget', 'Widget & cuaca', 'cloud', 't-brand'],
   ['data', 'Data & cadangan', 'server', 't-brand'],
   ['tentang', 'Tentang', 'info', 't-mint']
 ];
@@ -2402,10 +2404,12 @@ function atur() {
     poin: T`${S.diff.length} tingkat kesulitan · ${S.levels.length} level`,
     data: tx(local ? 'Hanya di perangkat ini' : 'Tersimpan di akun'),
     tentang: T`Versi ${VERSION}`,
+    widget: NATIVE ? wxSummary() : '',
     ach: T`${ACH.filter(a => S.ach && S.ach[a[0]]).length} dari ${ACH.length} terbuka`
   };
   const secs = {
     libur: ASEC === 'libur' ? vacSection() : '',
+    widget: ASEC === 'widget' ? wxSection() : '',
     akun: `
     <section class="card">
       <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
@@ -2525,7 +2529,7 @@ function atur() {
       <span class="set-me-t"><b>${esc(displayName())}</b><span class="muted small">${local ? 'Mode tanpa akun' : esc(USER.email)}</span><span class="sync" style="padding:4px 0 0"></span></span>
       ${I('chevr', 'ic set-chev')}
     </button>
-    <section class="card set-list">${ASECS.filter(x => x[0] !== 'akun').map(([k, n, ic, tone]) => `
+    <section class="card set-list">${ASECS.filter(x => x[0] !== 'akun' && (x[0] !== 'widget' || NATIVE)).map(([k, n, ic, tone]) => `
       <button class="set-row" data-sec="${k}"><span class="set-ico ${tone}">${I(ic)}</span><span class="set-t"><b>${n}</b><span>${esc(sum[k])}</span></span>${I('chevr', 'ic set-chev')}</button>`).join('')}
     </section>`;
     $('#aMe').onclick = () => aturGo('akun');
@@ -2583,6 +2587,7 @@ function atur() {
   c('clog', changelogModal);
   c('gdOpen', guideModal);
   if (ASEC === 'libur') vacBind(view());
+  if (ASEC === 'widget') wxBind(view());
   if ($('#eggLogo')) eggBind($('#eggLogo'));
   c('avEdit', avatarModal);
   c('delAcc', deleteAccount);
@@ -3076,6 +3081,97 @@ async function vacEndNow() {
   const y = addDays(ymd(new Date()), -1);
   if (v.from > y) S.vac = S.vac.filter(x => x !== v); else v.to = y;
   persist(); syncReminders(); toast(tx('Mode libur diakhiri. Selamat sekolah lagi!'));
+}
+/* ---------- Widget besar & cuaca (aplikasi Android) ---------- */
+const natV = () => { try { return NATIVE && NATIVE.version ? NATIVE.version() : 0; } catch (e) { return 0; } };
+const wxState = () => { try { return JSON.parse(NATIVE.wxState()) || {}; } catch (e) { return {}; } };
+let WXM = null, WXR = [], WXBUSY = false;
+function wxLine(st) {
+  const l = st.loc || {}, w = st.wx || {};
+  if ((l.mode || 'auto') === 'off') return tx('Cuaca dimatikan');
+  if (l.lat == null) return tx('Lokasi belum diatur');
+  const fresh = w.t != null && Date.now() - (w.at || 0) < 3 * 3600e3 && Math.abs((w.lat ?? 999) - l.lat) < .02;
+  return '📍 ' + (l.name || tx('Lokasi saat ini')) + (fresh ? ' · ' + WX_IC(w.code, w.day !== 0) + ' ' + Math.round(w.t) + '° ' + WX_L()[WX_KEY(w.code)] : '');
+}
+function wxSummary() { return natV() >= 3 ? wxLine(wxState()) : tx('Perlu aplikasi Android terbaru'); }
+function wxPreview(st) {
+  const l = st.loc || {}, w = st.wx || {}, off = (l.mode || 'auto') === 'off';
+  const fresh = !off && w.t != null && l.lat != null && Date.now() - (w.at || 0) < 3 * 3600e3;
+  const today = ymd(new Date()), now = nowMin(), sl = ttHas(today) && !vacOf(today) ? ttSlots(S.tt[today]).filter(x => x.b > now) : [];
+  const row = x => x.it.k === 'b'
+    ? `<div class="wxp-row brk"><b>${fromMin(x.a)}</b><i></i><span>${esc(tx(x.it.l) || tx('Istirahat'))}</span></div>`
+    : `<div class="wxp-row"><b>${fromMin(x.a)}</b><i style="background:${hslHex(subjHue(x.it.s))}"></i><span>${esc(subjName(x.it.s))}<small>${esc((subjOf(x.it.s) || {}).t || '')}</small></span><em>${fromMin(x.b)}</em></div>`;
+  return `<div class="wxp" aria-hidden="true">
+    <div class="wxp-h"><div><b>${new Date().toLocaleDateString(LOC, { weekday: 'long', day: 'numeric', month: 'long' })}</b>
+      ${off ? '' : `<span>📍 ${esc(l.lat == null ? tx('Ketuk untuk atur lokasi cuaca') : l.name || tx('Lokasi saat ini'))}</span>`}</div>
+      ${fresh ? `<div class="wxp-w"><b>${WX_IC(w.code, w.day !== 0)} ${Math.round(w.t)}°</b><span>${WX_L()[WX_KEY(w.code)]}${w.hi != null ? ` · ${Math.round(w.lo)}°/${Math.round(w.hi)}°` : ''}</span></div>` : ''}</div>
+    ${sl.length ? `<div class="wxp-t">${tx('Sisa jadwal hari ini')}</div>${sl.slice(0, 5).map(row).join('')}${sl.length > 5 ? `<div class="wxp-more">${T`+${sl.length - 5} lagi`}</div>` : ''}`
+      : `<div class="wxp-t">${tx('Tidak ada pelajaran lagi hari ini')}</div>`}
+  </div>`;
+}
+function wxSection() {
+  if (natV() < 3) return `<section class="card"><h2>${tx('Widget besar')}</h2>
+    <p class="sub">${tx('Widget besar dengan cuaca butuh aplikasi Android versi terbaru. Unduh lalu pasang ulang APK-nya, datamu tetap aman.')}</p>
+    <a class="btn grad sm" href="https://github.com/vanoofiahkahi/poin-mandiri/releases/latest" target="_blank" rel="noopener">${I('upload')}${tx('Unduh aplikasi Android')}</a></section>`;
+  const st = wxState(), l = st.loc || {}, mode = WXM || (l.mode === 'city' ? 'city' : l.mode === 'off' ? 'off' : 'auto');
+  return `
+    <section class="card">
+      <h2>${tx('Widget besar')}</h2>
+      <p class="sub">${tx('Cuaca, pelajaran sekarang, dan sisa jadwal hari ini. Bisa dipasang di layar utama, dan di layar kunci kalau tabletmu mendukung.')}</p>
+      ${wxPreview(st)}
+    </section>
+    <section class="card">
+      <h2>${tx('Lokasi cuaca')}</h2>
+      <div class="seg full" id="wxM" style="margin-top:10px">${[['auto', 'Otomatis'], ['city', 'Pilih kota'], ['off', 'Mati']].map(([k, n]) => `<button type="button" data-m="${k}" class="${mode === k ? 'on' : ''}">${tx(n)}</button>`).join('')}</div>
+      <p class="muted small" id="wxNow" style="margin:12px 0 0">${esc(wxLine(st))}</p>
+      ${mode === 'auto' ? `<p class="faint small" style="margin:6px 0 12px">${tx('Memakai lokasi tablet, diperbarui saat aplikasi dibuka. Lokasi tidak dikirim ke server remind+.')}</p>
+        <button class="btn soft sm" id="wxLoc" ${WXBUSY ? 'disabled' : ''}>${I('refresh')}${tx(WXBUSY ? 'Mencari lokasi…' : 'Perbarui lokasi')}</button>`
+      : mode === 'city' ? `<div class="form-row" style="margin-top:12px"><input class="input" id="wxQ" style="flex:1 1 160px;width:auto" placeholder="${esc(tx('Cari kota, mis. Bandung'))}" autocomplete="off" enterkeyhint="search"><button type="button" class="btn grad sm" id="wxS">${tx('Cari')}</button></div>
+        <div class="wx-res" id="wxR">${WXR.map((r, i) => `<button type="button" class="opt" data-wr="${i}"><span><b>${esc(r.name)}</b><small>${esc([r.admin1, r.country].filter(Boolean).join(', '))}</small></span>${I('chevr')}</button>`).join('')}</div>`
+      : `<p class="faint small" style="margin:6px 0 0">${tx('Widget hanya menampilkan tanggal dan jadwal.')}</p>`}
+      <p class="faint small" style="margin:14px 0 0">${tx('Data cuaca dari Open-Meteo, diperbarui tiap 30 menit.')}</p>
+    </section>
+    <section class="card">
+      <h2>${tx('Cara memasang')}</h2>
+      <div class="vac-rules">
+        <div><span class="ico t-brand">${I('home')}</span>${tx('Layar utama: tekan lama layar → Widget → remind+ → "Jadwal hari ini + cuaca".')}</div>
+        <div><span class="ico t-mint">${I('lock')}</span>${tx('Layar kunci: tekan lama layar kunci → Widget. Kalau remind+ tidak ada di daftar, versi One UI tabletmu belum mengizinkan widget aplikasi lain di layar kunci.')}</div>
+        <div><span class="ico t-warn">${I('clock')}</span>${tx('Widget kecil "Jadwal berikutnya" tetap ada dan bisa dipakai bersamaan.')}</div>
+      </div>
+    </section>`;
+}
+const WX_ERR = { perm: 'Izin lokasi ditolak. Izinkan lokasi untuk remind+ di Pengaturan tablet, atau pilih kota.', off: 'Lokasi tablet sedang mati. Nyalakan lokasi, lalu coba lagi.', none: 'Lokasi belum ditemukan. Coba lagi sebentar lagi.', net: 'Lokasi tersimpan, tapi cuaca belum bisa diambil. Cek internet.', bad: 'Gagal menyimpan lokasi' };
+window.__wxCb = err => {
+  WXBUSY = false;
+  if (err) toast(tx(WX_ERR[err] || 'Gagal memperbarui cuaca'));
+  else toast(tx('Widget diperbarui'));
+  if (V === 'atur' && ASEC === 'widget') { if (!err) WXM = null; render(); }
+};
+function wxBind(root) {
+  $$('#wxM button', root).forEach(b => b.onclick = () => {
+    const m = b.dataset.m; WXM = m; WXR = [];
+    if (m === 'off') { NATIVE.setWxMode('off'); WXM = null; }
+    else if (m === 'auto') { WXBUSY = true; NATIVE.setWxMode('auto'); }
+    render();
+  });
+  const loc = $('#wxLoc', root); if (loc) loc.onclick = () => { WXBUSY = true; NATIVE.locate(); render(); };
+  const q = $('#wxQ', root), go = $('#wxS', root);
+  const search = async () => {
+    const v = q.value.trim(); if (v.length < 2) { q.focus(); return; }
+    go.disabled = true;
+    try {
+      const r = await fetch('https://geocoding-api.open-meteo.com/v1/search?count=6&format=json&language=' + (LANG === 'en' ? 'en' : 'id') + '&name=' + encodeURIComponent(v));
+      const j = await r.json(); WXR = (j.results || []).map(x => ({ name: x.name, admin1: x.admin1 || '', country: x.country || '', lat: x.latitude, lon: x.longitude }));
+      if (!WXR.length) toast(tx('Kota tidak ditemukan'));
+    } catch (e) { WXR = []; toast(tx('Tidak bisa mencari. Cek internet.')); }
+    render(); const nq = $('#wxQ'); if (nq) nq.value = v;
+  };
+  if (go) go.onclick = search;
+  if (q) q.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); search(); } };
+  $$('[data-wr]', root).forEach(b => b.onclick = () => {
+    const r = WXR[+b.dataset.wr]; if (!r) return;
+    NATIVE.setPlace(JSON.stringify({ name: r.name, lat: r.lat, lon: r.lon })); WXR = []; toast(T`Lokasi: ${r.name}`);
+  });
 }
 function vacSection() {
   const today = ymd(new Date()), now = vacNow(), list = vacSorted().filter(v => v.to >= today), past = vacSorted().filter(v => v.to < today).reverse().slice(0, 3);
@@ -3635,6 +3731,12 @@ async function syncReminders() {
 }
 
 /* Kirim jadwal (untuk widget) & pengingat ke aplikasi Android */
+const WX_L = () => ({ w_clear: tx('Cerah'), w_mostly: tx('Cerah berawan'), w_partly: tx('Berawan sebagian'), w_cloudy: tx('Berawan'), w_fog: tx('Berkabut'),
+  w_drizzle: tx('Gerimis'), w_rain: tx('Hujan'), w_heavy: tx('Hujan lebat'), w_snow: tx('Salju'), w_storm: tx('Badai petir') });
+const WX_KEY = c => c === 0 ? 'w_clear' : c === 1 ? 'w_mostly' : c === 2 ? 'w_partly' : c === 3 ? 'w_cloudy' : c === 45 || c === 48 ? 'w_fog' : c >= 51 && c <= 57 ? 'w_drizzle'
+  : c === 65 || c === 67 || c === 82 ? 'w_heavy' : (c >= 61 && c <= 67) || (c >= 80 && c <= 82) ? 'w_rain' : (c >= 71 && c <= 77) || c === 85 || c === 86 ? 'w_snow' : c >= 95 ? 'w_storm' : 'w_cloudy';
+const WX_IC = (c, day) => c === 0 ? (day ? '☀️' : '🌙') : c <= 2 ? (day ? '⛅' : '☁️') : c === 3 ? '☁️' : c === 45 || c === 48 ? '🌫️' : c >= 95 ? '⛈️' : (c >= 71 && c <= 77) || c === 85 || c === 86 ? '🌨️' : c >= 51 ? (day ? '🌦️' : '🌧️') : '☁️';
+
 function hslHex(h, s = 72, l = 58) {
   s /= 100; l /= 100;
   const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l), f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
@@ -3649,7 +3751,9 @@ function widgetData() {
       : { k: 'l', a: sl.a, b: sl.b, n: subjName(sl.it.s), t: (subjOf(sl.it.s) || {}).t || '', note: sl.it.note || '', c: hslHex(subjHue(sl.it.s)), x: ttExamFor(d, sl) ? 1 : 0 }) });
   }
   const P = '{0}', Q = '{1}';
-  return { v: 1, sep: TS, days, L: {
+  return { v: 1, sep: TS, lang: LANG, days, L: {
+    restToday: tx('Sisa jadwal hari ini'), lastOne: tx('Tidak ada pelajaran lagi setelah ini'), more: T`+${P} lagi`,
+    setLoc: tx('Ketuk untuk atur lokasi cuaca'), here: tx('Lokasi saat ini'), ...WX_L(),
     title: 'remind+', now: tx('Sekarang'), next: tx('Berikutnya'), first: tx('Pelajaran pertama'), brk: tx('Istirahat'),
     until: T`sampai ${P}`, leftMin: T`sisa ${P} menit`, startsIn: T`Mulai dalam ${P}`, min: T`${P} menit`, hm: T`${P} jam ${Q} menit`,
     leftOne: T`${1} pelajaran lagi hari ini`, leftMany: T`${P} pelajaran lagi hari ini`, lessonsOne: T`${1} pelajaran`, lessonsMany: T`${P} pelajaran`,

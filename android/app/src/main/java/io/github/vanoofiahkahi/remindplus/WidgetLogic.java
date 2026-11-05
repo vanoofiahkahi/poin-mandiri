@@ -41,6 +41,19 @@ public final class WidgetLogic {
         public Block main, next;
         public String empty = "";
         public int nextUpdateMin = 1440; // minute of day when the widget should refresh
+        // big widget: the rest of the day shown in the list under the main block
+        public List<Slot> rest = new ArrayList<>();
+        public String restTitle = "";
+    }
+
+    /** Slots of the list after index i (the slot shown in the main block). */
+    static List<Slot> after(List<Slot> slots, Slot s) {
+        List<Slot> out = new ArrayList<>();
+        int i = slots.indexOf(s);
+        for (int k = i + 1; k < slots.size(); k++) out.add(slots.get(k));
+        // a trailing break after the last lesson is noise
+        while (!out.isEmpty() && out.get(out.size() - 1).brk) out.remove(out.size() - 1);
+        return out;
     }
 
     static String fill(String t, Object... v) {
@@ -97,8 +110,10 @@ public final class WidgetLogic {
             for (Slot s : les) if (s.b > nm) left++;
             r.sub = left == 1 ? L(L, "leftOne") : fill(L(L, "leftMany"), left);
 
+            r.restTitle = L(L, "restToday");
             if (cur == null && nm < slots.get(0).a) {
                 r.main = lesson(les.get(0), L(L, "first"), sep, L);
+                r.rest = after(slots, les.get(0));
                 r.main.extra = fill(L(L, "startsIn"), dur(les.get(0).a - nm, L));
                 nu = Math.min(nu, nm + 5);
             } else if (cur != null && cur.brk) {
@@ -110,6 +125,7 @@ public final class WidgetLogic {
                 b.color = "#8A8FA3";
                 b.live = true;
                 r.main = b;
+                r.rest = after(slots, cur);
                 if (nextL != null) r.next = lesson(nextL, L(L, "next"), sep, L);
             } else if (cur != null) {
                 r.main = lesson(cur, L(L, "now"), sep, L);
@@ -117,10 +133,12 @@ public final class WidgetLogic {
                 int p = (int) Math.round(100.0 * (nm - cur.a) / Math.max(1, cur.b - cur.a));
                 r.main.progress = Math.max(0, Math.min(100, p));
                 r.main.extra = fill(L(L, "leftMin"), cur.b - nm);
+                r.rest = after(slots, cur);
                 if ((nm - cur.a) * 2 >= (cur.b - cur.a) && nextL != null) r.next = lesson(nextL, L(L, "next"), sep, L);
                 nu = Math.min(nu, nm + 5);
             } else if (nextL != null) {
                 r.main = lesson(nextL, L(L, "next"), sep, L);
+                r.rest = after(slots, nextL);
             }
             r.nextUpdateMin = nu;
             return r;
@@ -135,6 +153,8 @@ public final class WidgetLogic {
             if (first == null) continue;
             r.main = lesson(first, d.date.equals(tomorrow) ? L(L, "tomorrow") : d.label, sep, L);
             r.sub = n == 1 ? L(L, "lessonsOne") : fill(L(L, "lessonsMany"), n);
+            r.rest = after(d.slots, first);
+            r.restTitle = d.date.equals(tomorrow) ? L(L, "tomorrow") : d.label;
             r.nextUpdateMin = nu;
             return r;
         }

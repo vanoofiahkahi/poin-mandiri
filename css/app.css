@@ -1147,3 +1147,28 @@ body { background-image: none; }
 .pdf-note .ic { width: 16px; height: 16px; flex: none; margin-top: 2px; }
 .pdf-kls { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .pdf-kls .chip { cursor: pointer; border: 0; font: inherit; font-size: 13px; font-weight: 700; }
+
+/* ---------- Widget besar: pratinjau & pencarian kota ---------- */
+.wxp { margin-top: 14px; border-radius: 26px; padding: 16px; color: #fff; max-width: 420px;
+  background: linear-gradient(315deg, rgba(14,26,36,.94), rgba(20,22,41,.94) 50%, rgba(27,22,64,.94)); border: 1px solid rgba(255,255,255,.18); }
+.wxp-h { display: flex; align-items: center; gap: 10px; }
+.wxp-h > div:first-child { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.wxp-h b { font-size: 16px; }
+.wxp-h span { font-size: 12.5px; color: rgba(255,255,255,.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wxp-w { display: flex; flex-direction: column; align-items: flex-end; }
+.wxp-w b { font-size: 24px; font-weight: 800; }
+.wxp-t { margin: 14px 0 4px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: rgba(255,255,255,.7); }
+.wxp-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 14px; }
+.wxp-row > b { width: 44px; font-size: 12.5px; color: rgba(255,255,255,.8); font-variant-numeric: tabular-nums; }
+.wxp-row > i { width: 3px; height: 26px; border-radius: 3px; background: rgba(255,255,255,.25); flex: none; }
+.wxp-row > span { flex: 1; min-width: 0; display: flex; flex-direction: column; font-weight: 700; padding-left: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wxp-row small { font-weight: 500; font-size: 11.5px; color: rgba(255,255,255,.55); overflow: hidden; text-overflow: ellipsis; }
+.wxp-row > em { font-style: normal; font-size: 11.5px; color: rgba(255,255,255,.5); }
+.wxp-row.brk > span { font-weight: 500; font-size: 12.5px; color: rgba(255,255,255,.6); }
+.wxp-row.brk > b { color: rgba(255,255,255,.5); }
+.wxp-more { padding-left: 52px; font-size: 11.5px; color: rgba(255,255,255,.5); }
+.wx-res { display: flex; flex-direction: column; margin-top: 8px; }
+.wx-res .opt { display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; padding: 4px 6px; border-radius: 12px; background: none; border: 0; color: var(--text); cursor: pointer; }
+.wx-res .opt:hover { background: var(--surface-2); }
+.wx-res .opt span { display: flex; flex-direction: column; min-width: 0; padding: 6px 0; }
+.wx-res .opt small { color: var(--text-3); font-size: 12.5px; }

@@ -2,6 +2,18 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.10.0 — 5 November 2026
+### Widget besar Android: cuaca, lokasi, dan sisa jadwal hari ini
+- Widget baru **"Jadwal hari ini + cuaca"** (4×4, bisa diubah ukurannya) untuk layar utama dan layar kunci:
+  - tanggal, lokasi, dan cuaca sekarang (suhu, kondisi, suhu terendah/tertinggi, peluang hujan);
+  - pelajaran sekarang atau berikutnya, dengan progres dan sisa menit seperti widget kecil;
+  - sisa jadwal hari ini, termasuk istirahat. Jumlah baris menyesuaikan tinggi widget; setelah pulang sekolah, widget menampilkan jadwal besok.
+- Lokasi cuaca bisa **Otomatis** (lokasi tablet, diperbarui saat aplikasi dibuka), **Pilih kota**, atau **Mati**. Pengaturannya ada di **Atur → Widget & cuaca**, lengkap dengan pratinjau widget. Ketuk cuaca di widget untuk langsung membukanya.
+- Data cuaca dari Open-Meteo, gratis tanpa kunci API, diperbarui tiap 30 menit. Lokasi hanya disimpan di tablet.
+- Widget kecil "Jadwal berikutnya" tetap ada dan tidak berubah. Kedua widget memakai data dan waktu pembaruan yang sama.
+- Widget layar kunci hanya bisa dipasang kalau One UI tabletmu mengizinkan widget aplikasi lain di layar kunci.
+- Butuh APK Android terbaru dari halaman Releases.
+
 ## 3.9.3 — 5 November 2026
 ### Hapus semua jadwal minggu ini
 - Menu **Jadwal → ⋯ → Hapus semua jadwal minggu ini** mengosongkan semua hari di minggu yang sedang dibuka, setelah konfirmasi.
