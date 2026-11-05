@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.9.1';
+const VERSION = '3.9.2';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -1768,7 +1768,7 @@ const subjHue = id => { const s = subjOf(id); return s ? s.h : 220; };
 function ttSlots(day) {
   let m = toMin(day.start);
   return (day.items || []).map((it, i) => {
-    const len = it.k === 'b' ? Math.max(0, Number(it.min) || 0) : Math.max(1, Number(it.n) || 1) * S.ttMin;
+    const len = it.k === 'b' ? Math.max(0, Number(it.min) || 0) : Number(it.min) > 0 ? Number(it.min) : Math.max(1, Number(it.n) || 1) * S.ttMin;
     const r = { it, i, a: m, b: m + len }; m += len; return r;
   });
 }
@@ -1991,7 +1991,7 @@ function ttRowHtml(s, ex) {
   const { it, i, a, b } = s, open = TT_OPEN === i, live = ttLive(a, b);
   const ctl = open ? `<div class="tt-ctl">
       ${it.k === 'b' ? `<button class="btn ghost sm" data-tbe="${i}">${I('pencil')}Ubah</button>`
-        : `<div class="tt-step"><button class="icon-btn sm" data-tm="${i}" aria-label="Kurangi sesi">−</button><b class="num">${T`${it.n} sesi`}</b><button class="icon-btn sm" data-tp="${i}" aria-label="Tambah sesi">+</button></div>`
+        : `<div class="tt-step"><button class="icon-btn sm" data-tm="${i}" aria-label="Kurangi sesi">−</button><b class="num">${it.min > 0 ? T`${it.min} menit` : T`${it.n} sesi`}</b><button class="icon-btn sm" data-tp="${i}" aria-label="Tambah sesi">+</button></div>`
           + (ex ? `<button class="btn ghost sm" data-tgo="ujian">${I('cap')}${tx('Lihat ujian')}</button>` : `<button class="btn ghost sm" data-txm="${i}" data-a="${a}">${I('cap')}${tx('Jadikan ujian')}</button>`)
           + `<button class="btn ghost sm" data-tnt="${i}">${I('pencil')}${tx('Catatan')}</button>`}
       <span style="flex:1"></span>
@@ -2005,7 +2005,7 @@ function ttRowHtml(s, ex) {
   return `<div class="tt-row ${open ? 'open' : ''} ${live ? 'now' : ''} ${ex ? 'exam' : ''}" data-i="${i}" style="--h:${subjHue(it.s)}">
       <div class="tt-main"><div class="tt-time"><b>${fromMin(a)}</b><span>${fromMin(b)}</span></div>
       <div class="tt-txt"><div class="ttl">${esc(subjName(it.s))}</div><div class="tt-sub">${ex ? esc(exLabel(ex.mapel) + ' · ' + fromMin(toMin(ex.jam))) : sub && sub.t ? esc(sub.t) : ''}</div>${it.note ? `<div class="tt-note">${I('pencil')}${esc(it.note)}</div>` : ''}</div>
-      ${ex ? `<span class="tt-exam">${I('cap')}${T`Ujian${''}`}</span>` : live ? `<span class="tt-now">${tx('Sekarang')}</span>` : `<span class="tt-n">${it.n}×</span>`}</div>${ctl}</div>`;
+      ${ex ? `<span class="tt-exam">${I('cap')}${T`Ujian${''}`}</span>` : live ? `<span class="tt-now">${tx('Sekarang')}</span>` : `<span class="tt-n">${it.min > 0 ? it.min + '′' : it.n + '×'}</span>`}</div>${ctl}</div>`;
 }
 /* Ujian yang tidak menempel ke pelajaran tampil sebagai baris sendiri */
 function ttExamRow(e) {
@@ -2059,8 +2059,8 @@ function ttBindDay(box) {
     const nr = $(`.tt-row[data-i="${TT_OPEN}"] .tt-ctl`, box);
     if (nr && motionOn()) nr.animate([{ opacity: 0, transform: 'translateY(-8px) scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: SP.d, easing: SP.e });
   });
-  $$('[data-tp]', box).forEach(b => b.onclick = () => { const x = items()[+b.dataset.tp]; x.n = Math.min(8, x.n + 1); ttChanged(); });
-  $$('[data-tm]', box).forEach(b => b.onclick = () => { const x = items()[+b.dataset.tm]; if (x.n > 1) { x.n--; ttChanged(); } });
+  $$('[data-tp]', box).forEach(b => b.onclick = () => { const x = items()[+b.dataset.tp]; if (x.min > 0) x.min = Math.min(240, x.min + 5); else x.n = Math.min(8, x.n + 1); ttChanged(); });
+  $$('[data-tm]', box).forEach(b => b.onclick = () => { const x = items()[+b.dataset.tm]; if (x.min > 0) { if (x.min > 5) { x.min = Math.max(5, x.min - 5); ttChanged(); } } else if (x.n > 1) { x.n--; ttChanged(); } });
   const swap = (i, j) => { const a = items(); if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; ttChanged(j); };
   $$('[data-tu]', box).forEach(b => b.onclick = () => swap(+b.dataset.tu, +b.dataset.tu - 1));
   $$('[data-td]', box).forEach(b => b.onclick = () => swap(+b.dataset.td, +b.dataset.td + 1));
@@ -3169,7 +3169,7 @@ async function zip(data, inflate) {
 async function ttPack(days, withEx) {
   const sj = [], idx = {};
   const si = id => { if (!(id in idx)) { const s = subjOf(id) || { n: tx('Mapel dihapus'), t: '', h: 220 }; idx[id] = sj.length; sj.push([s.n, s.t || '', s.h]); } return idx[id]; };
-  const d = days.filter(ttHas).map(k => [k, S.tt[k].start, S.tt[k].items.map(x => x.k === 'b' ? [-1, Number(x.min) || 0, x.l || ''] : [si(x.s), Number(x.n) || 1])]);
+  const d = days.filter(ttHas).map(k => [k, S.tt[k].start, S.tt[k].items.map(x => x.k === 'b' ? [-1, Number(x.min) || 0, x.l || ''] : x.min > 0 ? [si(x.s), Number(x.n) || 1, Number(x.min)] : [si(x.s), Number(x.n) || 1])]);
   const e = withEx ? S.exams.filter(x => !x.done && days.includes(x.tgl)).map(x => [x.mapel, x.tgl, x.jam]) : [];
   const by = displayName() === tx('Kamu') ? '' : displayName();
   const json = JSON.stringify({ v: 1, by, m: S.ttMin, s: sj, d, e });
@@ -3324,9 +3324,14 @@ function pdfToData(res, kelas, wk, weeks) {
       const ex = matchSubj(name);
       if (text && (ex || (!BRK.test(text) && !ACT.test(text)))) {
         const id = si(ex ? ex.n : name.slice(0, 80), teacher.slice(0, 120), ex);
-        const n = Math.max(1, Math.round(dur / S.ttMin));
+        // Durasi asli dari PDF: kalau bukan kelipatan 1 sesi (mis. HRT 15 menit), simpan menitnya.
+        const n = Math.max(1, Math.round(dur / S.ttMin)), odd = dur !== n * S.ttMin;
         const last = items[items.length - 1];
-        if (last && last[0] === id) last[1] += n; else items.push([id, n]);
+        if (last && last[0] === id) {
+          const lm = last[2] || last[1] * S.ttMin;
+          last[1] += n;
+          if (odd || last[2]) last[2] = lm + dur;
+        } else items.push(odd ? [id, n, dur] : [id, n]);
       } else items.push([-1, dur, label(text)]);
       cur = c.z;
     });
@@ -3440,7 +3445,7 @@ async function importData(o, note) {
   days.forEach(([d, start, items]) => {
     if (ttHas(d) && r.mode !== 'all') return;
     S.tt[d] = { start: /^\d\d:\d\d$/.test(start) ? start : (S.ttStart || '07:00'), c: Date.now(),
-      items: items.filter(Array.isArray).map(x => x[0] < 0 ? { k: 'b', min: Math.max(0, Math.min(240, Number(x[1]) || 0)), l: String(x[2] || '').slice(0, 40) } : { s: sid(x[0]), n: Math.max(1, Math.min(12, Number(x[1]) || 1)) }) };
+      items: items.filter(Array.isArray).map(x => x[0] < 0 ? { k: 'b', min: Math.max(0, Math.min(240, Number(x[1]) || 0)), l: String(x[2] || '').slice(0, 40) } : Object.assign({ s: sid(x[0]), n: Math.max(1, Math.min(12, Number(x[1]) || 1)) }, Number(x[2]) > 0 ? { min: Math.max(5, Math.min(240, Math.round(Number(x[2])))) } : {})) };
     nd++;
   });
   let ne = 0;

@@ -2,6 +2,13 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.9.2 — 5 November 2026
+### Perbaikan impor PDF: durasi pelajaran sesuai PDF
+- Pelajaran yang tidak sepanjang 1 sesi, seperti HRT 15 menit, sekarang tetap 15 menit. Sebelumnya dibulatkan jadi 1 sesi (35 menit), sehingga semua jam setelahnya mundur 20 menit.
+- Pelajaran seperti ini ditandai dengan menit (mis. *15′*), dan tombol −/+ mengubahnya per 5 menit.
+- Durasinya ikut terbawa saat jadwal dibagikan lewat QR atau link.
+- Kalau jadwalmu sudah diimpor sebelumnya, impor ulang PDF-nya lalu pilih **Timpa semua**.
+
 ## 3.9.1 — 1 November 2026
 ### Impor jadwal dari PDF, dibaca langsung di perangkat
 - Menu **Jadwal → ⋯ → Impor dari PDF**: pilih PDF jadwal sekolah (format *Regular Program Schedule*), tulis kelasmu (mis. Y9), pilih mulai minggu ini/depan dan berapa minggu diulang (1–16).
