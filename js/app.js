@@ -14,10 +14,13 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.10.1';
+const VERSION = '3.11.0';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
+/* Aplikasi Android yang menjalankan file remind+ dari dalam APK (bukan dari internet) */
+const BUNDLED = (() => { try { return !!(NATIVE && NATIVE.bundled && NATIVE.bundled()); } catch (e) { return false; } })();
+const APK_BUILD = (() => { try { return NATIVE && NATIVE.build ? NATIVE.build() : 0; } catch (e) { return 0; } })();
 let NAT_T = null, NAT_SCHED = '', NAT_WID = '';
 if (NATIVE && !('Notification' in window)) {
   const N = function () {};
@@ -2518,7 +2521,7 @@ function atur() {
       <h2>remind<b>+</b></h2>
       <div class="muted">${T`remind+ versi ${VERSION}`}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px"><button class="btn soft sm" id="clog">${I('history')}${tx('Lihat changelog')}</button><button class="btn soft sm" id="gdOpen">${I('info')}${tx('Lihat panduan')}</button></div>
-      ${NATIVE ? `<p class="faint small" style="margin:16px 0 0;max-width:420px">${tx('Aplikasi Android. Tambahkan widget: tekan lama layar utama → Widget → remind+.')}</p>` : `<a class="btn ghost sm" style="margin-top:10px" href="https://github.com/vanoofiahkahi/poin-mandiri/releases/latest" target="_blank" rel="noopener">${I('upload')}${tx('Unduh aplikasi Android (dengan widget)')}</a>`}
+      ${NATIVE ? `<p class="faint small" style="margin:16px 0 0;max-width:420px">${tx('Aplikasi Android. Tambahkan widget: tekan lama layar utama → Widget → remind+.')}</p>${BUNDLED ? `<p class="faint small" style="margin:6px 0 0;max-width:420px">${T`Build ${APK_BUILD} · berjalan dari file di perangkat, tidak perlu internet untuk membuka aplikasi.`}</p><button class="btn soft sm" id="apkChk" style="margin-top:10px">${I('refresh')}${tx('Cek pembaruan aplikasi')}</button>` : ''}` : `<a class="btn ghost sm" style="margin-top:10px" href="https://github.com/vanoofiahkahi/poin-mandiri/releases/latest" target="_blank" rel="noopener">${I('upload')}${tx('Unduh aplikasi Android (dengan widget)')}</a>`}
     </section>`
   };
 
@@ -2588,6 +2591,7 @@ function atur() {
   c('gdOpen', guideModal);
   if (ASEC === 'libur') vacBind(view());
   if (ASEC === 'widget') wxBind(view());
+  const ac = $('#apkChk', view()); if (ac) ac.onclick = () => apkCheck(true);
   if ($('#eggLogo')) eggBind($('#eggLogo'));
   c('avEdit', avatarModal);
   c('delAcc', deleteAccount);
@@ -3868,7 +3872,13 @@ addEventListener('offline', () => { if (USER && !USER.local) setSync('warn', 'Of
 
 /* ================= Service worker ================= */
 async function regPeriodic() { try { const r = await navigator.serviceWorker.ready; if (r.periodicSync) await r.periodicSync.register('pm-remind', { minInterval: 60 * 60 * 1000 }); } catch (e) {} }
-if ('serviceWorker' in navigator) {
+if (BUNDLED && 'serviceWorker' in navigator) {
+  /* File sudah ada di APK: service worker & cache dari versi website tidak dipakai lagi */
+  const was = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.map(r => r.unregister())))
+    .then(() => window.caches ? caches.keys().then(ks => Promise.all(ks.filter(k => k !== 'pm-data').map(k => caches.delete(k)))) : 0)
+    .then(() => { if (was && !sessionStorage.getItem('rp-unsw')) { sessionStorage.setItem('rp-unsw', '1'); location.reload(); } }).catch(() => {});
+} else if ('serviceWorker' in navigator) {
   const hadSW = !!navigator.serviceWorker.controller;
   addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
     /* Cek versi baru saat aplikasi dibuka lagi dan tiap 30 menit */
@@ -3884,6 +3894,21 @@ if ('serviceWorker' in navigator) {
 }
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
 if ('Notification' in window && Notification.permission === 'granted') regPeriodic();
+
+/* Pembaruan aplikasi Android: file ada di APK, jadi versi baru = APK baru dari Releases */
+const APK_URL = 'https://github.com/vanoofiahkahi/poin-mandiri/releases/latest';
+async function apkCheck(manual) {
+  if (!BUNDLED || !APK_BUILD) return;
+  const k = 'remindplus:apkcheck', today = ymd(new Date());
+  if (!manual) { try { if (localStorage.getItem(k) === today) return; localStorage.setItem(k, today); } catch (e) {} }
+  try {
+    const r = await fetch('https://api.github.com/repos/vanoofiahkahi/poin-mandiri/releases/latest', { cache: 'no-store' });
+    const j = await r.json(), n = parseInt(String(j.tag_name || '').replace(/\D+/g, ''), 10) || 0;
+    if (n > APK_BUILD) toast(T`Versi baru aplikasi Android tersedia (build ${n})`, { label: tx('Unduh'), fn: () => window.open(APK_URL, '_blank') });
+    else if (manual) toast(tx('Aplikasi Android sudah versi terbaru'));
+  } catch (e) { if (manual) toast(tx('Tidak bisa cek pembaruan. Cek internet.')); }
+}
+setTimeout(() => apkCheck(false), 4000);
 
 /* ================= Mulai ================= */
 async function boot() {

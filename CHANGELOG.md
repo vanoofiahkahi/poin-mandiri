@@ -2,6 +2,14 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.11.0 — 5 November 2026
+### Aplikasi Android berjalan dari file di perangkat
+- Semua file remind+ (halaman, kode, tampilan, ikon, dan font Plus Jakarta Sans) sekarang ada di dalam APK. Aplikasi Android terbuka tanpa mengunduh apa pun, jadi tetap jalan walau tidak ada internet atau GitHub Pages sedang bermasalah.
+- File tetap dibuka di alamat yang sama dengan website, jadi data lokal, akun yang sudah masuk, link, dan QR jadwal tetap jalan. Tidak perlu masuk ulang dan tidak ada data yang pindah.
+- Internet hanya dipakai untuk sinkron akun, cuaca, dan pencarian kota.
+- Pembaruan aplikasi Android sekarang lewat APK baru. remind+ mengecek sekali sehari dan memberi tahu kalau ada build baru, dengan tombol **Unduh**. Kamu juga bisa mengeceknya sendiri di **Atur → Tentang → Cek pembaruan aplikasi**.
+- Setiap perubahan aplikasi otomatis menghasilkan APK baru di Releases.
+
 ## 3.10.1 — 5 November 2026
 ### Pratinjau widget besar lebih lengkap
 - Pratinjau di **Atur → Widget & cuaca** sekarang juga menampilkan blok pelajaran sekarang/berikutnya, lengkap dengan garis progres dan "sisa X menit", persis seperti di widget.

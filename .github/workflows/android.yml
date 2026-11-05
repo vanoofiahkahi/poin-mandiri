@@ -6,6 +6,14 @@ on:
     paths:
       - 'android/**'
       - '.github/workflows/android.yml'
+      # file aplikasi ikut dibundel ke APK, jadi tiap perubahan aplikasi = APK baru
+      - 'index.html'
+      - 'js/**'
+      - 'css/**'
+      - '*.png'
+      - 'logo.svg'
+      - 'manifest.webmanifest'
+      - 'CHANGELOG.md'
   workflow_dispatch:
 
 permissions:
@@ -26,6 +34,26 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Bundle web app into the APK
+        run: |
+          set -e
+          W=android/app/src/main/assets/web
+          rm -rf android/app/src/main/assets && mkdir -p "$W"
+          cp -r index.html css js manifest.webmanifest CHANGELOG.md logo.svg ./*.png sw.js "$W"/
+          # font Plus Jakarta Sans, supaya tampilan sama walau offline
+          F=android/app/src/main/assets/fonts
+          mkdir -p "$F"
+          UA='Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36'
+          URL=$(grep -o 'https://fonts.googleapis.com/css2[^"]*' index.html | head -1 | sed 's/&amp;/\&/g')
+          if curl -fsSL -A "$UA" "$URL" -o "$F/fonts.css"; then
+            for u in $(grep -o 'https://fonts.gstatic.com/[^)]*' "$F/fonts.css"); do
+              p=${u#https://fonts.gstatic.com}; mkdir -p "$F/gstatic$(dirname "$p")"; curl -fsSL "$u" -o "$F/gstatic$p"
+            done
+          else
+            rm -rf "$F"
+          fi
+          find android/app/src/main/assets -type f | sed 's/^/  /'
+
       - name: Build APK
         run: gradle -p android assembleRelease -PvCode=${{ github.run_number }} --stacktrace
 
@@ -43,7 +71,7 @@ jobs:
           tag_name: android-${{ github.run_number }}
           name: remind+ Android (build ${{ github.run_number }})
           body: |
-            remind+ untuk Android dengan widget "Jadwal berikutnya", widget besar "Jadwal hari ini + cuaca" (layar utama & layar kunci), dan pengingat yang tetap berbunyi walau aplikasi ditutup.
+            remind+ untuk Android dengan widget "Jadwal berikutnya", widget besar "Jadwal hari ini + cuaca" (layar utama & layar kunci), dan pengingat yang tetap berbunyi walau aplikasi ditutup. Semua file aplikasi sudah ada di dalam APK, jadi aplikasi terbuka tanpa internet.
             Unduh **remindplus.apk** di bawah, lalu buka di tablet untuk memasang.
           files: remindplus.apk
           make_latest: true

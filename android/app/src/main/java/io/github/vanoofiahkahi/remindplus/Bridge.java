@@ -37,6 +37,21 @@ public class Bridge {
     @JavascriptInterface
     public int version() { return 3; }
 
+    /** true = the web app runs from files inside the APK. */
+    @JavascriptInterface
+    public boolean bundled() { return a.files != null && a.files.bundled; }
+
+    /** APK build number (same as the "android-N" release tag). */
+    @JavascriptInterface
+    public int build() {
+        try {
+            android.content.pm.PackageInfo pi = a.getPackageManager().getPackageInfo(a.getPackageName(), 0);
+            return (int) (android.os.Build.VERSION.SDK_INT >= 28 ? pi.getLongVersionCode() : pi.versionCode);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     // ---------- cuaca & lokasi untuk widget besar ----------
 
     /** {loc:{mode,lat,lon,name}, wx:{t,code,hi,lo,...}, perm:bool} */

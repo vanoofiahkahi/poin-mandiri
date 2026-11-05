@@ -13,11 +13,12 @@ import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
-/** remind+ as an Android app: the live web app in a WebView, plus a small native bridge. */
+/** remind+ as an Android app: the web app bundled in the APK (LocalFiles), shown in a WebView, plus a small native bridge. */
 public class MainActivity extends Activity {
     static final String HOST = "vanoofiahkahi.github.io";
     static final String BASE = "https://" + HOST + "/poin-mandiri/";
@@ -25,6 +26,7 @@ public class MainActivity extends Activity {
     private PermissionRequest camReq;
 
     WebView web;
+    LocalFiles files;
     private ValueCallback<Uri[]> fileCb;
 
     @Override
@@ -48,8 +50,23 @@ public class MainActivity extends Activity {
         s.setOffscreenPreRaster(true);  // animasi & gulir lebih mulus (pakai sedikit lebih banyak memori)
         s.setUserAgentString(s.getUserAgentString() + " remindplus-android/1");
 
+        files = new LocalFiles(this);
         web.addJavascriptInterface(new Bridge(this), "RemindNative");
+        if (files.bundled) {
+            // a service worker left from the website version also gets the bundled files
+            android.webkit.ServiceWorkerController.getInstance().setServiceWorkerClient(new android.webkit.ServiceWorkerClient() {
+                @Override
+                public WebResourceResponse shouldInterceptRequest(WebResourceRequest r) { return files.handle(r); }
+            });
+        }
         web.setWebViewClient(new WebViewClient() {
+            /** Pages, scripts, styles, icons & font come from the APK, not the internet. */
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest r) {
+                WebResourceResponse res = files.handle(r);
+                return res != null ? res : super.shouldInterceptRequest(v, r);
+            }
+
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
                 return handleUrl(r.getUrl().toString());
