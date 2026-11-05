@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.10.0';
+const VERSION = '3.10.1';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -3094,20 +3094,66 @@ function wxLine(st) {
   return '📍 ' + (l.name || tx('Lokasi saat ini')) + (fresh ? ' · ' + WX_IC(w.code, w.day !== 0) + ' ' + Math.round(w.t) + '° ' + WX_L()[WX_KEY(w.code)] : '');
 }
 function wxSummary() { return natV() >= 3 ? wxLine(wxState()) : tx('Perlu aplikasi Android terbaru'); }
+/* Sama dengan WidgetLogic.java: blok utama (sekarang/berikutnya + progres) dan sisa jadwal. */
+function wxModel(date, nm) {
+  const after = (sl, x) => { const o = sl.slice(sl.indexOf(x) + 1); while (o.length && o[o.length - 1].it.k === 'b') o.pop(); return o; };
+  const slots = ttHas(date) && !vacOf(date) ? ttSlots(S.tt[date]) : [], les = slots.filter(x => x.it.k !== 'b');
+  if (les.length && nm < les[les.length - 1].b) {
+    const cur = slots.find(x => nm >= x.a && nm < x.b), nextL = les.find(x => x.a >= (cur ? cur.b : nm)), rt = tx('Sisa jadwal hari ini');
+    if (!cur && nm < slots[0].a) return { date, main: { k: 'first', s: les[0], extra: T`Mulai dalam ${fmtDur(les[0].a - nm)}` }, rest: after(slots, les[0]), rt };
+    if (cur && cur.it.k === 'b') return { date, main: { k: 'brk', s: cur }, rest: after(slots, cur), rt };
+    if (cur) return { date, main: { k: 'now', s: cur, p: (nm - cur.a) / (cur.b - cur.a), extra: T`sisa ${cur.b - nm} menit` }, rest: after(slots, cur), rt };
+    if (nextL) return { date, main: { k: 'next', s: nextL }, rest: after(slots, nextL), rt };
+  }
+  for (let k = 1; k <= 7; k++) {
+    const d = addDays(date, k); if (!ttHas(d) || vacOf(d)) continue;
+    const sl = ttSlots(S.tt[d]), l2 = sl.filter(x => x.it.k !== 'b'); if (!l2.length) continue;
+    const lbl = k === 1 ? tx('Besok') : fd(ymdMs(d));
+    return { date, main: { k: 'day', lbl, s: l2[0] }, rest: after(sl, l2[0]), rt: lbl };
+  }
+  return { date, main: null, rest: [], rt: '' };
+}
+/* Contoh tampilan saat pelajaran berlangsung: pertengahan pelajaran ke-2 di hari sekolah terdekat. */
+function wxDemo() {
+  for (let k = 0; k <= 7; k++) {
+    const d = addDays(ymd(new Date()), k); if (!ttHas(d) || vacOf(d)) continue;
+    const l = ttSlots(S.tt[d]).filter(x => x.it.k !== 'b'); if (!l.length) continue;
+    const x = l[Math.min(1, l.length - 1)]; return [d, Math.round(x.a + (x.b - x.a) * .6)];
+  }
+  return [ymd(new Date()), nowMin()];
+}
+let WXDEMO = false;
 function wxPreview(st) {
   const l = st.loc || {}, w = st.wx || {}, off = (l.mode || 'auto') === 'off';
   const fresh = !off && w.t != null && l.lat != null && Date.now() - (w.at || 0) < 3 * 3600e3;
-  const today = ymd(new Date()), now = nowMin(), sl = ttHas(today) && !vacOf(today) ? ttSlots(S.tt[today]).filter(x => x.b > now) : [];
+  const [date, nm] = WXDEMO ? wxDemo() : [ymd(new Date()), nowMin()];
+  const md = wxModel(date, nm), m = md.main;
   const row = x => x.it.k === 'b'
-    ? `<div class="wxp-row brk"><b>${fromMin(x.a)}</b><i></i><span>${esc(tx(x.it.l) || tx('Istirahat'))}</span></div>`
+    ? `<div class="wxp-row brk"><b>${fromMin(x.a)}</b><i></i><span>${esc(tx(x.it.l) || tx('Istirahat'))}</span><em>${fromMin(x.b)}</em></div>`
     : `<div class="wxp-row"><b>${fromMin(x.a)}</b><i style="background:${hslHex(subjHue(x.it.s))}"></i><span>${esc(subjName(x.it.s))}<small>${esc((subjOf(x.it.s) || {}).t || '')}</small></span><em>${fromMin(x.b)}</em></div>`;
-  return `<div class="wxp" aria-hidden="true">
-    <div class="wxp-h"><div><b>${new Date().toLocaleDateString(LOC, { weekday: 'long', day: 'numeric', month: 'long' })}</b>
+  let main = '';
+  if (m) {
+    const brk = m.k === 'brk', live = m.k === 'now' || brk;
+    const lbl = m.k === 'now' || brk ? tx('Sekarang') : m.k === 'next' ? tx('Berikutnya') : m.k === 'first' ? tx('Pelajaran pertama') : m.lbl;
+    main = `<div class="wxp-b"><i style="background:${brk ? 'rgba(255,255,255,.35)' : hslHex(subjHue(m.s.it.s))}"></i><div>
+      <div class="wxp-bl"><span class="${live ? 'live' : ''}">${live ? '● ' : ''}${esc(lbl)}</span><span>${brk ? T`sampai ${fromMin(m.s.b)}` : fromMin(m.s.a) + '–' + fromMin(m.s.b)}</span></div>
+      <b>${esc(brk ? tx(m.s.it.l) || tx('Istirahat') : subjName(m.s.it.s))}</b>
+      ${!brk && (subjOf(m.s.it.s) || {}).t ? `<small>${esc(subjOf(m.s.it.s).t)}</small>` : ''}
+      ${m.p != null ? `<div class="wxp-prog"><i style="width:${(m.p * 100).toFixed(1)}%"></i></div>` : ''}
+      ${m.extra ? `<em>${esc(m.extra)}</em>` : ''}</div></div>`;
+  }
+  const n = md.rest.filter(x => x.it.k !== 'b').length;
+  return `<div class="seg wxp-mode" id="wxDemo" style="margin-top:12px">
+      <button type="button" data-d="0" class="${WXDEMO ? '' : 'on'}">${tx('Saat ini')}</button><button type="button" data-d="1" class="${WXDEMO ? 'on' : ''}">${tx('Contoh saat pelajaran')}</button></div>
+    <div class="wxp" aria-hidden="true">
+    <div class="wxp-h"><div><b>${new Date(ymdMs(date)).toLocaleDateString(LOC, { weekday: 'long', day: 'numeric', month: 'long' })}</b>
       ${off ? '' : `<span>📍 ${esc(l.lat == null ? tx('Ketuk untuk atur lokasi cuaca') : l.name || tx('Lokasi saat ini'))}</span>`}</div>
       ${fresh ? `<div class="wxp-w"><b>${WX_IC(w.code, w.day !== 0)} ${Math.round(w.t)}°</b><span>${WX_L()[WX_KEY(w.code)]}${w.hi != null ? ` · ${Math.round(w.lo)}°/${Math.round(w.hi)}°` : ''}</span></div>` : ''}</div>
-    ${sl.length ? `<div class="wxp-t">${tx('Sisa jadwal hari ini')}</div>${sl.slice(0, 5).map(row).join('')}${sl.length > 5 ? `<div class="wxp-more">${T`+${sl.length - 5} lagi`}</div>` : ''}`
-      : `<div class="wxp-t">${tx('Tidak ada pelajaran lagi hari ini')}</div>`}
-  </div>`;
+    ${main || `<div class="wxp-t">${tx('Isi jadwal pelajaran agar pelajaran berikutnya tampil di sini.')}</div>`}
+    ${m ? (md.rest.length ? `<div class="wxp-t"><span>${esc(md.rt)}</span><span>${n === 1 ? tx('1 pelajaran') : T`${n} pelajaran`}</span></div>${md.rest.slice(0, 5).map(row).join('')}${md.rest.length > 5 ? `<div class="wxp-more">${T`+${md.rest.length - 5} lagi`}</div>` : ''}`
+      : `<div class="wxp-t">${tx('Tidak ada pelajaran lagi setelah ini')}</div>`) : ''}
+  </div>
+  ${!WXDEMO && m && m.k === 'day' ? `<p class="faint small" style="margin:8px 0 0">${tx('Di luar jam sekolah, widget menampilkan pelajaran pertama besok. Progres dan sisa menit muncul saat pelajaran sedang berlangsung.')}</p>` : ''}`;
 }
 function wxSection() {
   if (natV() < 3) return `<section class="card"><h2>${tx('Widget besar')}</h2>
@@ -3154,6 +3200,7 @@ function wxBind(root) {
     else if (m === 'auto') { WXBUSY = true; NATIVE.setWxMode('auto'); }
     render();
   });
+  $$('#wxDemo button', root).forEach(b => b.onclick = () => { WXDEMO = b.dataset.d === '1'; render(); });
   const loc = $('#wxLoc', root); if (loc) loc.onclick = () => { WXBUSY = true; NATIVE.locate(); render(); };
   const q = $('#wxQ', root), go = $('#wxS', root);
   const search = async () => {

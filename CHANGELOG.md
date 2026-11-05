@@ -2,6 +2,12 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.10.1 — 5 November 2026
+### Pratinjau widget besar lebih lengkap
+- Pratinjau di **Atur → Widget & cuaca** sekarang juga menampilkan blok pelajaran sekarang/berikutnya, lengkap dengan garis progres dan "sisa X menit", persis seperti di widget.
+- Ada tombol **Contoh saat pelajaran** untuk melihat tampilan widget di tengah pelajaran, walaupun sedang di luar jam sekolah.
+- Di luar jam sekolah ada penjelasan bahwa progres dan sisa menit hanya muncul saat pelajaran sedang berlangsung.
+
 ## 3.10.0 — 5 November 2026
 ### Widget besar Android: cuaca, lokasi, dan sisa jadwal hari ini
 - Widget baru **"Jadwal hari ini + cuaca"** (4×4, bisa diubah ukurannya) untuk layar utama dan layar kunci:
