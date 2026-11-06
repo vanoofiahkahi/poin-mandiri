@@ -2,6 +2,22 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.12.0 — 6 November 2026
+### Screensaver Android
+- remind+ sekarang bisa jadi **screensaver** tablet: **Pengaturan → Tampilan → Screen saver → remind+**. Biasanya muncul saat tablet diisi daya.
+- Screensaver menampilkan:
+  - jam besar dan tanggal;
+  - cuaca dan lokasi;
+  - pelajaran sekarang dengan progres dan sisa menit, atau mode liburan kalau sedang libur;
+  - sisa jadwal hari ini, atau jadwal hari sekolah berikutnya;
+  - agenda terdekat (tugas, ujian, kas, pengingat);
+  - hitung mundur;
+  - poin, level, streak, dan tugas aktif.
+- Tampilannya menyesuaikan posisi tablet (mendatar/tegak), diperbarui tiap 20 detik, dan isinya bergeser sedikit tiap menit supaya layar tidak *burn-in*. Mulai pukul 22.00 tampilannya diredupkan.
+- Screensaver hanya membaca data dan tidak mengubah apa pun. Sentuh layar untuk menutupnya.
+- Di **Atur → Widget & cuaca** ada tombol **Lihat screensaver** untuk pratinjau, dan **Buka pengaturan screen saver**.
+- Perbaikan kecil: tugas yang baru lewat deadline kurang dari 1 jam sekarang tertulis "Terlambat X mnt", bukan "Terlambat 0 jam".
+
 ## 3.11.0 — 5 November 2026
 ### Aplikasi Android berjalan dari file di perangkat
 - Semua file remind+ (halaman, kode, tampilan, ikon, dan font Plus Jakarta Sans) sekarang ada di dalam APK. Aplikasi Android terbuka tanpa mengunduh apa pun, jadi tetap jalan walau tidak ada internet atau GitHub Pages sedang bermasalah.

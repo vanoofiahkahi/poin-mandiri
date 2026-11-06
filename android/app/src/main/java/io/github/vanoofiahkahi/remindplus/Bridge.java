@@ -37,6 +37,17 @@ public class Bridge {
     @JavascriptInterface
     public int version() { return 3; }
 
+    /** Open the system screen saver settings (choose remind+, preview, when to start). */
+    @JavascriptInterface
+    public void dreamSettings() {
+        a.runOnUiThread(() -> {
+            try { a.startActivity(new android.content.Intent(android.provider.Settings.ACTION_DREAM_SETTINGS)); }
+            catch (Exception e) {
+                try { a.startActivity(new android.content.Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS)); } catch (Exception ignored) {}
+            }
+        });
+    }
+
     /** true = the web app runs from files inside the APK. */
     @JavascriptInterface
     public boolean bundled() { return a.files != null && a.files.bundled; }

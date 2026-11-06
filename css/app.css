@@ -1186,3 +1186,71 @@ body { background-image: none; }
 .wxp-b em { font-style: normal; font-size: 11.5px; color: rgba(255,255,255,.6); margin-top: 4px; }
 .wxp-t { display: flex; justify-content: space-between; }
 .wxp-t span:last-child { text-transform: none; letter-spacing: 0; font-weight: 500; color: rgba(255,255,255,.5); }
+
+/* ---------- Screensaver ---------- */
+body.dreaming { background: #05060A; overflow: hidden; cursor: none; }
+.dream { position: fixed; inset: 0; z-index: 50; color: #fff; display: flex; align-items: center; justify-content: center; padding: 4vh 4vw; overflow: hidden;
+  background: radial-gradient(120% 90% at 0% 0%, rgba(123,92,255,.22), transparent 55%), radial-gradient(90% 80% at 100% 100%, rgba(47,224,181,.12), transparent 60%), #05060A; }
+.dream.night .dr-in, .dream.night .dr-brand { opacity: .55; }
+.dr-in { width: 100%; max-width: 1400px; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 4vw; align-items: center; transition: transform 2s ease, opacity 1s; }
+.dr-l, .dr-r { min-width: 0; display: flex; flex-direction: column; }
+.dr-clock { font-size: clamp(84px, 13vw, 210px); font-weight: 800; line-height: .95; letter-spacing: -.04em; font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, #fff, rgba(255,255,255,.72)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.dr-date { font-size: clamp(18px, 2vw, 28px); font-weight: 600; color: rgba(255,255,255,.78); margin-top: 10px; }
+.dr-wx { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
+.dr-wx .dr-wi { font-size: clamp(34px, 3.6vw, 52px); line-height: 1; }
+.dr-wx > b { font-size: clamp(32px, 3.4vw, 50px); font-weight: 800; }
+.dr-wx > span { font-size: 15px; color: rgba(255,255,255,.75); line-height: 1.45; }
+.dr-wx small { font-size: 14px; color: rgba(255,255,255,.55); }
+.dr-now { display: flex; gap: 14px; margin-top: 24px; padding: 18px 20px; border-radius: 24px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); }
+.dr-now > i { width: 5px; border-radius: 5px; flex: none; }
+.dr-now > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.dr-nl { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: rgba(255,255,255,.7); }
+.dr-nl span:last-child { text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 15px; color: rgba(255,255,255,.85); }
+.dr-nl .live { color: #2FE0B5; }
+.dr-now b { font-size: clamp(24px, 2.6vw, 36px); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dr-now small { font-size: 15px; color: rgba(255,255,255,.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dr-prog { height: 8px; border-radius: 8px; background: rgba(255,255,255,.15); margin-top: 12px; overflow: hidden; }
+.dr-prog i { display: block; height: 100%; border-radius: 8px; background: linear-gradient(90deg, rgb(var(--a0)), #2FE0B5); }
+.dr-now em { font-style: normal; font-size: 15px; color: rgba(255,255,255,.7); margin-top: 6px; }
+.dr-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
+.dr-stats > div { display: flex; flex-direction: column; padding: 12px 14px; border-radius: 18px; background: rgba(255,255,255,.05); min-width: 0; }
+.dr-stats b { font-size: 20px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dr-stats span { font-size: 12.5px; color: rgba(255,255,255,.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dr-r { gap: 22px; }
+.dr-r section { min-width: 0; }
+.dr-r h3 { display: flex; justify-content: space-between; margin: 0 0 6px; font-size: 13px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: rgba(255,255,255,.65); }
+.dr-r h3 span:nth-child(2) { text-transform: none; letter-spacing: 0; font-weight: 500; color: rgba(255,255,255,.45); }
+.dr-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 17px; }
+.dr-row > b { width: 54px; font-size: 15px; color: rgba(255,255,255,.8); font-variant-numeric: tabular-nums; flex: none; }
+.dr-row > i { width: 4px; height: 32px; border-radius: 4px; background: rgba(255,255,255,.22); flex: none; }
+.dr-row > span { flex: 1; min-width: 0; display: flex; flex-direction: column; font-weight: 700; padding-left: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dr-row small { font-weight: 500; font-size: 13px; color: rgba(255,255,255,.5); overflow: hidden; text-overflow: ellipsis; }
+.dr-row > em { font-style: normal; font-size: 13.5px; color: rgba(255,255,255,.45); flex: none; }
+.dr-row.brk > span { font-weight: 500; font-size: 15px; color: rgba(255,255,255,.55); }
+.dr-row.brk > b { color: rgba(255,255,255,.45); }
+.dr-more { padding-left: 64px; font-size: 13.5px; color: rgba(255,255,255,.45); }
+.dr-ag { display: flex; align-items: center; gap: 12px; padding: 7px 0; }
+.dr-ag .dr-ic { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; flex: none; }
+.dr-ag .dr-ic svg { width: 18px; height: 18px; }
+.dr-ag > span:nth-child(2) { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.dr-ag b { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dr-ag small { font-size: 13px; color: rgba(255,255,255,.5); }
+.dr-ag .chip { flex: none; }
+.dr-cd { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.dr-cd > div { display: flex; flex-direction: column; padding: 12px; border-radius: 18px; min-width: 0;
+  background: linear-gradient(160deg, hsla(var(--h), 85%, 62%, .26), hsla(var(--h), 85%, 62%, .06)); border: 1px solid hsla(var(--h), 85%, 70%, .25); }
+.dr-cd b { font-size: 26px; font-weight: 800; line-height: 1.1; }
+.dr-cd small { font-size: 11.5px; color: rgba(255,255,255,.6); }
+.dr-cd span { font-size: 13px; font-weight: 600; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dr-calm { display: flex; flex-direction: column; gap: 6px; }
+.dr-calm b { font-size: 24px; }
+.dr-calm span { color: rgba(255,255,255,.6); font-size: 16px; }
+.dr-brand { position: fixed; right: 3vw; bottom: 3vh; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; color: rgba(255,255,255,.4); }
+.dr-brand img { width: 22px; height: 22px; border-radius: 7px; opacity: .7; }
+.dr-brand b { color: rgba(255,255,255,.6); }
+@media (max-width: 760px), (orientation: portrait) {
+  .dream { align-items: flex-start; padding: 6vh 6vw; overflow-y: auto; }
+  .dr-in { grid-template-columns: 1fr; gap: 28px; }
+  .dr-clock { font-size: clamp(76px, 22vw, 180px); }
+}

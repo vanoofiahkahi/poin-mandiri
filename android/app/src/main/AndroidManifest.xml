@@ -49,6 +49,16 @@
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_big_info" />
         </receiver>
 
+        <!-- Screen saver: Pengaturan → Tampilan → Screen saver → remind+ -->
+        <service android:name=".RemindDream" android:exported="true" android:label="remind+"
+            android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data android:name="android.service.dream" android:resource="@xml/dream_info" />
+        </service>
+
         <receiver android:name=".ReminderReceiver" android:exported="false" />
 
         <receiver android:name=".BootReceiver" android:exported="true">

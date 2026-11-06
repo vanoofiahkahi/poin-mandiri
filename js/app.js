@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.11.0';
+const VERSION = '3.12.0';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -737,7 +737,7 @@ function examNight(e) {
 }
 function dueChip(ms) {
   const diff = ms - Date.now(), dd = dayDiff(ms);
-  if (diff < 0) { const h = Math.floor(-diff / 36e5); return `<span class="chip danger">${I('warn')}${h < 24 ? T`Terlambat ${h} jam` : T`Terlambat ${Math.floor(h / 24)} hari`}</span>`; }
+  if (diff < 0) { const h = Math.floor(-diff / 36e5); return `<span class="chip danger">${I('warn')}${h < 1 ? T`Terlambat ${Math.max(1, Math.floor(-diff / 6e4))} mnt` : h < 24 ? T`Terlambat ${h} jam` : T`Terlambat ${Math.floor(h / 24)} hari`}</span>`; }
   if (dd === 0) { const h = Math.floor(diff / 36e5), m = Math.floor(diff % 36e5 / 6e4); return `<span class="chip danger">${I('clock')}${h ? T`Hari ini · ${h} j ${m} mnt` : T`Hari ini · ${m} mnt`}</span>`; }
   if (dd === 1) return `<span class="chip warn">${I('clock')}Besok</span>`;
   return `<span class="chip">${I('cal')}${T`${dd} hari lagi`}</span>`;
@@ -3171,6 +3171,13 @@ function wxSection() {
       ${wxPreview(st)}
     </section>
     <section class="card">
+      <h2>${tx('Screensaver')}</h2>
+      <p class="sub">${tx('Saat tablet diisi daya, remind+ bisa tampil di layar penuh: jam, cuaca, pelajaran sekarang dengan progres, sisa jadwal, agenda, hitung mundur, dan poin.')}</p>
+      <div class="vac-rules" style="margin-top:10px"><div><span class="ico t-brand">${I('monitor')}</span>${tx('Aktifkan: Pengaturan tablet → Tampilan → Screen saver → pilih remind+. Atur juga kapan mulai, misalnya saat mengisi daya.')}</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn soft sm" id="drPrev">${I('play')}${tx('Lihat screensaver')}</button>
+      ${NATIVE && NATIVE.dreamSettings ? `<button class="btn ghost sm" id="drSet">${I('monitor')}${tx('Buka pengaturan screen saver')}</button>` : ''}</div>
+    </section>
+    <section class="card">
       <h2>${tx('Lokasi cuaca')}</h2>
       <div class="seg full" id="wxM" style="margin-top:10px">${[['auto', 'Otomatis'], ['city', 'Pilih kota'], ['off', 'Mati']].map(([k, n]) => `<button type="button" data-m="${k}" class="${mode === k ? 'on' : ''}">${tx(n)}</button>`).join('')}</div>
       <p class="muted small" id="wxNow" style="margin:12px 0 0">${esc(wxLine(st))}</p>
@@ -3204,6 +3211,8 @@ function wxBind(root) {
     else if (m === 'auto') { WXBUSY = true; NATIVE.setWxMode('auto'); }
     render();
   });
+  const dp = $('#drPrev', root); if (dp) dp.onclick = () => { location.href = location.pathname + '?dream=1'; };
+  const ds = $('#drSet', root); if (ds) ds.onclick = () => NATIVE.dreamSettings();
   $$('#wxDemo button', root).forEach(b => b.onclick = () => { WXDEMO = b.dataset.d === '1'; render(); });
   const loc = $('#wxLoc', root); if (loc) loc.onclick = () => { WXBUSY = true; NATIVE.locate(); render(); };
   const q = $('#wxQ', root), go = $('#wxS', root);
@@ -3911,7 +3920,81 @@ async function apkCheck(manual) {
 setTimeout(() => apkCheck(false), 4000);
 
 /* ================= Mulai ================= */
+/* ================= Screensaver (Android "Screen saver" / ?dream=1) =================
+   Layar penuh, hanya baca: jam, cuaca, pelajaran sekarang + progres, sisa jadwal, agenda, hitung mundur, poin.
+   Tidak menyimpan atau menyinkronkan apa pun. */
+const DREAM = (() => { try { return new URLSearchParams(location.search).get('dream') === '1'; } catch (e) { return false; } })();
+function dreamLoad() {
+  let id = 'local';
+  try { if (sb && sb.session && sb.user && !lsGet(LOCAL_MODE_KEY)) { USER = userFromSession(); id = USER.id; } else USER = { id: 'local', email: '', name: '', local: true }; } catch (e) { USER = { id: 'local', local: true }; }
+  S = clone(DEF); merge(lsGet(stateKey(id)));
+}
+function dreamHtml() {
+  const d = new Date(), today = ymd(d), nm = nowMin(), vc = vacNow();
+  const st = NATIVE && NATIVE.wxState ? wxState() : {}, l = st.loc || {}, w = st.wx || {};
+  const wxOk = (l.mode || 'auto') !== 'off' && w.t != null && l.lat != null && Date.now() - (w.at || 0) < 3 * 3600e3;
+  const md = wxModel(today, nm), m = md.main;
+  const row = x => x.it.k === 'b'
+    ? `<div class="dr-row brk"><b>${fromMin(x.a)}</b><i></i><span>${esc(tx(x.it.l) || tx('Istirahat'))}</span><em>${fromMin(x.b)}</em></div>`
+    : `<div class="dr-row"><b>${fromMin(x.a)}</b><i style="background:${hslHex(subjHue(x.it.s))}"></i><span>${esc(subjName(x.it.s))}<small>${esc((subjOf(x.it.s) || {}).t || '')}</small></span><em>${fromMin(x.b)}</em></div>`;
+  let now = '';
+  if (vc) now = `<div class="dr-now"><i style="background:#2FE0B5"></i><div><div class="dr-nl"><span>🌴 ${esc(tx('Mode liburan'))}</span><span>${T`sampai ${fdShort(vc.to)}`}</span></div><b>${esc(vc.n || tx('Libur'))}</b></div></div>`;
+  else if (m) {
+    const brk = m.k === 'brk', live = m.k === 'now' || brk;
+    const lbl = live ? tx('Sekarang') : m.k === 'next' ? tx('Berikutnya') : m.k === 'first' ? tx('Pelajaran pertama') : m.lbl;
+    now = `<div class="dr-now"><i style="background:${brk ? 'rgba(255,255,255,.35)' : hslHex(subjHue(m.s.it.s))}"></i><div>
+      <div class="dr-nl"><span class="${live ? 'live' : ''}">${live ? '● ' : ''}${esc(lbl)}</span><span>${brk ? T`sampai ${fromMin(m.s.b)}` : fromMin(m.s.a) + '–' + fromMin(m.s.b)}</span></div>
+      <b>${esc(brk ? tx(m.s.it.l) || tx('Istirahat') : subjName(m.s.it.s))}</b>
+      ${!brk && (subjOf(m.s.it.s) || {}).t ? `<small>${esc(subjOf(m.s.it.s).t)}</small>` : ''}
+      ${m.p != null ? `<div class="dr-prog"><i style="width:${(m.p * 100).toFixed(1)}%"></i></div>` : ''}
+      ${m.extra ? `<em>${esc(m.extra)}</em>` : ''}</div></div>`;
+  }
+  const rest = vc ? [] : md.rest, n = rest.filter(x => x.it.k !== 'b').length;
+  const ag = homeAgenda().slice(0, 5), cd = cdItems().slice(0, 4);
+  const { cur } = levelOf(S.earned), sk = streak(), open = S.tasks.filter(t => !t.done).length;
+  return `<div class="dr-in" id="drIn">
+    <div class="dr-l">
+      <div class="dr-clock num">${d.toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit' })}</div>
+      <div class="dr-date">${d.toLocaleDateString(LOC, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+      ${wxOk ? `<div class="dr-wx"><span class="dr-wi">${WX_IC(w.code, w.day !== 0)}</span><b>${Math.round(w.t)}°</b><span>${WX_L()[WX_KEY(w.code)]}${w.hi != null ? ` · ${Math.round(w.lo)}°/${Math.round(w.hi)}°` : ''}${w.pop >= 30 ? ` · 💧${w.pop}%` : ''}<br><small>📍 ${esc(l.name || tx('Lokasi saat ini'))}</small></span></div>` : ''}
+      ${now}
+      <div class="dr-stats">
+        <div><b class="num">${fmt(S.balance)}</b><span>${tx('poin')}</span></div>
+        <div><b>${esc(tx(cur.n))}</b><span>${T`Level ${levelOf(S.earned).i + 1}`}</span></div>
+        <div><b class="num">${sk ? '🔥 ' + sk : '–'}</b><span>${tx('hari beruntun')}</span></div>
+        <div><b class="num">${open}</b><span>${tx('Tugas aktif')}</span></div>
+      </div>
+    </div>
+    <div class="dr-r">
+      ${rest.length ? `<section><h3><span>${esc(md.rt)}</span><span>${n === 1 ? tx('1 pelajaran') : T`${n} pelajaran`}</span></h3>${rest.slice(0, 6).map(row).join('')}${rest.length > 6 ? `<div class="dr-more">${T`+${rest.length - 6} lagi`}</div>` : ''}</section>` : ''}
+      ${ag.length ? `<section><h3><span>${tx('Agenda terdekat')}</span></h3>${ag.map(a => `<div class="dr-ag"><span class="dr-ic ${a.tone}">${I(a.ic)}</span><span><b>${esc(a.t)}</b><small>${fdt(a.at)}</small></span>${dueChip(a.at)}</div>`).join('')}</section>` : ''}
+      ${cd.length ? `<section><h3><span>${tx('Hitung mundur')}</span></h3><div class="dr-cd">${cd.map(x => { const k = dayDiff(ymdMs(x.d)); return `<div style="--h:${x.h}"><b class="num">${k <= 0 ? tx('Hari ini') : k === 1 ? tx('Besok') : k}</b><small>${k > 1 ? tx('hari lagi') : '&nbsp;'}</small><span>${esc(x.n)}</span></div>`; }).join('')}</div></section>` : ''}
+      ${!rest.length && !ag.length && !cd.length ? `<section class="dr-calm"><b>${esc(greeting())}${displayName() ? ', ' + esc(displayName()) : ''} 👋</b><span>${tx('Tidak ada jadwal atau agenda dekat. Santai dulu.')}</span></section>` : ''}
+    </div>
+  </div>
+  <div class="dr-brand"><img src="logo.svg" alt="">remind<b>+</b></div>`;
+}
+let DR_SHIFT = [0, 0];
+function dreamDraw() {
+  const root = $('#root'); if (!root) return;
+  const hr = new Date().getHours();
+  root.innerHTML = `<div class="dream ${hr >= 22 || hr < 5 ? 'night' : ''}">${dreamHtml()}</div>`;
+  $('#drIn').style.transform = `translate(${DR_SHIFT[0]}px,${DR_SHIFT[1]}px)`;
+}
+function dreamStart() {
+  document.documentElement.setAttribute('data-theme', 'dark');
+  document.body.classList.add('dreaming');
+  dreamLoad(); dreamDraw();
+  // perbarui tiap 20 detik (jam & progres); geser sedikit tiap menit supaya layar tidak "terbakar"
+  setInterval(dreamDraw, 20e3);
+  setInterval(() => { DR_SHIFT = [Math.round(Math.random() * 36 - 18), Math.round(Math.random() * 28 - 14)]; }, 60e3);
+  setInterval(() => { dreamLoad(); }, 5 * 60e3);
+  // di browser: ketuk untuk kembali ke aplikasi (di Android, sentuhan menutup screensaver)
+  if (!(NATIVE && NATIVE.dream)) addEventListener('click', () => { location.href = location.pathname + '?go=atur:widget'; });
+}
+
 async function boot() {
+  if (DREAM) { dreamStart(); return; }
   captureImport();
   applyTheme();
   let red = null;
