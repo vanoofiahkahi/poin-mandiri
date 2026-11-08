@@ -16,10 +16,10 @@ Aplikasi web yang bisa dipasang di Android (PWA), dengan akun online yang tersin
 - Level, streak, dan riwayat poin
 - Widget jadwal berikutnya, rencana belajar ujian, PR dari jadwal
 - Ringkasan mingguan, pencapaian, pembeku streak, pelacak nilai (opsional)
-- **Impor jadwal dari PDF** sekolah, dibaca langsung di perangkat
+- **Impor jadwal dari PDF** format apa saja, dibaca oleh Google Gemini (kunci API sendiri)
 - **Mode libur**, **hitung mundur**, dan **bagikan jadwal lewat QR code**
 - Panduan untuk pengguna baru
 - Alarm darurat, Bahasa Indonesia & English, mode terang/gelap, 6 warna aksen, liquid glass
 
 ## Changelog
-Versi terbaru: **3.12.0** — lihat semua perubahan di [CHANGELOG.md](CHANGELOG.md).
+Versi terbaru: **3.13.0** — lihat semua perubahan di [CHANGELOG.md](CHANGELOG.md).

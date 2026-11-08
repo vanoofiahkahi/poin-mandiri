@@ -2,6 +2,14 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.13.0 — 8 November 2026
+### Impor jadwal dari PDF sekarang dibaca oleh Google Gemini
+- **Jadwal → ⋯ → Impor dari PDF** sekarang membaca PDF dengan AI Google Gemini, jadi **format jadwal apa saja** bisa dibaca, tidak hanya *Regular Program Schedule*. Maksimal 14 MB.
+- Butuh **kunci API Gemini** milikmu sendiri (gratis di [aistudio.google.com/apikey](https://aistudio.google.com/apikey)). Tempel sekali di jendela impor; kunci hanya disimpan di perangkat ini dan bisa diganti atau dihapus kapan saja.
+- PDF dikirim ke Google hanya untuk dibaca, jadi fitur ini butuh internet. Hasilnya tetap dipratinjau dulu sebelum disimpan, lengkap dengan nama guru dan istirahat.
+- Kalau model Gemini utama sedang sibuk, remind+ otomatis pindah ke model yang lebih cepat.
+- Kalau nama kelas salah, aplikasi menampilkan daftar kelas yang ditemukan Gemini di PDF untuk dipilih.
+
 ## 3.12.0 — 6 November 2026
 ### Screensaver Android
 - remind+ sekarang bisa jadi **screensaver** tablet: **Pengaturan → Tampilan → Screen saver → remind+**. Biasanya muncul saat tablet diisi daya.

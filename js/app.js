@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.12.0';
+const VERSION = '3.13.0';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -3449,8 +3449,82 @@ function scanModal() {
   p.then(() => { alive = false; if (stream) stream.getTracks().forEach(t => t.stop()); const pl = m._pl; m._pl = null; if (pl) setTimeout(() => importModal(pl), 60); });
 }
 
-/* ================= Impor jadwal dari PDF (dibaca di perangkat, tanpa server) ================= */
+/* ================= Impor jadwal dari PDF (dibaca oleh Google Gemini, kunci API milik pengguna) ================= */
 const PDF_KELAS_KEY = 'remindplus:pdfKelas';
+const GEMINI_KEY = 'remindplus:geminiKey'; // hanya disimpan di perangkat ini
+const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-flash-lite-latest']; // kedua = cadangan saat yang pertama sibuk
+const PDF_MAX_MB = 14; // batas permintaan inline Gemini 20 MB, base64 menambah ~33%
+const HARI_EN = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+class GeminiErr extends Error { constructor(msg, retry) { super(msg); this.retry = retry; } }
+const b64 = buf => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+const hhmm = t => { const m = /^(\d{1,2})[:.](\d{2})/.exec(String(t || '').trim()); return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : null; };
+async function geminiCall(model, key, body, ms) {
+  const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), ms);
+  let r;
+  try {
+    r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST', signal: ctrl.signal, headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify(body) });
+  } catch (e) {
+    throw new GeminiErr(ctrl.signal.aborted ? 'Gemini terlalu lama menjawab (server Google sedang sibuk). Coba lagi sebentar lagi.' : 'Tidak bisa terhubung ke Gemini. Periksa internet.', true);
+  } finally { clearTimeout(timer); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const msg = (j.error && j.error.message) || '';
+    if (r.status === 400 && /api key/i.test(msg)) throw new GeminiErr('Kunci Gemini ditolak. Periksa lagi kuncinya.', false);
+    if (r.status === 429) throw new GeminiErr('Kuota Gemini habis atau terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.', true);
+    if (r.status >= 500) throw new GeminiErr('Server Gemini sedang sibuk. Coba lagi sebentar lagi.', true);
+    throw new GeminiErr('Gemini error ' + r.status + (msg ? ': ' + msg : ''), false);
+  }
+  const c = j.candidates && j.candidates[0];
+  const text = c && c.content && (c.content.parts || []).filter(p => !p.thought && p.text).map(p => p.text).join('');
+  if (!text) throw new GeminiErr((j.promptFeedback && j.promptFeedback.blockReason) || (c && /SAFETY|BLOCK|PROHIBITED/.test(c.finishReason)) ? 'Gemini menolak membaca PDF ini.' : 'Gemini tidak memberi jawaban. Coba lagi.', true);
+  try { return JSON.parse(text); } catch (e) { throw new GeminiErr('Jawaban Gemini tidak lengkap. Coba lagi.', true); }
+}
+/* Kirim PDF ke Gemini → { days: {0..5: [{a, z, text}]}, classes: [...] } (bentuk yang sama dengan pembaca lama) */
+async function geminiReadSchedule(buf, kelas, key) {
+  const S_ = (type, extra) => Object.assign({ type }, extra);
+  const body = {
+    contents: [{ role: 'user', parts: [
+      { inlineData: { mimeType: 'application/pdf', data: b64(buf) } },
+      { text: `This PDF is a school timetable. Extract the weekly timetable for the class "${kelas}".
+- "classes": every class/group name that has its own timetable in the PDF (e.g. Y7, Y8, 9A), written exactly as in the PDF.
+- "found": true if a timetable for "${kelas}" (or an obvious match, e.g. "Year 9" for "Y9") exists.
+- "days": for each school day of that class, every time slot in order from first to last, including breaks, lunch, assembly and other non-lesson blocks.
+- For each slot give start and end in 24-hour HH:MM, the subject or activity name exactly as written, and the teacher if shown (else empty).
+- If one block spans several consecutive time rows, return it once with the first start and last end.
+- Do not invent slots. If "found" is false, return an empty "days" list.` }
+    ] }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: S_('OBJECT', { required: ['classes', 'found', 'days'], properties: {
+        classes: S_('ARRAY', { items: S_('STRING') }),
+        found: S_('BOOLEAN'),
+        days: S_('ARRAY', { items: S_('OBJECT', { required: ['day', 'slots'], properties: {
+          day: S_('STRING', { enum: HARI_EN }),
+          slots: S_('ARRAY', { items: S_('OBJECT', { required: ['start', 'end', 'subject'], properties: {
+            start: S_('STRING'), end: S_('STRING'), subject: S_('STRING'), teacher: S_('STRING') } }) })
+        } }) })
+      } })
+    }
+  };
+  let out, last;
+  for (let i = 0; i < GEMINI_MODELS.length && !out; i++) {
+    try { out = await geminiCall(GEMINI_MODELS[i], key, body, i ? 90000 : 40000); }
+    catch (e) { last = e; if (!e.retry) throw e; }
+  }
+  if (!out) throw last;
+  const days = {};
+  if (out.found !== false) (out.days || []).forEach(d => {
+    const di = HARI_EN.indexOf(d.day); if (di < 0) return;
+    const cells = (d.slots || []).map(s => {
+      const a = hhmm(s.start), z = hhmm(s.end), sub = String(s.subject || '').trim(), t = String(s.teacher || '').trim();
+      return a != null && z != null && z > a ? { a, z, text: t ? `${sub} (${t})` : sub } : null;
+    }).filter(Boolean).sort((x, y) => x.a - y.a);
+    if (cells.length) days[di] = (days[di] || []).concat(cells).sort((x, y) => x.a - y.a);
+  });
+  const classes = [...new Set((out.classes || []).map(c => String(c).trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  return { days, classes };
+}
 const subjKey = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 function lev(a, b) {
   if (Math.abs(a.length - b.length) > 3) return 9;
@@ -3510,18 +3584,33 @@ async function pdfImportModal() {
   let file = null, wk = 0, busy = false;
   const p = modal({ title: tx('Impor jadwal dari PDF'), wide: true,
     html: `<div class="stack">
-      <label class="pdf-drop" id="pdD"><input type="file" accept="application/pdf,.pdf" id="pdF" hidden>${I('upload')}<b id="pdN">${tx('Pilih file PDF jadwal')}</b><small>${tx('Format jadwal sekolah (Regular Program Schedule)')}</small></label>
+      <label class="pdf-drop" id="pdD"><input type="file" accept="application/pdf,.pdf" id="pdF" hidden>${I('upload')}<b id="pdN">${tx('Pilih file PDF jadwal')}</b><small>${T`Format jadwal apa saja · maksimal ${PDF_MAX_MB} MB`}</small></label>
+      <div class="field" id="pdKeyW"></div>
       <label class="field"><span>${tx('Kelas kamu di PDF')}</span><input class="input" id="pdK" value="${esc(lsGet(PDF_KELAS_KEY) || '')}" placeholder="${esc(tx('Contoh: Y9, 8A'))}" autocomplete="off"></label>
       <div class="field"><span>${tx('Isi mulai')}</span><div class="seg full" id="pdW"><button type="button" class="on" data-w="0">${tx('Minggu ini')}</button><button type="button" data-w="1">${tx('Minggu depan')}</button></div></div>
       <label class="field"><span>${tx('Ulangi jadwal selama')}</span><select class="input" id="pdR">${[1, 2, 4, 8, 12, 16].map(n => `<option value="${n}" ${n === 4 ? 'selected' : ''}>${T`${n} minggu`}</option>`).join('')}</select></label>
-      <p class="faint small" style="margin:0">${tx('PDF dibaca langsung di perangkat ini, tidak dikirim ke mana pun. Hasilnya bisa kamu periksa dulu sebelum disimpan, dan jam pelajaran mengikuti PDF.')}</p>
+      <p class="faint small" style="margin:0">${tx('PDF dikirim ke Google Gemini hanya untuk dibaca, memakai kunci API milikmu sendiri. Hasilnya bisa kamu periksa dulu sebelum disimpan, dan jam pelajaran mengikuti PDF.')}</p>
       <div class="pdf-status" id="pdS" hidden></div></div>`,
-    actions: [{ label: 'Batal', cls: 'ghost', value: null }, { label: tx('Baca PDF'), cls: 'grad', validate: m => { start(m); return false; } }] });
+    actions: [{ label: 'Batal', cls: 'ghost', value: null }, { label: tx('Baca dengan AI'), cls: 'grad', validate: m => { start(m); return false; } }] });
   const m = $('#modal');
   const say = (html, cls) => { const s = $('#pdS', m); s.hidden = false; s.className = 'pdf-status ' + (cls || ''); s.innerHTML = html; };
+  const keyHelp = `<small class="faint">${tx('Gratis di')} <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. ${tx('Kunci hanya disimpan di perangkat ini.')}</small>`;
+  function drawKey(edit) {
+    const w = $('#pdKeyW', m), has = !!lsGet(GEMINI_KEY);
+    if (has && !edit) {
+      w.innerHTML = `<span>${tx('Kunci API Gemini')}</span><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="small">✓ ${tx('Kunci tersimpan')}</span>
+        <button type="button" class="chip" id="pdKeyE">${tx('Ganti')}</button><button type="button" class="chip" id="pdKeyX">${tx('Hapus')}</button></div>`;
+      $('#pdKeyE', m).onclick = () => drawKey(true);
+      $('#pdKeyX', m).onclick = () => { localStorage.removeItem(GEMINI_KEY); drawKey(false); };
+    } else {
+      w.innerHTML = `<span>${tx('Kunci API Gemini')}</span><input class="input" id="pdKey" type="password" placeholder="AIza…" autocomplete="off" spellcheck="false">${keyHelp}`;
+    }
+  }
+  drawKey(false);
   $('#pdF', m).onchange = e => {
     const f = e.target.files && e.target.files[0]; if (!f) return;
     if (!/pdf$/i.test(f.type) && !/\.pdf$/i.test(f.name)) { say(I('warn') + tx('File harus berformat PDF.'), 'err'); return; }
+    if (f.size > PDF_MAX_MB * 1048576) { say(I('warn') + T`PDF terlalu besar (maksimal ${PDF_MAX_MB} MB).`, 'err'); return; }
     file = f; $('#pdN', m).textContent = f.name; $('#pdD', m).classList.add('on'); $('#pdS', m).hidden = true;
   };
   $$('[data-w]', m).forEach(b => b.onclick = () => { wk = +b.dataset.w; $$('[data-w]', m).forEach(x => x.classList.toggle('on', x === b)); });
@@ -3530,11 +3619,15 @@ async function pdfImportModal() {
     const kelas = $('#pdK', mm).value.trim();
     if (!file) { say(I('warn') + tx('Pilih file PDF dulu.'), 'err'); return; }
     if (!kelas) { say(I('warn') + tx('Tulis kelasmu seperti di PDF, misalnya Y9.'), 'err'); $('#pdK', mm).focus(); return; }
-    if (!window.RemindPDF) { say(I('warn') + tx('Pembaca PDF belum termuat. Muat ulang aplikasi lalu coba lagi.'), 'err'); return; }
+    const ki = $('#pdKey', mm), typed = ki ? ki.value.trim() : '';
+    const key = typed || lsGet(GEMINI_KEY) || '';
+    if (!key) { say(I('warn') + tx('Tempel kunci API Gemini dulu.'), 'err'); if (ki) ki.focus(); return; }
+    if (!navigator.onLine) { say(I('warn') + tx('Butuh internet untuk membaca PDF dengan AI.'), 'err'); return; }
     busy = true;
-    say(`<span class="spin"></span>${tx('Membaca PDF…')}`);
+    say(`<span class="spin"></span>${tx('Gemini sedang membaca PDF… biasanya 10–60 detik.')}`);
     try {
-      const res = await RemindPDF.read(await file.arrayBuffer(), kelas);
+      const res = await geminiReadSchedule(await file.arrayBuffer(), kelas, key);
+      if (typed) { lsSet(GEMINI_KEY, typed); drawKey(false); } // simpan hanya kalau kuncinya terbukti jalan
       const weeks = +$('#pdR', mm).value || 4;
       const o = pdfToData(res, kelas, wk, weeks);
       if (!o.d.length) {
@@ -3542,14 +3635,14 @@ async function pdfImportModal() {
         if (res.classes.length) {
           say(`${I('warn')}<div>${T`Kelas ${esc(kelas)} tidak ditemukan. Pilih kelasmu:`}<div class="pdf-kls">${res.classes.map(k => `<button type="button" class="chip" data-kls="${esc(k)}">${esc(k)}</button>`).join('')}</div></div>`, 'err');
           $$('[data-kls]', mm).forEach(b => b.onclick = () => { $('#pdK', mm).value = b.dataset.kls; start(mm); });
-        } else say(I('warn') + tx('Jadwal tidak terbaca dari PDF ini. Pastikan formatnya sama dengan jadwal sekolah (Regular Program Schedule).'), 'err');
+        } else say(I('warn') + tx('Gemini tidak menemukan jadwal di PDF ini. Pastikan PDF-nya berisi jadwal pelajaran.'), 'err');
         return;
       }
       lsSet(PDF_KELAS_KEY, kelas);
       mm._out = o; busy = false; $('.acts .btn', mm).click();
     } catch (e) {
       busy = false;
-      say(I('warn') + esc(tx('PDF ini tidak bisa dibaca.') + ' ' + (e && e.message ? tx(e.message) : '')), 'err');
+      say(I('warn') + esc(e instanceof GeminiErr ? tx(e.message) : tx('PDF ini tidak bisa dibaca.') + ' ' + (e && e.message ? tx(e.message) : '')), 'err');
     }
   }
   await p;
