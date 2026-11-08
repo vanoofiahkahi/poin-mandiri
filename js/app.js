@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.13.0';
+const VERSION = '3.13.1';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -3457,7 +3457,7 @@ const PDF_MAX_MB = 14; // batas permintaan inline Gemini 20 MB, base64 menambah 
 const HARI_EN = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 class GeminiErr extends Error { constructor(msg, retry) { super(msg); this.retry = retry; } }
 const b64 = buf => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
-const hhmm = t => { const m = /^(\d{1,2})[:.](\d{2})/.exec(String(t || '').trim()); return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : null; };
+const parseHHMM = t => { const m = /^(\d{1,2})[:.](\d{2})/.exec(String(t || '').trim()); return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : null; };
 async function geminiCall(model, key, body, ms) {
   const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), ms);
   let r;
@@ -3517,7 +3517,7 @@ async function geminiReadSchedule(buf, kelas, key) {
   if (out.found !== false) (out.days || []).forEach(d => {
     const di = HARI_EN.indexOf(d.day); if (di < 0) return;
     const cells = (d.slots || []).map(s => {
-      const a = hhmm(s.start), z = hhmm(s.end), sub = String(s.subject || '').trim(), t = String(s.teacher || '').trim();
+      const a = parseHHMM(s.start), z = parseHHMM(s.end), sub = String(s.subject || '').trim(), t = String(s.teacher || '').trim();
       return a != null && z != null && z > a ? { a, z, text: t ? `${sub} (${t})` : sub } : null;
     }).filter(Boolean).sort((x, y) => x.a - y.a);
     if (cells.length) days[di] = (days[di] || []).concat(cells).sort((x, y) => x.a - y.a);

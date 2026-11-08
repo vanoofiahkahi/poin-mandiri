@@ -2,6 +2,10 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.13.1 — 8 November 2026
+### Perbaikan
+- Jam di seluruh aplikasi (jadwal, pengingat, ujian) sempat tampil sebagai angka menit, mis. **420** bukan **07.00**. Sudah diperbaiki; data jadwalmu tidak berubah.
+
 ## 3.13.0 — 8 November 2026
 ### Impor jadwal dari PDF sekarang dibaca oleh Google Gemini
 - **Jadwal → ⋯ → Impor dari PDF** sekarang membaca PDF dengan AI Google Gemini, jadi **format jadwal apa saja** bisa dibaca, tidak hanya *Regular Program Schedule*. Maksimal 14 MB.
