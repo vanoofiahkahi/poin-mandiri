@@ -2,6 +2,12 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.13.2 — 8 November 2026
+### Perbaikan: impor PDF jadwal sekolah akurat lagi
+- Gemini salah membaca jadwal sekolah yang padat (kolom Y9 tercampur dengan Y10, jam ngawur). Jadwal sekolah (*Regular Program Schedule*) sekarang kembali dibaca oleh pembaca bawaan di perangkat: tepat, instan, dan tanpa internet.
+- Gemini hanya dipakai untuk PDF dengan format lain. Kunci API Gemini sekarang opsional.
+- Kalau jadwalmu sudah diimpor dan hasilnya salah, impor ulang PDF-nya lalu pilih **Timpa semua**.
+
 ## 3.13.1 — 8 November 2026
 ### Perbaikan
 - Jam di seluruh aplikasi (jadwal, pengingat, ujian) sempat tampil sebagai angka menit, mis. **420** bukan **07.00**. Sudah diperbaiki; data jadwalmu tidak berubah.

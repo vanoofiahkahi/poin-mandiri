@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.13.1';
+const VERSION = '3.13.2';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -3584,14 +3584,14 @@ async function pdfImportModal() {
   let file = null, wk = 0, busy = false;
   const p = modal({ title: tx('Impor jadwal dari PDF'), wide: true,
     html: `<div class="stack">
-      <label class="pdf-drop" id="pdD"><input type="file" accept="application/pdf,.pdf" id="pdF" hidden>${I('upload')}<b id="pdN">${tx('Pilih file PDF jadwal')}</b><small>${T`Format jadwal apa saja · maksimal ${PDF_MAX_MB} MB`}</small></label>
+      <label class="pdf-drop" id="pdD"><input type="file" accept="application/pdf,.pdf" id="pdF" hidden>${I('upload')}<b id="pdN">${tx('Pilih file PDF jadwal')}</b><small>${T`Jadwal sekolah, atau format lain dengan AI · maksimal ${PDF_MAX_MB} MB`}</small></label>
       <div class="field" id="pdKeyW"></div>
       <label class="field"><span>${tx('Kelas kamu di PDF')}</span><input class="input" id="pdK" value="${esc(lsGet(PDF_KELAS_KEY) || '')}" placeholder="${esc(tx('Contoh: Y9, 8A'))}" autocomplete="off"></label>
       <div class="field"><span>${tx('Isi mulai')}</span><div class="seg full" id="pdW"><button type="button" class="on" data-w="0">${tx('Minggu ini')}</button><button type="button" data-w="1">${tx('Minggu depan')}</button></div></div>
       <label class="field"><span>${tx('Ulangi jadwal selama')}</span><select class="input" id="pdR">${[1, 2, 4, 8, 12, 16].map(n => `<option value="${n}" ${n === 4 ? 'selected' : ''}>${T`${n} minggu`}</option>`).join('')}</select></label>
-      <p class="faint small" style="margin:0">${tx('PDF dikirim ke Google Gemini hanya untuk dibaca, memakai kunci API milikmu sendiri. Hasilnya bisa kamu periksa dulu sebelum disimpan, dan jam pelajaran mengikuti PDF.')}</p>
+      <p class="faint small" style="margin:0">${tx('Jadwal sekolah (Regular Program Schedule) dibaca langsung di perangkat ini. Format lain dikirim ke Google Gemini untuk dibaca, memakai kunci API milikmu. Hasilnya bisa kamu periksa dulu sebelum disimpan.')}</p>
       <div class="pdf-status" id="pdS" hidden></div></div>`,
-    actions: [{ label: 'Batal', cls: 'ghost', value: null }, { label: tx('Baca dengan AI'), cls: 'grad', validate: m => { start(m); return false; } }] });
+    actions: [{ label: 'Batal', cls: 'ghost', value: null }, { label: tx('Baca PDF'), cls: 'grad', validate: m => { start(m); return false; } }] });
   const m = $('#modal');
   const say = (html, cls) => { const s = $('#pdS', m); s.hidden = false; s.className = 'pdf-status ' + (cls || ''); s.innerHTML = html; };
   const keyHelp = `<small class="faint">${tx('Gratis di')} <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. ${tx('Kunci hanya disimpan di perangkat ini.')}</small>`;
@@ -3603,7 +3603,7 @@ async function pdfImportModal() {
       $('#pdKeyE', m).onclick = () => drawKey(true);
       $('#pdKeyX', m).onclick = () => { localStorage.removeItem(GEMINI_KEY); drawKey(false); };
     } else {
-      w.innerHTML = `<span>${tx('Kunci API Gemini')}</span><input class="input" id="pdKey" type="password" placeholder="AIza…" autocomplete="off" spellcheck="false">${keyHelp}`;
+      w.innerHTML = `<span>${tx('Kunci API Gemini (opsional, untuk format lain)')}</span><input class="input" id="pdKey" type="password" placeholder="AIza…" autocomplete="off" spellcheck="false">${keyHelp}`;
     }
   }
   drawKey(false);
@@ -3621,15 +3621,24 @@ async function pdfImportModal() {
     if (!kelas) { say(I('warn') + tx('Tulis kelasmu seperti di PDF, misalnya Y9.'), 'err'); $('#pdK', mm).focus(); return; }
     const ki = $('#pdKey', mm), typed = ki ? ki.value.trim() : '';
     const key = typed || lsGet(GEMINI_KEY) || '';
-    if (!key) { say(I('warn') + tx('Tempel kunci API Gemini dulu.'), 'err'); if (ki) ki.focus(); return; }
-    if (!navigator.onLine) { say(I('warn') + tx('Butuh internet untuk membaca PDF dengan AI.'), 'err'); return; }
+    const weeks = +$('#pdR', mm).value || 4;
     busy = true;
-    say(`<span class="spin"></span>${tx('Gemini sedang membaca PDF… biasanya 10–60 detik.')}`);
+    say(`<span class="spin"></span>${tx('Membaca PDF…')}`);
     try {
-      const res = await geminiReadSchedule(await file.arrayBuffer(), kelas, key);
-      if (typed) { lsSet(GEMINI_KEY, typed); drawKey(false); } // simpan hanya kalau kuncinya terbukti jalan
-      const weeks = +$('#pdR', mm).value || 4;
-      const o = pdfToData(res, kelas, wk, weeks);
+      const buf = await file.arrayBuffer();
+      /* 1) Pembaca bawaan: tepat & instan untuk format jadwal sekolah (Regular Program Schedule) */
+      let res = null;
+      if (window.RemindPDF) { try { res = await RemindPDF.read(buf.slice(0), kelas); } catch (e) { res = null; } }
+      let o = res ? pdfToData(res, kelas, wk, weeks) : null;
+      /* 2) Format lain (pembaca bawaan tidak mengenali kelas apa pun) → Google Gemini */
+      if (!o || (!o.d.length && !res.classes.length)) {
+        if (!key) { busy = false; say(I('warn') + tx('PDF ini bukan format jadwal sekolah yang dikenal. Tempel kunci API Gemini di atas agar bisa dibaca dengan AI.'), 'err'); if (ki) ki.focus(); return; }
+        if (!navigator.onLine) { busy = false; say(I('warn') + tx('Butuh internet untuk membaca PDF dengan AI.'), 'err'); return; }
+        say(`<span class="spin"></span>${tx('Gemini sedang membaca PDF… biasanya 10–60 detik.')}`);
+        res = await geminiReadSchedule(buf, kelas, key);
+        if (typed) { lsSet(GEMINI_KEY, typed); drawKey(false); } // simpan hanya kalau kuncinya terbukti jalan
+        o = pdfToData(res, kelas, wk, weeks);
+      }
       if (!o.d.length) {
         busy = false;
         if (res.classes.length) {
