@@ -2,6 +2,12 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.14.0 — 15 November 2026
+### Masuk dengan Google
+- Di layar **Masuk** dan **Daftar** sekarang ada tombol **Lanjut dengan Google**. Tidak perlu membuat password; nama diambil dari akun Google.
+- Kalau email Google-mu sama dengan akun remind+ yang sudah ada, kamu masuk ke akun yang sama dan datanya tetap.
+- Di aplikasi Android, login Google dibuka di browser lalu otomatis kembali ke remind+.
+
 ## 3.13.2 — 8 November 2026
 ### Perbaikan: impor PDF jadwal sekolah akurat lagi
 - Gemini salah membaca jadwal sekolah yang padat (kolom Y9 tercampur dengan Y10, jam ngawur). Jadwal sekolah (*Regular Program Schedule*) sekarang kembali dibaca oleh pembaca bawaan di perangkat: tepat, instan, dan tanpa internet.

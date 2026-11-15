@@ -329,6 +329,8 @@ a { color: var(--brand); text-decoration: none; }
 .auth-card .ok { color: var(--mint); background: var(--mint-soft); padding: 10px 12px; border-radius: 10px; font-size: 14px; font-weight: 600; }
 .auth-links { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 14px; font-weight: 600; }
 .auth-links button, .linkish { background: none; border: 0; padding: 0; color: var(--brand); font-weight: 700; cursor: pointer; }
+.auth-or { display: flex; align-items: center; gap: 12px; margin: 18px 0 14px; color: var(--text-3); font-size: 13px; font-weight: 600; }
+.auth-or::before, .auth-or::after { content: ""; flex: 1; height: 1px; background: var(--line-2); }
 .auth-foot { margin-top: 22px; text-align: center; color: var(--text-2); font-size: 14px; }
 .auth-theme { position: absolute; top: 18px; right: 18px; display: flex; gap: 8px; z-index: 2; }
 .lang-btn { font-weight: 800; font-size: 13px; letter-spacing: .04em; }

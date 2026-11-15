@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.13.2';
+const VERSION = '3.14.0';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -860,6 +860,7 @@ function authCard() {
         <div class="auth-links"><span></span><button type="button" id="goForgot">Lupa password?</button></div>
         <button class="btn grad block" type="submit">Masuk</button>
       </form>
+      <div id="oauthSlot"></div>
       <div class="auth-foot">Belum punya akun? <button class="linkish" id="goSignup">Daftar gratis</button></div>${localLink}`;
   } else if (m === 'signup') {
     c.innerHTML = `<h2>Buat akun</h2><p class="sub">Satu akun untuk semua perangkatmu.</p>
@@ -870,6 +871,7 @@ function authCard() {
         ${pwField('pw2', 'Ulangi password', 'Ketik ulang password', 'new-password')}
         <button class="btn grad block" type="submit">Daftar</button>
       </form>
+      <div id="oauthSlot"></div>
       <div class="auth-foot">Sudah punya akun? <button class="linkish" id="goLogin">Masuk</button></div>${localLink}`;
   } else if (m === 'forgot') {
     c.innerHTML = `<h2>Lupa password</h2><p class="sub">Kami kirim tautan untuk membuat password baru ke email Anda.</p>
@@ -906,8 +908,25 @@ function authCard() {
   $$('[data-eye]', c).forEach(b => b.onclick = () => { const i = $('#' + b.dataset.eye); const show = i.type === 'password'; i.type = show ? 'text' : 'password'; b.innerHTML = I(show ? 'eyeoff' : 'eye'); });
   const f = $('#f', c);
   if (f) f.onsubmit = e => { e.preventDefault(); submitAuth(f); };
+  oauthButtons(c);
   const first = $('input:not([value]):not([type=hidden]), input[value=""]', c) || $('input', c);
   if (first && matchMedia('(min-width: 900px)').matches) first.focus();
+}
+/* Tombol "Lanjut dengan Google": hanya tampil kalau Google sudah diaktifkan di server akun. */
+const GOOGLE_ICON = `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5a5.6 5.6 0 0 1-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.8z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.4 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.3 14.3a7.2 7.2 0 0 1 0-4.6V6.6h-4a12 12 0 0 0 0 10.8l4-3.1z"/><path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.3 6.6l4 3.1c.9-2.9 3.6-4.9 6.7-4.9z"/></svg>`;
+async function oauthButtons(c) {
+  const slot = $('#oauthSlot', c);
+  if (!slot || !sb) return;
+  const p = await sb.providers();
+  if (!p.google || !slot.isConnected) return;
+  slot.innerHTML = `<div class="auth-or"><span>atau</span></div><button type="button" class="btn ghost block" id="goGoogle">${GOOGLE_ICON}Lanjut dengan Google</button>`;
+  $('#goGoogle', slot).onclick = () => {
+    $('#goGoogle', slot).disabled = true;
+    // Google tidak mengizinkan login di dalam WebView, jadi aplikasi Android membuka browser
+    // lalu kembali lewat tautan remindplus://auth.
+    location.href = sb.oauthUrl('google', NATIVE ? 'remindplus://auth' : APP_URL);
+    setTimeout(() => { const b = $('#goGoogle'); if (b) b.disabled = false; }, 4000);
+  };
 }
 /* Tampilkan pesan galat tanpa menghapus isian formulir */
 function authFail(msg) {

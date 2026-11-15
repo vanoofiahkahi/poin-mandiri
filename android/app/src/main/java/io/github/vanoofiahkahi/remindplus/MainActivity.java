@@ -104,8 +104,25 @@ public class MainActivity extends Activity {
             }
         });
 
-        if (saved != null) web.restoreState(saved);
+        String auth = authUrl(getIntent());
+        if (auth != null) web.loadUrl(auth);
+        else if (saved != null) web.restoreState(saved);
         else web.loadUrl(BASE + query(getIntent()));
+    }
+
+    /** Login Google selesai di browser, lalu browser membuka remindplus://auth#access_token=… .
+     *  Sesi di #hash itu diteruskan ke remind+ (dibaca handleRedirect di supa.js). */
+    private static String authUrl(Intent i) {
+        Uri d = i == null ? null : i.getData();
+        if (d == null || !"remindplus".equals(d.getScheme()) || !"auth".equals(d.getHost())) return null;
+        String frag = d.getEncodedFragment();
+        if (frag == null || frag.isEmpty()) {
+            String q = d.getEncodedQuery(); // galat kadang dikirim lewat ?error=…
+            if (q == null || q.isEmpty()) return null;
+            frag = q;
+        }
+        // query berbeda memaksa halaman dimuat ulang (kalau cuma #hash yang berubah, aplikasi tidak membacanya)
+        return BASE + "?app=android&auth=" + System.currentTimeMillis() + "#" + frag;
     }
 
     private static String query(Intent i) {
@@ -140,6 +157,8 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        String auth = authUrl(intent);
+        if (auth != null && web != null) { web.loadUrl(auth); return; }
         String go = intent.getStringExtra("go");
         if (go != null && web != null)
             web.evaluateJavascript("window.remindGo && window.remindGo(" + org.json.JSONObject.quote(go) + ")", null);

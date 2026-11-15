@@ -101,6 +101,25 @@
       this._emit('SIGNED_IN');
       return j;
     }
+    /* Login lewat penyedia luar (Google). Supabase mengembalikan sesi di #hash alamat tujuan,
+       yang lalu dibaca handleRedirect(). */
+    oauthUrl(provider, redirectTo) {
+      return this.url + '/auth/v1/authorize?provider=' + encodeURIComponent(provider) +
+        (redirectTo ? '&redirect_to=' + encodeURIComponent(redirectTo) : '');
+    }
+    /* Penyedia login yang aktif di server, mis. { google: true }. Disimpan agar tombol langsung tampil. */
+    async providers() {
+      const k = 'remindplus:providers:' + this.url;
+      let cached = null;
+      try { cached = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) {}
+      const fresh = this._fetch('/auth/v1/settings').then(j => {
+        const p = (j && j.external) || {};
+        try { localStorage.setItem(k, JSON.stringify(p)); } catch (e) {}
+        return p;
+      });
+      if (cached) { fresh.catch(() => {}); return cached; }
+      try { return await fresh; } catch (e) { return {}; }
+    }
     async recover(email, redirectTo) {
       const q = redirectTo ? '?redirect_to=' + encodeURIComponent(redirectTo) : '';
       await this._fetch('/auth/v1/recover' + q, { method: 'POST', body: { email } });

@@ -11,6 +11,7 @@
 
   const EN = {
     /* ---------- umum ---------- */
+    'atau': 'or', 'Lanjut dengan Google': 'Continue with Google',
     'Ya': 'Yes', 'Batal': 'Cancel', 'Batalkan': 'Undo', 'Dibatalkan': 'Undone', 'Simpan': 'Save', 'Hapus': 'Delete', 'Ubah': 'Edit',
     'Tambah': 'Add', 'Lihat': 'View', 'Mengerti': 'Got it', 'Lanjutkan': 'Continue', 'Lewati': 'Skip', 'Semua': 'All', 'Selesai': 'Done',
     'Mulai': 'Start', 'Lanjut': 'Resume', 'Jeda': 'Pause', 'Reset': 'Reset', 'Tukar': 'Redeem', 'Impor': 'Import', 'Pulihkan': 'Restore',
