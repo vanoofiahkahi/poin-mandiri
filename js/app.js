@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.14.1';
+const VERSION = '3.14.2';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -3600,7 +3600,12 @@ function pdfToData(res, kelas, wk, weeks) {
           last[1] += n;
           if (odd || last[2]) last[2] = lm + dur;
         } else items.push(odd ? [id, n, dur] : [id, n]);
-      } else items.push([-1, dur, label(text)]);
+      } else if (!text) stretch(dur); // sel kosong = baris lanjutan dari sel di atasnya
+      else {
+        const last = items[items.length - 1];
+        if (last && last[0] === -1 && last[2] === label(text)) last[1] += dur; // blok yang sama terpecah jadi beberapa baris
+        else items.push([-1, dur, label(text)]);
+      }
       cur = c.z;
     });
     pattern[di] = [rawMin(cells[0].a), items];

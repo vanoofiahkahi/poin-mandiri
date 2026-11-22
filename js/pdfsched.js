@@ -81,7 +81,12 @@
     const pb = doc.dictOf(pn);
     let contents = [];
     const cArr = /\/Contents\s*\[([^\]]*)\]/.exec(pb), cOne = /\/Contents\s+(\d+)\s+0\s+R/.exec(pb);
-    if (cArr) contents = (cArr[1].match(/\d+\s+0\s+R/g) || []).map(x => parseInt(x, 10)); else if (cOne) contents = [+cOne[1]];
+    if (cArr) contents = (cArr[1].match(/\d+\s+0\s+R/g) || []).map(x => parseInt(x, 10));
+    else if (cOne) {
+      /* /Contents bisa menunjuk ke objek berisi daftar stream (mis. PDF dari Chrome/Google Sheets) */
+      const arr = /^\s*\[([^\]]*)\]\s*$/.exec(doc.dictOf(+cOne[1]));
+      contents = arr ? (arr[1].match(/\d+\s+0\s+R/g) || []).map(x => parseInt(x, 10)) : [+cOne[1]];
+    }
     let res = pb; const rRef = /\/Resources\s+(\d+)\s+0\s+R/.exec(pb); if (rRef) res = doc.dictOf(+rRef[1]);
     const fdict = /\/Font\s*<<([\s\S]*?)>>/.exec(res);
     const fonts = {};
@@ -89,12 +94,35 @@
     let t = ''; for (const c of contents) t += (await doc.stream(c)) + '\n';
     const toks = t.match(/\[(?:<[^>]*>|\((?:\\.|[^\\)])*\)|[^\]])*\]|<[0-9A-Fa-f\s]*>|\((?:\\.|[^\\)])*\)|\/[^\s\/\[\]<>()]+|-?\d*\.?\d+|[A-Za-z'"\*]+/g) || [];
     const runs = [], rects = [];
-    let st = [], sub = [], cur = [], f = null, fs = 10, tx = 0, ty = 0, lx = 0, ly = 0;
-    const flushPath = fill => { if (sub.length) { cur.push(sub); sub = []; } if (fill) cur.forEach(s => { const xs = s.map(p => p[0]), ys = s.map(p => p[1]); rects.push([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]); }); cur = []; };
+    /* Koordinat: semua posisi dibawa lewat matriks (cm, q/Q, Tm, Td) ke halaman, lalu dibalik jadi
+       atas→bawah dan dibagi 0,75 (satuan "piksel" 96 dpi). Untuk PDF dari Microsoft Print to PDF hasilnya
+       persis sama dengan koordinat mentahnya, jadi semua ambang jarak di bawah tetap berlaku. */
+    const mb = /\/MediaBox\s*\[\s*(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)/.exec(pb) || /\/MediaBox\s*\[\s*(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)/.exec(doc.dictOf(doc.ref(pb, 'Parent') || 0)) || [0, 0, 0, 612, 792];
+    const PH = +mb[4], K = 0.75;
+    const mul = (m, n) => [m[0] * n[0] + m[1] * n[2], m[0] * n[1] + m[1] * n[3], m[2] * n[0] + m[3] * n[2], m[2] * n[1] + m[3] * n[3], m[4] * n[0] + m[5] * n[2] + n[4], m[4] * n[1] + m[5] * n[3] + n[5]];
+    const pt = (m, x, y) => [(x * m[0] + y * m[2] + m[4]) / K, (PH - (x * m[1] + y * m[3] + m[5])) / K];
+    let ctm = [1, 0, 0, 1, 0, 0], gstack = [];
+    let st = [], sub = [], cur = [], f = null, fs = 10, tm = [1, 0, 0, 1, 0, 0], lm = [1, 0, 0, 1, 0, 0], lastShow = null;
+    const flushPath = (fill, stroke) => {
+      if (sub.length) { cur.push(sub); sub = []; }
+      /* garis tabel yang digambar sebagai garis (stroke), bukan kotak tipis: tiap ruas jadi "garis" */
+      if (stroke) cur.forEach(sp => { for (let i = 1; i < sp.length; i++) { const a = pt(ctm, sp[i - 1][0], sp[i - 1][1]), b = pt(ctm, sp[i][0], sp[i][1]); rects.push([Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])]); } });
+      if (fill) cur.forEach(sp => { const ps = sp.map(p => pt(ctm, p[0], p[1])), xs = ps.map(p => p[0]), ys = ps.map(p => p[1]); rects.push([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]); });
+      cur = [];
+    };
     const show = arr => {
       const font = f || { map: {}, widths: {}, dw: 1000, two: true };
-      let x = tx, seg = { x, s: '' };
-      const end = () => { if (seg.s.trim()) runs.push({ x: seg.x, x2: x, y: ty, t: seg.s, fs }); };
+      const M = mul(tm, ctm), efs = fs * Math.hypot(M[2], M[3]) / K; // ukuran huruf di halaman
+      let x = 0, seg = { x: 0, s: '' };
+      const end = () => {
+        if (!seg.s.trim()) return;
+        const a = pt(M, seg.x, 0), b = pt(M, x, 0), r = { x: Math.min(a[0], b[0]), x2: Math.max(a[0], b[0]), y: a[1], t: seg.s, fs: efs };
+        /* PDF yang menulis satu huruf per perintah (mis. Chrome/Google Sheets): sambung jadi kata */
+        /* (disambung nanti, setelah garis tabel diketahui, supaya tidak menyambung lewat batas sel) */
+        const L = lastShow && runs[runs.length - 1] === lastShow ? lastShow : null;
+        if (L && Math.abs(L.y - r.y) < 0.3 * efs && r.x >= L.x2 - 0.3 * efs && r.x - L.x2 < 0.8 * efs) r.join = true;
+        runs.push(r); lastShow = r;
+      };
       const items = typeof arr === 'string' ? [arr] : arr;
       items.forEach(it => {
         if (typeof it === 'number') { const d = -it / 1000 * fs; if (it < -800) { end(); x += d; seg = { x, s: '' }; } else x += d; return; }
@@ -106,29 +134,44 @@
           for (const ch of s) { const code = ch.charCodeAt(0); seg.s += font.map[code] != null ? font.map[code] : ch; x += (font.widths[code] != null ? font.widths[code] : 500) / 1000 * fs; }
         }
       });
-      end(); tx = x;
+      if (seg.s.trim()) end(); else if (!seg.s && lastShow) { /* spasi saja: biarkan kata berikutnya tersambung */ }
+      tm = [tm[0], tm[1], tm[2], tm[3], x * tm[0] + tm[4], x * tm[1] + tm[5]];
     };
     for (const tk of toks) {
       const c0 = tk[0];
       if (c0 === '[' || c0 === '<' || c0 === '(' || c0 === '/' || c0 === '-' || c0 === '.' || (c0 >= '0' && c0 <= '9')) { st.push(tk); continue; }
       const n = i => +st[st.length - i];
       switch (tk) {
+        case 'q': gstack.push(ctm); break;
+        case 'Q': if (gstack.length) ctm = gstack.pop(); break;
+        case 'cm': ctm = mul([n(6), n(5), n(4), n(3), n(2), n(1)], ctm); break;
         case 'm': if (sub.length) cur.push(sub); sub = [[n(2), n(1)]]; break;
         case 'l': sub.push([n(2), n(1)]); break;
         case 're': { const x = n(4), y = n(3), w = n(2), h = n(1); if (sub.length) cur.push(sub); cur.push([[x, y], [x + w, y + h]]); sub = []; break; }
         case 'h': if (sub.length) { cur.push(sub); sub = []; } break;
         case 'f': case 'f*': case 'F': case 'B': case 'B*': flushPath(true); break;
-        case 'n': case 'S': case 's': flushPath(false); break;
-        case 'BT': tx = lx = 0; ty = ly = 0; break;
+        case 'S': case 's': flushPath(false, true); break;
+        case 'n': flushPath(false); break;
+        case 'BT': tm = lm = [1, 0, 0, 1, 0, 0]; break;
         case 'Tf': f = fonts[String(st[st.length - 2]).slice(1)] || null; fs = Math.abs(n(1)) || fs; break;
-        case 'Tm': tx = lx = n(2); ty = ly = n(1); { const sc = Math.abs(n(6)); if (sc && sc !== 1) fs = fs * sc; } break;
-        case 'Td': case 'TD': lx += n(2); ly += n(1); tx = lx; ty = ly; break;
+        case 'Tm': tm = lm = [n(6), n(5), n(4), n(3), n(2), n(1)]; break;
+        case 'Td': case 'TD': lm = mul([1, 0, 0, 1, n(2), n(1)], lm); tm = lm; break;
+        case 'T*': break;
         case 'TJ': { const a = st[st.length - 1] || '[]'; const parts = a.slice(1, -1).match(/<[^>]*>|\((?:\\.|[^\\)])*\)|-?\d*\.?\d+/g) || []; show(parts.map(p => (p[0] === '<' || p[0] === '(') ? p : +p)); break; }
         case 'Tj': case "'": show(st[st.length - 1] || ''); break;
       }
       st = [];
     }
-    return { runs, rects };
+    /* sambung huruf/kata yang berurutan jadi satu potongan teks, kecuali ada garis tegak tabel di antaranya */
+    const vl = rects.filter(q => q[2] - q[0] < 1.6 && q[3] - q[1] > 1);
+    const out = [];
+    runs.forEach(r => {
+      const L = out[out.length - 1];
+      if (r.join && L && !vl.some(q => q[0] >= L.x2 - 0.25 * r.fs && q[2] <= r.x + 0.25 * r.fs && q[1] < r.y && q[3] > r.y - 0.5 * r.fs)) {
+        L.t += (r.x - L.x2 > 0.12 * r.fs && !/\s$/.test(L.t) ? ' ' : '') + r.t; L.x2 = r.x2;
+      } else { delete r.join; out.push(r); }
+    });
+    return { runs: out, rects };
   }
 
   /* ---------- susun jadwal satu kelas ---------- */
@@ -152,10 +195,15 @@
         const row = runs.filter(r => Math.abs(r.y - H.y) < 3 && r !== H);
         const L = row.filter(r => r.x2 <= H.x + 1).sort((a, b) => b.x2 - a.x2)[0];
         const R = row.filter(r => r.x >= H.x2 - 1).sort((a, b) => a.x - b.x)[0];
-        const colL = L ? L.x2 + 1 : H.x - 60, colR = R ? R.x - 1 : H.x2 + 60, mid = cx(H);
+        let colL = L ? L.x2 + 1 : H.x - 60, colR = R ? R.x - 1 : H.x2 + 60;
+        const mid = cx(H);
         const yEnd = heads[hi + 1] ? heads[hi + 1].y - 20 : Infinity;
-        /* kolom jam milik kelas ini: tepat di kiri kolom */
-        const times = runs.filter(r => TIME.test(r.t) && r.y > H.y && r.y < yEnd && cx(r) < colL + 4 && cx(r) > colL - 70)
+        /* kolom jam milik kelas ini: kolom jam terdekat di kiri kepala kolom */
+        const tAll = runs.filter(r => TIME.test(r.t) && r.y > H.y && r.y < yEnd && cx(r) < mid);
+        let tx0 = -Infinity; tAll.forEach(r => { if (cx(r) > tx0) tx0 = cx(r); });
+        const tCol = tAll.filter(r => Math.abs(cx(r) - tx0) < Math.max(6, r.fs * 2));
+        if (tCol.length) colL = Math.max(colL, Math.max(...tCol.map(r => r.x2)) + 1);
+        const times = tCol
           .map(r => { const m = TIME.exec(r.t); return { y: r.y, a: (+m[1]) * 60 + (+m[2]), z: (+m[3]) * 60 + (+m[4]) }; })
           .sort((a, b) => a.y - b.y);
         const tr = []; times.forEach(t => { if (!tr.length || t.y - tr[tr.length - 1].y > 2) tr.push(t); });
@@ -164,6 +212,8 @@
         const lines = pg.rects.filter(q => q[3] - q[1] < 1.6 && q[2] - q[0] > 8 && q[0] < mid && q[2] > mid && q[1] > H.y && q[1] < yEnd)
           .map(q => (q[1] + q[3]) / 2).sort((a, b) => a - b);
         const bl = []; lines.forEach(y => { if (!bl.length || y - bl[bl.length - 1] > 1.5) bl.push(y); });
+        /* baris pertama di bawah kepala kolom juga dihitung walau garisnya tertutup sel gabungan */
+        if (!bl.length || bl[0] > tr[0].y - 1) bl.unshift(Math.min(H.y + 1, tr[0].y - 1));
         const lastY = tr[tr.length - 1].y + 6;
         if (!bl.length || bl[bl.length - 1] < lastY) bl.push(lastY);
         /* batas kolom yang lebih tepat: garis tegak tabel terdekat di kiri & kanan */

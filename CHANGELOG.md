@@ -2,6 +2,20 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.14.2 — 22 November 2026
+### Pembaca PDF bawaan mengenali jadwal versi baru
+- Jadwal sekolah versi baru (satu halaman A4 berisi Senin–Jumat, hasil ekspor Google Sheets/Chrome, misalnya *Regular Schedule 23–27 Nov*) sekarang dibaca langsung di perangkat. Sebelumnya pembaca bawaan tidak mengenali file ini, jadi PDF-nya dikirim ke Gemini dan hasilnya berantakan.
+- Perbaikan di pembaca PDF:
+  - isi halaman yang disimpan sebagai daftar beberapa bagian;
+  - posisi teks dan garis yang memakai skala atau dibalik;
+  - teks yang ditulis huruf per huruf;
+  - garis tabel yang digambar sebagai garis, bukan kotak tipis.
+- Kolom jam yang dipakai sekarang kolom jam terdekat di kiri kelasmu. Baris pertama di bawah judul kelas juga ikut terbaca walaupun tertutup sel gabungan (misalnya Flag Ceremony untuk Y10–Y12).
+- Saat mengubah hasil baca menjadi jadwal:
+  - sel kosong dianggap lanjutan sel di atasnya, bukan istirahat;
+  - blok yang sama yang terpecah beberapa baris (misalnya Flag Ceremony 15 + 70 menit) digabung jadi satu.
+- Hasil untuk PDF jadwal yang lama tetap sama persis.
+
 ## 3.14.1 — 22 November 2026
 ### Perbaikan impor jadwal dari PDF: pelajaran terpotong jadi "Istirahat"
 - Kalau hasil baca PDF punya celah kosong di antara dua sel, celah itu sekarang dianggap lanjutan blok sebelumnya (sel yang memanjang beberapa baris), bukan istirahat. Contohnya, Biology 08.40–09.15 lalu kosong sampai 09.50 sekarang menjadi Biology 08.40–09.50 (2 sesi). Sebelumnya hasilnya Biology 1 sesi + "Istirahat 35 menit".
