@@ -2,6 +2,12 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.14.1 — 22 November 2026
+### Perbaikan impor jadwal dari PDF: pelajaran terpotong jadi "Istirahat"
+- Kalau hasil baca PDF punya celah kosong di antara dua sel, celah itu sekarang dianggap lanjutan blok sebelumnya (sel yang memanjang beberapa baris), bukan istirahat. Contohnya, Biology 08.40–09.15 lalu kosong sampai 09.50 sekarang menjadi Biology 08.40–09.50 (2 sesi). Sebelumnya hasilnya Biology 1 sesi + "Istirahat 35 menit".
+- Masalah ini muncul dari hasil baca Gemini (3.13.0–3.13.1), yang kadang hanya mengambil baris pertama dari sel pelajaran yang memanjang. Instruksi untuk Gemini juga diperjelas.
+- Jadwal yang sudah telanjur salah bisa diperbaiki dengan impor ulang PDF, lalu pilih **Timpa semua**.
+
 ## 3.14.0 — 15 November 2026
 ### Masuk dengan Google
 - Di layar **Masuk** dan **Daftar** sekarang ada tombol **Lanjut dengan Google**. Tidak perlu membuat password; nama diambil dari akun Google.

@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.14.0';
+const VERSION = '3.14.1';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -3510,7 +3510,8 @@ async function geminiReadSchedule(buf, kelas, key) {
 - "found": true if a timetable for "${kelas}" (or an obvious match, e.g. "Year 9" for "Y9") exists.
 - "days": for each school day of that class, every time slot in order from first to last, including breaks, lunch, assembly and other non-lesson blocks.
 - For each slot give start and end in 24-hour HH:MM, the subject or activity name exactly as written, and the teacher if shown (else empty).
-- If one block spans several consecutive time rows, return it once with the first start and last end.
+- If one block spans several consecutive time rows (a merged cell), return it once with the first start and the END OF THE LAST ROW it covers. Most lessons span two rows.
+- Slots must follow each other with no gaps: each slot starts exactly when the previous one ends.
 - Do not invent slots. If "found" is false, return an empty "days" list.` }
     ] }],
     generationConfig: {
@@ -3573,9 +3574,18 @@ function pdfToData(res, kelas, wk, weeks) {
   Object.entries(res.days || {}).forEach(([di, cells]) => {
     if (!cells.length) return;
     const items = []; let cur = cells[0].a;
+    /* Celah tanpa isi di jadwal sekolah = sambungan blok sebelumnya (sel yang memanjang beberapa baris),
+       bukan istirahat. Contoh: pelajaran 08.40–09.15 lalu kosong sampai 09.50 → pelajaran 08.40–09.50. */
+    const stretch = gap => {
+      const last = items[items.length - 1];
+      if (!last) { items.push([-1, gap, '']); return; }
+      if (last[0] === -1) { last[1] += gap; return; }
+      const mins = (last[2] || last[1] * S.ttMin) + gap, n = Math.max(1, Math.round(mins / S.ttMin));
+      last.length = 2; last[1] = n; if (mins !== n * S.ttMin) last[2] = mins;
+    };
     cells.forEach(c => {
       if (c.z <= cur) return;
-      if (c.a > cur) items.push([-1, c.a - cur, '']);
+      if (c.a > cur) stretch(c.a - cur);
       const a = Math.max(c.a, cur), dur = c.z - a, text = String(c.text || '').trim();
       const m = /^(.*?)\s*\(([^()]*)\)\s*$/.exec(text);
       const name = (m ? m[1] : text).trim(), teacher = m ? m[2].trim() : '';
