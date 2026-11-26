@@ -2,6 +2,17 @@
 
 Semua perubahan penting pada remind+ (dulu Poin Mandiri), dari yang terbaru.
 
+## 3.15.0 — 26 November 2026
+### Impor jadwal ujian dari PDF (mis. ASAS 30 Nov–3 Des)
+- Pembaca PDF bawaan sekarang mengenali jadwal ujian sekolah:
+  - judul kelas "Year 9" dianggap sama dengan Y9;
+  - judul hari bertanggal seperti "Monday, 30 November 2026 (Lower Secondary)" ikut dibaca;
+  - sel yang digabung untuk Year 7–9 juga terbaca.
+- PDF yang hari-harinya bertanggal memakai tanggal dari PDF itu sendiri. Pilihan "Minggu ini/depan" dan "Ulangi" tidak dipakai.
+- Untuk jadwal ujian (Assessment/ASAS/ujian/exam), setiap mata pelajaran ikut ditambahkan ke **Ujian**, lengkap dengan tanggal, jam mulai, dan pengingat belajar malam sebelumnya. Kamu bisa mematikannya di layar hasil baca.
+- "Preparation/Persiapan" dicatat sebagai kegiatan, bukan pelajaran.
+- Hasil untuk PDF jadwal biasa (lama dan baru) tetap sama.
+
 ## 3.14.2 — 22 November 2026
 ### Pembaca PDF bawaan mengenali jadwal versi baru
 - Jadwal sekolah versi baru (satu halaman A4 berisi Senin–Jumat, hasil ekspor Google Sheets/Chrome, misalnya *Regular Schedule 23–27 Nov*) sekarang dibaca langsung di perangkat. Sebelumnya pembaca bawaan tidak mengenali file ini, jadi PDF-nya dikirim ke Gemini dan hasilnya berantakan.

@@ -14,7 +14,7 @@ const lsGet = (k, d = null) => { try { const v = localStorage.getItem(k); return
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const DAY = 864e5;
-const VERSION = '3.14.2';
+const VERSION = '3.15.0';
 
 /* ================= Aplikasi Android (WebView + jembatan native) ================= */
 const NATIVE = window.RemindNative || null;
@@ -3561,7 +3561,7 @@ function matchSubj(name) {
 /* Sel PDF → format data yang sama dengan link/QR jadwal, lalu dipratinjau lewat importData() */
 function pdfToData(res, kelas, wk, weeks) {
   const BRK = /\b(break|istirahat|lunch|makan|dzuhur|zuhur|prayer|sholat|shalat)\b/i;
-  const ACT = /\b(ceremony|assembly|exercise|activity|upacara|senam|chat ?time)\b/i;
+  const ACT = /\b(ceremony|assembly|exercise|activity|upacara|senam|chat ?time|preparation|persiapan|registrasi|registration)\b/i;
   const sj = [], idx = {};
   const si = (n, t, ex) => {
     const k = subjKey(n);
@@ -3570,8 +3570,9 @@ function pdfToData(res, kelas, wk, weeks) {
     return idx[k];
   };
   const label = s => s.length > 40 ? s.slice(0, 39).trim() + '…' : s;
-  const pattern = {};
+  const pattern = {}, starts = {};
   Object.entries(res.days || {}).forEach(([di, cells]) => {
+    const st = starts[di] = [];
     if (!cells.length) return;
     const items = []; let cur = cells[0].a;
     /* Celah tanpa isi di jadwal sekolah = sambungan blok sebelumnya (sel yang memanjang beberapa baris),
@@ -3595,6 +3596,7 @@ function pdfToData(res, kelas, wk, weeks) {
         // Durasi asli dari PDF: kalau bukan kelipatan 1 sesi (mis. HRT 15 menit), simpan menitnya.
         const n = Math.max(1, Math.round(dur / S.ttMin)), odd = dur !== n * S.ttMin;
         const last = items[items.length - 1];
+        if (!(last && last[0] === id)) st.push([id, a]);
         if (last && last[0] === id) {
           const lm = last[2] || last[1] * S.ttMin;
           last[1] += n;
@@ -3610,9 +3612,19 @@ function pdfToData(res, kelas, wk, weeks) {
     });
     pattern[di] = [rawMin(cells[0].a), items];
   });
-  const first = weekOf(addDays(weekOf(ttDefaultDate())[0], wk * 7))[0], d = [];
-  for (let w = 0; w < weeks; w++) weekOf(addDays(first, w * 7)).forEach((date, di) => { if (pattern[di]) d.push([date, pattern[di][0], pattern[di][1]]); });
-  return { v: 1, by: 'PDF · ' + kelas, m: S.ttMin, s: sj, d, e: [], title: tx('Hasil baca PDF') };
+  const d = [], e = [], dates = res.dates || {};
+  const dated = Object.keys(pattern).length && Object.keys(pattern).every(di => /^\d{4}-\d\d-\d\d$/.test(dates[di] || ''));
+  if (dated) {
+    /* PDF bertanggal (mis. jadwal ujian 30 Nov–3 Des): pakai tanggal dari PDF, tanpa pengulangan mingguan */
+    Object.keys(pattern).sort((a, b) => dates[a] < dates[b] ? -1 : 1).forEach(di => {
+      d.push([dates[di], pattern[di][0], pattern[di][1]]);
+      if (res.exam) starts[di].forEach(([id, a]) => e.push([sj[id][0], dates[di], rawMin(a)]));
+    });
+  } else {
+    const first = weekOf(addDays(weekOf(ttDefaultDate())[0], wk * 7))[0];
+    for (let w = 0; w < weeks; w++) weekOf(addDays(first, w * 7)).forEach((date, di) => { if (pattern[di]) d.push([date, pattern[di][0], pattern[di][1]]); });
+  }
+  return { v: 1, by: 'PDF · ' + kelas, m: S.ttMin, s: sj, d, e, dated, title: tx(res.exam && dated ? 'Hasil baca jadwal ujian' : 'Hasil baca PDF') };
 }
 async function pdfImportModal() {
   let file = null, wk = 0, busy = false;
@@ -3690,7 +3702,7 @@ async function pdfImportModal() {
   }
   await p;
   const out = m._out; m._out = null;
-  if (out) setTimeout(() => importData(out), 60);
+  if (out) setTimeout(() => importData(out, out.dated ? tx('Tanggal diambil langsung dari PDF, jadi pilihan minggu dan pengulangan tidak dipakai.') : ''), 60);
 }
 
 /* Terima jadwal dari link/QR */

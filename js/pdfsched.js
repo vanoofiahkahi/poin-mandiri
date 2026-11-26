@@ -175,20 +175,36 @@
   }
 
   /* ---------- susun jadwal satu kelas ---------- */
-  const DAYS = [/^(monday|senin)$/i, /^(tuesday|selasa)$/i, /^(wednesday|rabu)$/i, /^(thursday|kamis)$/i, /^(friday|jumat|jum'at)$/i, /^(saturday|sabtu)$/i];
+  /* nama hari saja ("Monday"), atau di awal judul bertanggal ("Monday, 30 November 2026 (Lower Secondary)") */
+  const DAYS = [/^(monday|senin)\b/i, /^(tuesday|selasa)\b/i, /^(wednesday|rabu)\b/i, /^(thursday|kamis)\b/i, /^(friday|jumat|jum'at)\b/i, /^(saturday|sabtu)\b/i];
+  const isDay = t => DAYS.some(re => re.test(t)) && (t.length <= 9 || /^[a-z']+\s*,/i.test(t));
+  const MON = ['jan', 'feb', 'mar', 'apr', 'ma[yi]', 'jun', 'jul', 'a[uv]g', 'sep', 'o[ck]t', 'nov', 'de[cs]'];
+  const dateOf = t => {
+    const m = /(\d{1,2})\s+([a-z]+)\s+(\d{4})/i.exec(t); if (!m) return null;
+    const mi = MON.findIndex(x => new RegExp('^' + x, 'i').test(m[2])); if (mi < 0) return null;
+    return m[3] + '-' + String(mi + 1).padStart(2, '0') + '-' + String(+m[1]).padStart(2, '0');
+  };
+  /* "Year 9" di jadwal ujian = kelas "Y9" di jadwal biasa */
+  const canon = t => t.toUpperCase().replace(/^YEAR\s*(\d{1,2})$/, 'Y$1');
   const TIME = /^(\d{1,2})[.:](\d{2})\s*[-–]\s*(\d{1,2})[.:](\d{2})$/;
   const norm = s => String(s || '').replace(/\s+/g, ' ').trim();
   const cx = r => (r.x + r.x2) / 2;
   function schedule(pages, kelas) {
     const want = norm(kelas).toUpperCase().replace(/^YEAR\s*/, 'Y');
-    const days = {}, classes = new Set();
+    const days = {}, dates = {}, classes = new Set();
     pages.forEach(pg => {
       const runs = pg.runs.map(r => Object.assign({}, r, { t: norm(r.t) })).filter(r => r.t);
-      runs.forEach(r => { if (/^(Y\d{1,2}|\d{1,2}[A-Z])$/.test(r.t)) classes.add(r.t); });
-      const heads = runs.filter(r => r.t.toUpperCase() === want).sort((a, b) => a.y - b.y);
+      const sub = new Set(runs.filter(r => /^\d{1,2}[A-Z]$/.test(r.t)).map(r => r.t.replace(/\D/g, '')));
+      runs.forEach(r => {
+        if (/^(Y\d{1,2}|\d{1,2}[A-Z])$/.test(r.t)) classes.add(r.t);
+        else if (/^year\s*\d{1,2}$/i.test(r.t) && !sub.has(r.t.replace(/\D/g, ''))) classes.add(canon(r.t)); // "Year 9" tanpa 9A/9B
+      });
+      let heads = runs.filter(r => r.t.toUpperCase() === want);
+      if (!heads.length) heads = runs.filter(r => canon(r.t) === want);
+      heads.sort((a, b) => a.y - b.y);
       heads.forEach((H, hi) => {
         /* hari: judul hari terdekat di atas kepala kolom */
-        const dayRun = runs.filter(r => r.y < H.y && H.y - r.y < 80 && DAYS.some(re => re.test(r.t))).sort((a, b) => (H.y - a.y) + Math.abs(cx(a) - cx(H)) / 20 - ((H.y - b.y) + Math.abs(cx(b) - cx(H)) / 20))[0];
+        const dayRun = runs.filter(r => r.y < H.y && H.y - r.y < 80 && isDay(r.t)).sort((a, b) => (H.y - a.y) + Math.abs(cx(a) - cx(H)) / 20 - ((H.y - b.y) + Math.abs(cx(b) - cx(H)) / 20))[0];
         if (!dayRun) return;
         const di = DAYS.findIndex(re => re.test(dayRun.t));
         /* batas kolom dari tetangga kiri/kanan di baris kepala */
@@ -235,10 +251,13 @@
           if (!rows.length) continue;
           cells.push({ a: rows[0].a, z: rows[rows.length - 1].z, text: norm(textIn(y0, y1) || mergedText(y0, y1)) });
         }
-        if (cells.length) days[di] = cells;
+        if (cells.length) { days[di] = cells; const dt = dateOf(dayRun.t); if (dt) dates[di] = dt; }
       });
     });
-    return { days, classes: [...classes].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })) };
+    /* jadwal ujian (mis. "End-of-Semester Assessment (ASAS)"): mata pelajarannya jadi daftar ujian */
+    const EX = /\b(assessment|asas|asts|ujian|exams?|examination|sumatif|PAS|PAT|UTS|UAS|STS|SAS)\b/i;
+    const exam = pages.some(pg => pg.runs.some(r => EX.test(r.t) && r.t.length < 90));
+    return { days, dates, exam, classes: [...classes].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })) };
   }
 
   async function read(buf, kelas) {
